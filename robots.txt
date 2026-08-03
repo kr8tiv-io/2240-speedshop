@@ -1,0 +1,33 @@
+User-Agent: Googlebot
+User-Agent: Googlebot-Image
+User-Agent: Bingbot
+User-Agent: Slurp
+User-Agent: DuckDuckBot
+User-Agent: Applebot
+Allow: /
+
+User-Agent: OAI-SearchBot
+User-Agent: ChatGPT-User
+User-Agent: PerplexityBot
+User-Agent: Perplexity-User
+User-Agent: Claude-SearchBot
+User-Agent: Claude-User
+User-Agent: Google-CloudVertexBot
+User-Agent: Bingbot-Chat
+Allow: /
+
+User-Agent: GPTBot
+User-Agent: ClaudeBot
+User-Agent: Google-Extended
+User-Agent: Applebot-Extended
+User-Agent: CCBot
+User-Agent: Amazonbot
+User-Agent: Meta-ExternalAgent
+User-Agent: cohere-ai
+Allow: /
+
+User-Agent: *
+Allow: /
+
+Host: https://2240speedshop.com
+Sitemap: https://2240speedshop.com/sitemap.xml
