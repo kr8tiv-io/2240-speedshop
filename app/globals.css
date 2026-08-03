@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/* MIDNIGHT GARAGE — design tokens.
+   Palette locked in 05-concepts/concept-1-midnight-garage.md §2.1.
+   speed-red is the real brand colour, read from the live site's PWA manifest. */
+@theme {
+  --color-bay-black: #0b0b0d;
+  --color-panel: #131316;
+  --color-speed-red: #a02d2d;
+  --color-neon-bloom: #e04545;
+  --color-rust: #8a5433;
+  --color-steel: #c7c9cc;
+  --color-tungsten: #ffb066;
+  --color-bone: #f2f0ec;
+
+  --font-display: var(--font-bebas), "Arial Narrow", sans-serif;
+  --font-sub: var(--font-archivo), system-ui, sans-serif;
+  --font-body: var(--font-barlow), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #0b0b0d;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #0b0b0d;
+  color: #f2f0ec;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Red is scarce: one neon element per viewport (concept §2.1). */
+.neon {
+  text-shadow:
+    0 0 4px rgba(224, 69, 69, 0.9),
+    0 0 12px rgba(224, 69, 69, 0.65),
+    0 0 32px rgba(160, 45, 45, 0.45);
+}
+
+.neon-red {
+  color: #e04545;
+  text-shadow:
+    0 0 6px rgba(224, 69, 69, 0.95),
+    0 0 18px rgba(224, 69, 69, 0.7),
+    0 0 44px rgba(160, 45, 45, 0.5);
+}
+
+/* Flicker is punctuation, never continuous (concept §2.4.3). */
+@keyframes buzz {
+  0%, 42%, 46%, 58%, 100% { opacity: 1; }
+  44%, 56% { opacity: 0.55; }
+}
+
+.flicker:hover {
+  animation: buzz 320ms steps(1, end);
+}
+
+/* Weld-seam divider — 2D echo of the 3D material system. */
+.weld {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #8a5433 18%,
+    #c7c9cc 50%,
+    #8a5433 82%,
+    transparent
+  );
+  opacity: 0.35;
+}
+
+/* Steel plate surface for cards. */
+.plate {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 60%), #131316;
+  border: 1px solid rgba(138, 84, 51, 0.35);
+  transition: border-color 220ms ease, transform 220ms ease;
+}
+
+.plate:hover {
+  border-color: rgba(224, 69, 69, 0.55);
+}
+
+/* One grade over every source photo so iPhone shots and pro shots share a world. */
+.graded {
+  filter: brightness(0.9) contrast(1.08) saturate(0.92);
+}
+
+:focus-visible {
+  outline: 2px solid #e04545;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
