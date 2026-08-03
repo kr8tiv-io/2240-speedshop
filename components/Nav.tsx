@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { site } from "@/lib/site";
+import { Badge } from "@/components/Logo";
 
 const links = [
   { href: "/services", label: "Services" },
@@ -19,12 +20,15 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-40 border-b border-rust/25 bg-bay-black/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
-        <Link href="/" className="group flex items-baseline gap-2" onClick={() => setOpen(false)}>
-          <span className="font-display text-2xl leading-none tracking-wide text-bone group-hover:neon">
-            2240
-          </span>
-          <span className="font-sub text-[10px] uppercase tracking-[0.3em] text-steel">
-            Speed Shop
+        <Link href="/" className="group flex items-center gap-2.5" onClick={() => setOpen(false)}>
+          <Badge className="h-9 w-auto" hole="#0b0b0d" title="" />
+          <span className="flex items-baseline gap-2">
+            <span className="font-display text-2xl leading-none tracking-wide text-bone group-hover:neon">
+              2240
+            </span>
+            <span className="font-sub text-[10px] uppercase tracking-[0.3em] text-steel">
+              Speed Shop
+            </span>
           </span>
         </Link>
 

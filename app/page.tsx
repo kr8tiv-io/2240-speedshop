@@ -186,8 +186,8 @@ export default function HomePage() {
 
           <figure className="relative aspect-[4/5] w-full overflow-hidden border border-rust/30">
             <Image
-              src="/shop/ig-D100-slide1-fullres.jpg"
-              alt="1960s Dodge D100 classic pickup truck with original patina and a light patch on the hood, built at 2240 Speed Shop in Edmonton"
+              src="/shop/car-d100-truck.jpg"
+              alt="1960s Dodge D100 classic pickup truck with original patina, built at 2240 Speed Shop in Edmonton"
               fill
               sizes="(min-width: 1024px) 34rem, 100vw"
               className="graded object-cover"

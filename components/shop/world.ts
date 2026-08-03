@@ -188,24 +188,49 @@ export function disposeInstanced(mesh: THREE.InstancedMesh) {
    hand-built hardware and the downloaded PBR props read as one room rather
    than two art packs. Spread onto `<meshStandardMaterial {...STEEL} />`. */
 
-export const STEEL = { color: "#6b707a", roughness: 0.36, metalness: 0.7 } as const;
-export const DARK_STEEL = { color: "#3c3f47", roughness: 0.52, metalness: 0.58 } as const;
-/* Polished, but NOT mirror-white: at 0.11 roughness a header pipe under a bay
-   light clips to pure white and the tube shape disappears into a flare. The
-   same failure came back when the environment was brightened — a chrome tube
-   mirrors the overhead Lightformer bar along its whole length, so it blew out
-   into a solid glowing rod AND drove the floor reflection white underneath it.
-   0.34/0.82 keeps enough diffuse to hold the round of the pipe. */
-export const CHROME = { color: "#a7acb5", roughness: 0.34, metalness: 0.82 } as const;
-export const ALLOY = { color: "#83888f", roughness: 0.34, metalness: 0.7 } as const;
-export const CAST_IRON = { color: "#3a3c41", roughness: 0.79, metalness: 0.42 } as const;
-export const RUBBER = { color: "#141519", roughness: 0.95, metalness: 0.02 } as const;
-export const LIFT_RED = { color: "#75281f", roughness: 0.46, metalness: 0.32 } as const;
-export const TOOL_RED = { color: "#8a2f24", roughness: 0.42, metalness: 0.3 } as const;
-export const SAFETY = { color: "#a8781f", roughness: 0.6, metalness: 0.2 } as const;
-export const GRIME = { color: "#26282e", roughness: 0.88, metalness: 0.12 } as const;
+/* Scuffed, not showroom: a shop tool has been dropped on concrete. High
+   metalness with a mid roughness gives a broad soft highlight that still moves
+   across the surface as the camera travels. */
+export const STEEL = { color: "#7b818c", roughness: 0.4, metalness: 0.82 } as const;
+export const DARK_STEEL = { color: "#43474f", roughness: 0.55, metalness: 0.78 } as const;
+/* REAL chrome. Roughness — not colour, not emissive — is what decides whether a
+   pipe reads as chrome or as a neon tube. A wide lobe (the old 0.34) smears the
+   whole overhead strip down the length of the tube, every texel clears the
+   bloom threshold, and a header turns into a glowing white rod. A mirror lobe
+   puts ONE hard streak on the pipe and leaves the rest of it reflecting the
+   dark room, which is exactly what the eye reads as polish. Fully metallic, so
+   there is no diffuse term left to wash the shape out either.
+
+   Not a true mirror either: at 0.05 the GGX peak from a work lamp a metre away
+   is thousands of times the room's exposure, so every pipe clips to white and
+   we are back where we started by a different road. 0.11 keeps the streak hard
+   and keeps its peak inside the frame. */
+export const CHROME = { color: "#b9bec7", roughness: 0.15, metalness: 1 } as const;
+/* Cast and bead-blasted aluminium — bright, but scattered enough to read matte
+   next to the chrome beside it. */
+export const ALLOY = { color: "#82888f", roughness: 0.38, metalness: 0.86 } as const;
+export const CAST_IRON = { color: "#34363b", roughness: 0.84, metalness: 0.22 } as const;
+export const RUBBER = { color: "#0d0e11", roughness: 0.94, metalness: 0 } as const;
+/* Painted machinery is a DIELECTRIC coat over steel, not bare metal. The old
+   0.3 metalness was stealing the diffuse and leaving the lift columns muddy;
+   at zero the enamel holds its colour and the clearcoat presets below add the
+   wet sheen on the hero pieces. */
+export const LIFT_RED = { color: "#83291c", roughness: 0.36, metalness: 0.04 } as const;
+export const TOOL_RED = { color: "#963320", roughness: 0.34, metalness: 0.04 } as const;
+export const SAFETY = { color: "#b8871f", roughness: 0.48, metalness: 0.05 } as const;
+export const GRIME = { color: "#212329", roughness: 0.93, metalness: 0.08 } as const;
 export const ENGINE_ORANGE = {
-  color: "#a8481a",
-  roughness: 0.44,
-  metalness: 0.28,
+  color: "#b74d18",
+  roughness: 0.32,
+  metalness: 0.06,
 } as const;
+
+/* ── Clearcoat presets — meshPhysicalMaterial ONLY ──────────────────────────
+   Clearcoat is the single thing that separates "painted metal" from "plastic":
+   a second, near-mirror specular layer sitting on top of a coloured base. It
+   costs one extra BRDF lobe and it is the cheapest realism in the file. */
+
+/** Shop equipment enamel: hard-wearing, semi-gloss, a bit orange-peeled. */
+export const ENAMEL_COAT = { clearcoat: 0.65, clearcoatRoughness: 0.24 } as const;
+/** Bodywork: deep, wet, show-quality. */
+export const PAINT_COAT = { clearcoat: 1, clearcoatRoughness: 0.05 } as const;

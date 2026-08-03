@@ -6,6 +6,7 @@ import { useFrame } from "@react-three/fiber";
 
 import { M, Placed, Vehicle } from "./Loaders";
 import {
+  CeilingFan,
   CherryPicker,
   Creeper,
   DrainPan,
@@ -14,6 +15,7 @@ import {
   FloorJack,
   HoseReel,
   JackStand,
+  Turntable,
   TwoPostLift,
   V8Engine,
   Workbench,
@@ -58,9 +60,14 @@ function DropLight({
 }) {
   const bulb = useRef<THREE.PointLight>(null);
   const glass = useRef<THREE.MeshStandardMaterial>(null);
+  const disc = useRef<THREE.Mesh>(null);
   // Kept deliberately weak: this pool sits inside a bay light's pool, and two
   // additive discs on a reflective floor blow the concrete out to white.
   const pool = useRadialGlow(TUNGSTEN, 0.11, 2.8);
+  const anchor = useMemo(
+    () => new THREE.Vector3(position[0], 1, position[2]),
+    [position],
+  );
 
   useFrame((state) => {
     const elapsed = state.clock.elapsedTime;
@@ -69,6 +76,12 @@ function DropLight({
     const buzz = 0.93 + 0.07 * Math.sin(elapsed * 17.3) * Math.sin(elapsed * 4.1);
     if (bulb.current) bulb.current.intensity = power * k * buzz;
     if (glass.current) glass.current.emissiveIntensity = 3.0 * k * buzz;
+    // Same fill-rate governor as the bay lights: an additive disc on the
+    // concrete is invisible from twenty metres away and is not worth drawing.
+    if (disc.current) {
+      disc.current.visible =
+        state.camera.position.distanceToSquared(anchor) < 22 * 22;
+    }
   });
 
   return (
@@ -96,7 +109,11 @@ function DropLight({
         decay={2}
         position={[0, -0.1, 0]}
       />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -position[1] + 0.016, 0]}>
+      <mesh
+        ref={disc}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -position[1] + 0.016, 0]}
+      >
         <circleGeometry args={[1.3, 20]} />
         <primitive object={pool} attach="material" />
       </mesh>
@@ -121,13 +138,13 @@ function BayOutline({
       {[-1, 1].map((s) => (
         <mesh key={`x${s}`} rotation={[-Math.PI / 2, 0, 0]} position={[(s * width) / 2, 0, 0]}>
           <planeGeometry args={[0.08, depth]} />
-          <meshBasicMaterial color="#3f3524" toneMapped={false} />
+          <meshStandardMaterial color="#6f5d38" roughness={0.9} metalness={0.02} />
         </mesh>
       ))}
       {[-1, 1].map((s) => (
         <mesh key={`z${s}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, (s * depth) / 2]}>
           <planeGeometry args={[width, 0.08]} />
-          <meshBasicMaterial color="#3f3524" toneMapped={false} />
+          <meshStandardMaterial color="#6f5d38" roughness={0.9} metalness={0.02} />
         </mesh>
       ))}
     </group>
@@ -194,6 +211,10 @@ export function StationDoorway() {
       {/* Pallet of parts against the left wall */}
       <Placed url={M.pallet} size={1.2} position={[-7.4, 0, 4.6]} yaw={0.22} shadow={0.62} />
 
+      {/* Prewar hotrod donor waiting its turn against the left wall — the
+          establishing shot used to run out of shop halfway down its left side. */}
+      <Vehicle url={M.prewarDonor} size={4.5} position={[-5.9, 0, -2.6]} yaw={0.38} />
+
       {/* A wheel and a tyre left where they were rolled */}
       <Placed
         url={M.tyre}
@@ -231,9 +252,66 @@ export function StationHoist() {
     <group>
       <BayOutline centre={[-3.2, -7.0]} width={4.6} depth={6.4} yaw={0.14} />
 
+      {/* Deep steel blue, not grey: the hero car reads as a customer's paint
+          job under the drop light, clearly separated from the red lift. */}
       <TwoPostLift position={[-3.2, 0, -7.0]} yaw={0.14} deck={1.78}>
-        <Vehicle url={M.challenger} size={5.0} position={[0, 0, 0]} shadow={false} />
+        <Vehicle
+          url={M.challenger}
+          size={5.0}
+          position={[0, 0, 0]}
+          shadow={false}
+          tint="#3f6cb0"
+        />
       </TwoPostLift>
+
+      {/* Second bay, second hoist — the old cab-over up at chest height with a
+          bare shell's worth of work left in it. Two lifts is what makes the
+          room read as a working shop rather than one photogenic bay. */}
+      <BayOutline centre={[4.1, -9.8]} width={4.4} depth={6.2} yaw={-0.12} />
+      {/* This one is WORKING: the cab-over rides slowly between knee and chest
+          height on a half-minute cycle — the single strongest life sign in the
+          establishing shot. */}
+      <TwoPostLift
+        position={[4.1, 0, -9.8]}
+        yaw={-0.12}
+        deck={1.26}
+        travel={{ min: 0.42, max: 1.62, period: 36 }}
+      >
+        <Vehicle url={M.flatnose} size={5.3} position={[0, 0, 0]} shadow={false} />
+      </TwoPostLift>
+      <Placed
+        url={M.wheelStack}
+        size={0.92}
+        axis="y"
+        position={[6.7, 0, -7.4]}
+        yaw={0.6}
+        shadow={0.5}
+      />
+      <Placed
+        url={M.tirePump}
+        size={0.9}
+        axis="y"
+        position={[6.2, 0, -12.1]}
+        yaw={-0.6}
+        shadow={0.4}
+      />
+      <Placed
+        url={M.oilCan}
+        size={0.26}
+        axis="y"
+        position={[-4.0, 0, -6.6]}
+        yaw={1.1}
+        shadow={0.18}
+      />
+      <Placed
+        url={M.funnel}
+        size={0.16}
+        axis="y"
+        position={[-3.7, 0, -6.3]}
+        yaw={0.3}
+      />
+      <FloorJack position={[2.2, 0, -11.9]} yaw={0.7} />
+      <DropLight position={[4.3, 2.7, -9.2]} cord={2.1} power={11} delay={0.85} />
 
       {/* The job, underneath */}
       <Creeper position={[-4.3, 0, -5.6]} yaw={0.62} />
@@ -292,7 +370,7 @@ export function StationHoist() {
       />
 
       {/* One drop light hung off the overhead bar, glowing hot under the car */}
-      <DropLight position={[-2.5, 2.6, -6.2]} cord={2.2} power={18} />
+      <DropLight position={[-2.5, 2.6, -6.2]} cord={2.2} power={14} />
 
       <Placed url={M.drum} size={0.88} axis="y" position={[-7.8, 0, -3.2]} yaw={0.7} shadow={0.42} />
 
@@ -314,7 +392,7 @@ export function StationEngineRoom() {
           rail. Nose-on you get three pulleys and a black block; side-on you get
           the valve cover, the scoop and the whole sweep of the headers. */}
       <EngineStand position={[3.3, 0, -17.1]} yaw={1.18} blower />
-      <DropLight position={[3.5, 2.5, -16.4]} cord={2.3} power={16} delay={0.9} />
+      <DropLight position={[4.3, 2.6, -15.4]} cord={2.4} power={10} delay={0.9} />
 
       {/* Crane mid-lift, a bare motor hanging off the chain, reaching over the
           coupe's empty bay. Parked on the far side of the bay so its boom does
@@ -393,6 +471,23 @@ export function StationEngineRoom() {
         shadow={0.52}
       />
 
+      {/* The BIG chest — every real shop has one wall of drawers someone is
+          proud of — and the hand tools left out on the clean bench. */}
+      <Placed
+        url={M.toolChest}
+        size={1.5}
+        axis="y"
+        position={[HALF_W - 0.85, 0, -17.6]}
+        yaw={-Math.PI / 2 + 0.04}
+        shadow={0.75}
+      />
+      <Placed url={M.drill} size={0.24} position={[HALF_W - 0.66, 0.955, -15.9]} yaw={2.1} />
+      <Placed url={M.hammer} size={0.28} position={[HALF_W - 0.88, 0.955, -15.1]} yaw={-0.7} />
+      <Placed url={M.pliers} size={0.2} position={[HALF_W - 0.6, 0.955, -14.9]} yaw={0.9} />
+
+      {/* Air overhead */}
+      <CeilingFan position={[0.2, CEIL - 0.85, -15.2]} />
+
       {/* Drums, a crate and a pallet of boxes filling the dead floor */}
       <Placed url={M.barrel} size={0.9} axis="y" position={[7.7, 0, -13.0]} yaw={0.5} shadow={0.4} />
       <Placed url={M.barrel} size={0.9} axis="y" position={[7.2, 0, -12.3]} yaw={-1.1} shadow={0.4} />
@@ -411,39 +506,82 @@ export function StationEngineRoom() {
    Pushed to the back corner behind the bays, where welding belongs. Bottles
    chained upright, a tool wall, steel stock and a body in primer on stands. */
 
+/**
+ * A hand-hung tool wall.
+ *
+ * The previous version was 22 identical bars on a three-value length cycle at a
+ * constant pitch — read at a glance it was a comb, not a tool wall. Fewer tools
+ * that each read individually beat more tools that read as a texture, so the
+ * count comes down, the spacing is irregular, and the population is mixed:
+ * flat-stock spanners in polished steel, round-shanked drivers with dark
+ * handles, and a couple of hooks left empty. Two instanced draw calls total.
+ */
+const SPANNERS: Array<[number, number, number]> = [
+  // [z along the wall, hung length, hook-line height]
+  [-25.05, 0.62, 2.44],
+  [-25.42, 0.5, 2.44],
+  [-25.72, 0.72, 2.46],
+  [-26.34, 0.44, 2.42],
+  [-26.62, 0.56, 2.44],
+  [-27.35, 0.66, 2.45],
+  [-27.66, 0.38, 2.41],
+  [-28.35, 0.58, 2.44],
+  [-28.68, 0.48, 2.43],
+  [-29.2, 0.7, 2.46],
+  [-25.28, 0.34, 1.72],
+  [-25.9, 0.42, 1.74],
+  [-26.5, 0.3, 1.7],
+  [-27.2, 0.46, 1.75],
+  [-28.1, 0.36, 1.72],
+  [-28.95, 0.4, 1.73],
+];
+
+const DRIVERS: Array<[number, number]> = [
+  [-25.6, 0.3],
+  [-25.82, 0.26],
+  [-26.04, 0.33],
+  [-26.9, 0.28],
+  [-27.12, 0.31],
+  [-27.9, 0.25],
+  [-29.05, 0.29],
+  [-29.28, 0.34],
+];
+
 function ToolWall() {
-  const hung = useMemo(() => {
-    const geometry = new THREE.BoxGeometry(0.06, 1, 0.05);
-    const material = new THREE.MeshStandardMaterial({
-      color: "#4b4f58",
-      roughness: 0.42,
-      metalness: 0.5,
-    });
-    const specs: InstanceSpec[] = [];
-    /* Tools HANG. The unit box is centred on its origin, so scaling it and
-       placing the centre on a tier line left every tool at a different height
-       and the wall read as scattered pick-up-sticks; solving for the centre
-       from a fixed TOP puts them all on a common hook line per row, which is
-       what makes a pegboard legible at a glance. Tilt stays inside ±2°: enough
-       to look hung by hand, not enough to look spilled. */
-    const TIER_TOP = [2.42, 1.98, 1.56];
-    for (let i = 0; i < 22; i++) {
-      const length = 0.42 + (i % 3) * 0.1;
-      const top = TIER_TOP[i % 3];
-      specs.push({
-        position: [
-          -(HALF_W - 0.42),
-          top - length / 2,
-          -25.2 - Math.floor(i / 2) * 0.36 - (i % 2) * 0.15,
-        ],
-        rotation: [0, Math.PI / 2, ((i % 3) - 1) * 0.035],
+  const parts = useMemo(() => {
+    /* Tools HANG. The unit box is centred on its origin, so the centre has to
+       be solved from a fixed TOP or every tool ends up at a different height
+       and the wall reads as spilled pick-up-sticks. */
+    const flat = buildInstances(
+      new THREE.BoxGeometry(0.055, 1, 0.045),
+      new THREE.MeshStandardMaterial({ color: "#8b919b", roughness: 0.3, metalness: 0.9 }),
+      SPANNERS.map(([z, length, top], i) => ({
+        position: [-(HALF_W - 0.42), top - length / 2, z],
+        rotation: [0, Math.PI / 2, Math.sin(i * 2.4) * 0.055],
+        scale: [1 + (i % 4) * 0.28, length, 1],
+      })),
+    );
+
+    const round = buildInstances(
+      new THREE.CylinderGeometry(0.017, 0.022, 1, 6),
+      new THREE.MeshStandardMaterial({ color: "#5e4a2c", roughness: 0.62, metalness: 0.18 }),
+      DRIVERS.map(([z, length], i) => ({
+        position: [-(HALF_W - 0.4), 1.74 - length / 2, z],
+        rotation: [0, 0, Math.cos(i * 1.9) * 0.06],
         scale: [1, length, 1],
-      });
-    }
-    return buildInstances(geometry, material, specs);
+      })),
+    );
+
+    return { flat, round };
   }, []);
 
-  useEffect(() => () => disposeInstanced(hung), [hung]);
+  useEffect(
+    () => () => {
+      disposeInstanced(parts.flat);
+      disposeInstanced(parts.round);
+    },
+    [parts],
+  );
 
   return (
     <group>
@@ -455,7 +593,16 @@ function ToolWall() {
         <boxGeometry args={[5.2, 2.1, 0.06]} />
         <meshStandardMaterial color="#4a3625" roughness={0.88} metalness={0.06} />
       </mesh>
-      <primitive object={hung} />
+      {/* Shadow-board outlines behind the two empty hooks — the detail that
+          says a person owns this wall. */}
+      {[-26.15, -28.6].map((z) => (
+        <mesh key={z} position={[-(HALF_W - 0.32), 2.16, z]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[0.09, 0.6]} />
+          <meshStandardMaterial color="#241a11" roughness={0.95} metalness={0} />
+        </mesh>
+      ))}
+      <primitive object={parts.flat} />
+      <primitive object={parts.round} />
     </group>
   );
 }
@@ -490,6 +637,32 @@ export function StationFabCorner() {
         position={[-6.6, 0, -24.9]}
         yaw={0.72}
         shadow={0.7}
+      />
+      <Placed
+        url={M.propaneBottle}
+        size={0.72}
+        axis="y"
+        position={[-5.8, 0, -24.0]}
+        yaw={-0.4}
+        shadow={0.26}
+      />
+
+      {/* Work light on its stand, aimed into the primer shell's door aperture */}
+      <Placed
+        url={M.searchlight}
+        size={1.35}
+        axis="y"
+        position={[-2.6, 0, -28.9]}
+        yaw={2.5}
+        shadow={0.5}
+      />
+      <Placed
+        url={M.barrelC}
+        size={0.86}
+        axis="y"
+        position={[-7.7, 0, -31.4]}
+        yaw={0.9}
+        shadow={0.4}
       />
 
       {/* Body in primer, up on four stands with its wheels off */}
@@ -581,15 +754,26 @@ export function StationTuningBay() {
           <boxGeometry args={[1.5, 0.8, 0.7]} />
           <meshStandardMaterial {...GRIME} />
         </mesh>
-        <mesh position={[0, 1.24, -0.2]} rotation={[-0.24, 0, 0]}>
-          <planeGeometry args={[1.1, 0.66]} />
-          <meshStandardMaterial
-            color="#04120b"
-            emissive="#2ee07a"
-            emissiveIntensity={0.28}
-            toneMapped={false}
-          />
-        </mesh>
+        {/* CRT in a bezel, tilted back on the desk. The old version was a bare
+            bright-green plane floating over the desk — it read as a glowing
+            box, not a monitor. A housing behind it and a dim amber phosphor
+            through tone mapping make it furniture instead of a light source. */}
+        <group position={[0, 1.22, -0.17]} rotation={[-0.24, 0, 0]}>
+          <mesh>
+            <boxGeometry args={[1.16, 0.74, 0.34]} />
+            <meshStandardMaterial color="#2c2e35" roughness={0.62} metalness={0.3} />
+          </mesh>
+          <mesh position={[0, 0, 0.175]}>
+            <planeGeometry args={[1.0, 0.6]} />
+            <meshStandardMaterial
+              color="#0d0b06"
+              emissive="#d8a86a"
+              emissiveIntensity={0.5}
+              roughness={0.3}
+              metalness={0.05}
+            />
+          </mesh>
+        </group>
         <ContactShadow radius={1.0} spread={[1, 0.55]} opacity={0.4} />
       </group>
 
@@ -604,41 +788,94 @@ export function StationTuningBay() {
       <Placed url={M.stool} size={0.74} axis="y" position={[-4.0, 0, -34.2]} yaw={-0.4} shadow={0.34} />
       <Placed url={M.gasCan} size={0.36} axis="y" position={[-6.4, 0, -35.4]} yaw={0.9} shadow={0.24} />
       <Placed url={M.boxes} size={0.95} position={[6.6, 0, -33.0]} yaw={0.35} shadow={0.5} />
+      <Placed
+        url={M.storageCart}
+        size={1.05}
+        axis="y"
+        position={[5.4, 0, -34.6]}
+        yaw={0.7}
+        shadow={0.6}
+      />
+      <Placed
+        url={M.barrelA}
+        size={0.9}
+        axis="y"
+        position={[-7.8, 0, -31.9]}
+        yaw={-0.6}
+        shadow={0.4}
+      />
 
-      <DropLight position={[3.9, 3.0, -39.4]} cord={2.4} power={13} delay={1.1} />
+      <DropLight position={[4.4, 3.0, -40.4]} cord={2.4} power={9} delay={1.1} />
 
       <FloorStain radius={2.2} position={[0.9, 0.013, -40.6]} spread={[1, 0.5]} opacity={0.26} />
     </group>
   );
 }
 
-/** Fifteen gauges on the board, one draw call. */
+/**
+ * Fifteen gauges on the board, two draw calls.
+ *
+ * The bezels used to be the emitter — an emissive, un-tone-mapped torus, which
+ * is to say fifteen small neon rings hung on a wall. A gauge bezel is chromed
+ * steel. Only the DIAL is lit, it is lit dimly, and it goes through tone
+ * mapping like every other surface, so it glows the way an instrument glows
+ * instead of the way a sign does.
+ */
 function GaugeCluster() {
-  const gauges = useMemo(() => {
-    const geometry = new THREE.TorusGeometry(0.2, 0.03, 6, 18);
-    const material = new THREE.MeshStandardMaterial({
-      color: "#0a0a0c",
-      emissive: TUNGSTEN,
-      emissiveIntensity: 1.05,
-      roughness: 0.4,
-      metalness: 0.3,
-      toneMapped: false,
-    });
+  const parts = useMemo(() => {
     const specs: InstanceSpec[] = [];
+    const faceSpecs: InstanceSpec[] = [];
     for (let row = 0; row < 3; row++) {
       for (let col = 0; col < 5; col++) {
+        const s = 1 - row * 0.12;
+        const y = 1.5 + row * 0.62;
+        const z = -34.4 - col * 0.62;
         specs.push({
-          position: [HALF_W - 0.36, 1.5 + row * 0.62, -34.4 - col * 0.62],
+          position: [HALF_W - 0.36, y, z],
           rotation: [0, Math.PI / 2, 0],
-          scale: [1 - row * 0.12, 1 - row * 0.12, 1],
+          scale: [s, s, 1],
+        });
+        faceSpecs.push({
+          position: [HALF_W - 0.38, y, z],
+          rotation: [0, -Math.PI / 2, 0],
+          scale: [s, s, 1],
         });
       }
     }
-    return buildInstances(geometry, material, specs);
+
+    const bezels = buildInstances(
+      new THREE.TorusGeometry(0.2, 0.03, 6, 18),
+      new THREE.MeshStandardMaterial({ ...CHROME }),
+      specs,
+    );
+    const faces = buildInstances(
+      new THREE.CircleGeometry(0.19, 20),
+      new THREE.MeshStandardMaterial({
+        color: "#0b0c10",
+        emissive: TUNGSTEN,
+        emissiveIntensity: 0.5,
+        roughness: 0.42,
+        metalness: 0.1,
+      }),
+      faceSpecs,
+    );
+    return { bezels, faces };
   }, []);
 
-  useEffect(() => () => disposeInstanced(gauges), [gauges]);
-  return <primitive object={gauges} />;
+  useEffect(
+    () => () => {
+      disposeInstanced(parts.bezels);
+      disposeInstanced(parts.faces);
+    },
+    [parts],
+  );
+
+  return (
+    <group>
+      <primitive object={parts.faces} />
+      <primitive object={parts.bezels} />
+    </group>
+  );
 }
 
 /* ═══ 5 — THE OFFICE WALL ═══════════════════════════════════════════════════
@@ -690,6 +927,78 @@ export function StationOffice() {
       <Placed url={M.boxes} size={0.8} position={[-7.9, 0, -46.2]} yaw={0.7} shadow={0.44} />
       <Placed url={M.crate} size={0.8} position={[-7.7, 0, -43.0]} yaw={-0.4} shadow={0.52} />
 
+      {/* ── The bay was reading as an empty grey floor with a gallery stuck to
+             one wall. Everything below is there to give the frame a foreground,
+             a middle and a far edge, and to keep the eye moving down the room
+             instead of stopping dead at the corkboard. ── */}
+
+      {/* Foreground left: the stack that always lives outside the office door */}
+      <Placed
+        url={M.tyreStack}
+        size={1.15}
+        axis="y"
+        position={[-6.9, 0, -40.6]}
+        yaw={0.35}
+        shadow={0.62}
+      />
+      <Placed
+        url={M.palletJack}
+        size={1.45}
+        position={[-4.4, 0, -39.2]}
+        yaw={1.05}
+        shadow={0.6}
+        shadowSpread={[0.4, 1]}
+      />
+
+      {/* A door into the office, so the wall reads as a room rather than a
+          panel with pictures on it. */}
+      <Placed
+        url={M.metalDoor}
+        size={2.05}
+        axis="y"
+        position={[-(HALF_W - 0.24), 0, -37.6]}
+        yaw={Math.PI / 2}
+      />
+
+      {/* Shelf of customer parts above the desk end */}
+      <Placed
+        url={M.shelfWooden}
+        size={1.7}
+        position={[-(HALF_W - 0.62), 0, -50.9]}
+        yaw={Math.PI / 2 + 0.04}
+        shadow={0.72}
+        shadowSpread={[0.42, 1]}
+      />
+      <Placed url={M.boxes} size={0.6} position={[-8.0, 0.86, -50.6]} yaw={-0.5} shadow={false} />
+
+      {/* Right of frame: wheels and a drum keep the far side from going empty */}
+      <Placed
+        url={M.wheelStack}
+        size={0.92}
+        axis="y"
+        position={[1.6, 0, -40.4]}
+        yaw={0.4}
+        shadow={0.5}
+      />
+      <Placed url={M.drum} size={0.88} axis="y" position={[7.6, 0, -40.9]} yaw={0.9} shadow={0.42} />
+      <Placed url={M.barrel} size={0.9} axis="y" position={[7.1, 0, -42.0]} yaw={-0.4} shadow={0.4} />
+
+      <CeilingFan position={[-0.4, CEIL - 0.85, -42.6]} speed={2.6} />
+
+      {/* Roll cab abandoned mid-room, catching the wall wash */}
+      <Placed
+        url={M.toolCart}
+        size={0.95}
+        axis="y"
+        position={[-3.1, 0, -43.4]}
+        yaw={-0.7}
+        shadow={0.52}
+      />
+      <Placed url={M.stool} size={0.74} axis="y" position={[-2.2, 0, -41.2]} yaw={1.2} shadow={0.34} />
+
+      <FloorStain radius={1.7} position={[-4.2, 0.013, -42.6]} spread={[0.9, 1]} opacity={0.24} />
+      <FloorStain radius={1.1} position={[-6.6, 0.013, -46.8]} opacity={0.2} />
+
       {/* Filing cabinet */}
       <group position={[-8.2, 0, -39.6]}>
         <mesh position={[0, 0.66, 0]}>
@@ -713,6 +1022,7 @@ export function StationOffice() {
         yaw={0.18}
         shadowOpacity={0.5}
       />
+
     </group>
   );
 }
@@ -722,19 +1032,28 @@ export function StationOffice() {
 export function StationDoor() {
   return (
     <group>
-      {/* Finished, pointed at the night — off to one side so the opening still
-          reads as a door with the city framed inside it. */}
-      <Vehicle url={M.charger} size={5.25} position={[-3.4, 0, -53.2]} yaw={0.24} />
+      {/* Finished, revolving on the showroom turntable — off to one side so
+          the opening still reads as a door with the city framed inside it,
+          and the last thing the reader sees is the product, turning. */}
+      <Turntable position={[-3.3, 0, -52.4]} speed={0.13}>
+        <Vehicle url={M.charger} size={5.0} position={[0, 0, 0]} shadow={false} />
+      </Turntable>
 
       <Placed
         url={M.drumsRow}
         size={2.1}
-        position={[5.6, 0, -53.4]}
+        position={[7.0, 0, -54.6]}
         yaw={-0.5}
         shadow={1.0}
         shadowSpread={[1, 0.5]}
       />
-      <Placed url={M.drum} size={0.88} axis="y" position={[6.6, 0, -50.8]} yaw={0.3} shadow={0.42} />
+      {/* Third hoist by the door: the '50s convertible at waist height,
+          mid-restoration — the last thing the reader passes on the way out. */}
+      <TwoPostLift position={[6.1, 0, -50.4]} yaw={0.16} deck={1.5}>
+        <Vehicle url={M.convertible} size={4.9} position={[0, 0, 0]} shadow={false} />
+      </TwoPostLift>
+      <JackStand position={[4.3, 0, -48.6]} height={0.5} yaw={0.4} />
+
       <Placed
         url={M.tyre}
         size={0.68}
@@ -764,10 +1083,100 @@ export function StationDoor() {
         <meshStandardMaterial {...DARK_STEEL} />
       </mesh>
 
+      {/* ── The door shot was carrying one car and a row of drums across twelve
+             metres of floor. These fill the flanks and, more usefully, give the
+             opening something to be SEEN PAST: a silhouette out on the apron
+             and stock leaning in the near corner is what turns a bright
+             rectangle into a doorway. ── */}
+
+      {/* Old flatnose parked out on the wet apron, lit only by the street */}
+      <Vehicle url={M.flatnose} size={5.6} position={[9.6, 0, -66.5]} yaw={1.42} />
+
+      {/* Customers' classics on the back lot — clones of cars the reader has
+          already paid the download for, repainted so the lot reads as three
+          different customers and not a copy-paste. */}
+      <Vehicle
+        url={M.charger}
+        size={5.25}
+        position={[-10.4, 0, -64.8]}
+        yaw={-0.94}
+        tint="#274a2c"
+      />
+      <Vehicle
+        url={M.pickup}
+        size={5.15}
+        position={[-3.6, 0, -68.9]}
+        yaw={-1.22}
+        tint="#5c3a24"
+      />
+      <Vehicle
+        url={M.camaro}
+        size={4.75}
+        position={[3.8, 0, -71.5]}
+        yaw={1.88}
+        tint="#5a2330"
+      />
+
+      {/* Ramps and a truck tyre stacked where the last job left them */}
+      <Placed
+        url={M.serviceRamp}
+        size={0.9}
+        position={[-6.6, 0, -49.4]}
+        yaw={0.28}
+        shadow={0.44}
+        shadowSpread={[0.6, 1]}
+      />
+      <Placed
+        url={M.serviceRamp}
+        size={0.9}
+        position={[-6.1, 0, -50.3]}
+        yaw={0.62}
+        shadow={0.44}
+        shadowSpread={[0.6, 1]}
+      />
+      <Placed
+        url={M.tyreTruck}
+        size={0.98}
+        orient="disc"
+        position={[7.1, 0, -49.2]}
+        yaw={0.24}
+        tilt={[0, 0.18]}
+        shadow={0.4}
+      />
+
+      {/* Gas bottles chained by the wall and bar stock leaning next to them */}
+      <Placed
+        url={M.gasBottle}
+        size={1.32}
+        axis="y"
+        position={[8.1, 0, -46.8]}
+        yaw={0.5}
+        shadow={0.3}
+      />
+      <Placed
+        url={M.gasBottle}
+        size={1.32}
+        axis="y"
+        position={[8.3, 0, -47.6]}
+        yaw={-0.7}
+        shadow={0.3}
+      />
+      <Placed
+        url={M.pipesStock}
+        size={2.6}
+        axis="y"
+        position={[-8.0, 0, -46.4]}
+        yaw={0.2}
+        tilt={[0, 0.16]}
+        shadow={0.42}
+      />
+      <Placed url={M.pallet} size={1.2} position={[-7.2, 0, -55.0]} yaw={-0.5} shadow={0.62} />
+      <Placed url={M.boxes} size={0.9} position={[-7.2, 0.14, -55.0]} yaw={0.8} shadow={false} />
+
       {/* Kerb line at the threshold */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, -56.4]}>
         <planeGeometry args={[11, 0.14]} />
-        <meshBasicMaterial color="#3f3524" toneMapped={false} />
+        <meshStandardMaterial color="#6f5d38" roughness={0.9} metalness={0.02} />
       </mesh>
 
       <FloorStain radius={2.4} position={[-1.9, 0.013, -52.4]} spread={[0.55, 1]} opacity={0.22} />

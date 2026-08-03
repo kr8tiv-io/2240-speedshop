@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Clone, useGLTF } from "@react-three/drei";
+import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 import { ContactShadow } from "./materials";
 import { stationAt } from "./world";
@@ -72,23 +73,82 @@ export const M = {
   ladder: `${BASE}prop-ladder.glb`,
   gasCan: `${BASE}prop-gas-can-red.glb`,
   compressor: `${BASE}prop-shop-machine.glb`,
+
+  /* ── station 5/6 set dressing (all sub-600 KB — the two back bays read as
+        under-furnished, and this is the cheapest way to fix a composition) ── */
+  shelfWooden: `${BASE}prop-shelf-wooden.glb`,
+  tyreStack: `${BASE}prop-tyre-stack.glb`,
+  wheelStack: `${BASE}prop-wheel-stack-bare.glb`,
+  palletJack: `${BASE}prop-pallet-jack.glb`,
+  serviceRamp: `${BASE}prop-service-ramp.glb`,
+  gasBottle: `${BASE}prop-gas-bottle-tall.glb`,
+  pipesStock: `${BASE}prop-pipes-stock.glb`,
+  tyreTruck: `${BASE}prop-tyre-truck.glb`,
+  metalDoor: `${BASE}prop-metal-door.glb`,
+  flatnose: `${BASE}truck-old-flatnose.glb`,
+  convertible: `${BASE}car-convertible-50s.glb`,
+  prewarDonor: `${BASE}car-prewar-hotrod-donor.glb`,
+
+  /* ── density pass (the wow round): the best remaining bytes-per-look in the
+        105-file library — a real tool chest, a parts cart, a work light, air
+        for the tyres, and the handful of hand tools a bench is dressed with ── */
+  toolChest: `${BASE}prop-tool-chest-metal.glb`,
+  storageCart: `${BASE}prop-storage-cart-industrial.glb`,
+  searchlight: `${BASE}prop-searchlight-portable.glb`,
+  tirePump: `${BASE}prop-tire-pump.glb`,
+  oilCan: `${BASE}prop-oil-can-small.glb`,
+  barrelA: `${BASE}prop-barrel-rusted-a.glb`,
+  barrelC: `${BASE}prop-barrel-rusted-c.glb`,
+  drill: `${BASE}prop-drill.glb`,
+  hammer: `${BASE}prop-hammer.glb`,
+  pliers: `${BASE}prop-pliers.glb`,
+  funnel: `${BASE}prop-funnel.glb`,
+  propaneBottle: `${BASE}prop-gas-bottle-propane.glb`,
 } as const;
 
-/** Poly Pizza vehicles are stylized; they get graded down to match the PBR set. */
-const VEHICLES: ReadonlySet<string> = new Set<string>([
+/**
+ * How a file wants to be finished.
+ *
+ *   paint — a car someone has finished: coloured base under a full clearcoat
+ *   matte — a car nobody has finished: primer and rust, flat and thirsty
+ *   prop  — everything else, graded to sit with the PBR set
+ *
+ * The paint/matte split does more for the room than any single lighting change:
+ * a wet black coupe parked next to a dead-flat primer shell is instantly two
+ * different objects, and the shop reads as a place where work is IN PROGRESS
+ * rather than a showroom where every panel has the same finish.
+ */
+type Finish = "paint" | "matte" | "prop";
+
+const PAINTED: ReadonlySet<string> = new Set<string>([
   M.challenger,
   M.coupeHoodUp,
   M.charger,
   M.camaro,
-  M.primerShell,
-  M.rustedShell,
   M.pickup,
+  M.convertible,
 ]);
 
-/** Everything the doorway and the hoist need — the only bundle that preloads. */
+const BARE: ReadonlySet<string> = new Set<string>([
+  M.primerShell,
+  M.rustedShell,
+  M.flatnose,
+  M.prewarDonor,
+]);
+
+function finishOf(url: string): Finish {
+  if (PAINTED.has(url)) return "paint";
+  if (BARE.has(url)) return "matte";
+  return "prop";
+}
+
+/** Everything the doorway and the hoist need — the only bundle that preloads.
+    The flatnose is here because it now rides the second hoist in station 1;
+    at 289 KB it is the cheapest truck in the library. */
 const STATION_ONE = [
   M.challenger,
   M.pickup,
+  M.flatnose,
   M.toolCart,
   M.tyre,
   M.rim,
@@ -103,6 +163,8 @@ for (const url of STATION_ONE) useGLTF.preload(url, false);
 /* ── Load, grade, measure ───────────────────────────────────────────────── */
 
 const GRADED = new WeakSet<THREE.Object3D>();
+/** old geometry → its re-creased replacement, or itself if it was left alone. */
+const SMOOTHED = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry>();
 const GREY = new THREE.Color();
 
 /**
@@ -120,20 +182,132 @@ function tame(color: THREE.Color, darken: number, desaturate: number) {
   );
 }
 
+function lumaOf(color: THREE.Color) {
+  return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
+}
+
+/* Vertices above this get left alone: photogrammetry props already ship correct
+   smoothing, and re-deriving normals for a 200k-triangle tyre on the main
+   thread would cost more than every other fix in this file put together. */
+const CREASE_BUDGET = 80_000;
+
 /**
- * One pass over a freshly loaded file, applied to the SOURCE materials so every
- * clone inherits it for free.
+ * SMOOTH THE FACETS.
+ *
+ * The stylized vehicles are the loudest defect in the whole scene: a Camaro
+ * roof arrives as a fan of hard triangles because the exporter wrote one normal
+ * per FACE. `computeVertexNormals` on its own would not fix it — a non-indexed
+ * GLB has no shared vertices to average across — and welding everything would
+ * go too far the other way and round off the windscreen frame and the panel
+ * gaps along with the roof.
+ *
+ * `toCreasedNormals` is the right tool: average normals across any edge under
+ * the crease angle, keep them hard above it. At 55° a roof, a bonnet and a
+ * wheel arch go smooth while door shuts, glass frames and body lines stay as
+ * crisp as the model author drew them.
+ */
+function smooth(mesh: THREE.Mesh, creaseAngle: number) {
+  const geometry = mesh.geometry;
+  if (!geometry?.isBufferGeometry) return;
+
+  // Geometries are shared between meshes inside a file. Resolve through the
+  // map rather than recomputing — and never dispose one that a sibling mesh is
+  // still pointing at.
+  const done = SMOOTHED.get(geometry);
+  if (done) {
+    mesh.geometry = done;
+    return;
+  }
+
+  const position = geometry.getAttribute("position");
+  const normal = geometry.getAttribute("normal");
+  if (
+    !position ||
+    position.count > CREASE_BUDGET ||
+    (geometry.morphAttributes && Object.keys(geometry.morphAttributes).length > 0) ||
+    geometry.getAttribute("skinIndex") ||
+    (normal && !isFlatShaded(geometry))
+  ) {
+    SMOOTHED.set(geometry, geometry);
+    return;
+  }
+
+  try {
+    const creased = toCreasedNormals(geometry, creaseAngle);
+    SMOOTHED.set(geometry, creased);
+    SMOOTHED.set(creased, creased);
+    mesh.geometry = creased;
+    geometry.dispose();
+  } catch {
+    // A malformed attribute set is not worth taking the scene down for.
+    geometry.computeVertexNormals();
+    SMOOTHED.set(geometry, geometry);
+  }
+}
+
+/**
+ * Does this geometry carry one normal per FACE?
+ *
+ * Sampled, not exhaustive — a couple of hundred triangles is plenty to tell a
+ * faceted low-poly export from a properly smoothed one, and it keeps the check
+ * off the critical path for the big props.
+ */
+function isFlatShaded(geometry: THREE.BufferGeometry) {
+  const normal = geometry.getAttribute("normal");
+  if (!normal) return true;
+  const index = geometry.getIndex();
+  const triangles = (index ? index.count : normal.count) / 3;
+  if (triangles < 1) return false;
+
+  const step = Math.max(1, Math.floor(triangles / 200));
+  let sampled = 0;
+  let flat = 0;
+
+  for (let t = 0; t < triangles; t += step) {
+    const a = index ? index.getX(t * 3) : t * 3;
+    const b = index ? index.getX(t * 3 + 1) : t * 3 + 1;
+    const c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
+    sampled++;
+    const same =
+      Math.abs(normal.getX(a) - normal.getX(b)) < 1e-4 &&
+      Math.abs(normal.getY(a) - normal.getY(b)) < 1e-4 &&
+      Math.abs(normal.getZ(a) - normal.getZ(b)) < 1e-4 &&
+      Math.abs(normal.getX(a) - normal.getX(c)) < 1e-4 &&
+      Math.abs(normal.getY(a) - normal.getY(c)) < 1e-4 &&
+      Math.abs(normal.getZ(a) - normal.getZ(c)) < 1e-4;
+    if (same) flat++;
+  }
+
+  // A cube is legitimately all-flat and re-creasing it changes nothing, so the
+  // bar is set where a curved surface would start losing the argument.
+  return sampled > 0 && flat / sampled > 0.7;
+}
+
+/**
+ * One pass over a freshly loaded file, applied to the SOURCE geometry and
+ * materials so every clone inherits it for free.
  *
  * The honest problem flagged by whoever sourced these: the cars are stylized
- * flat-shaded low-poly and the best props are photogrammetry-grade PBR. Side by
- * side in daylight that reads as two art packs. The fix is to commit to the
- * night garage — darken and roughen the toy paint, push everything through the
- * same environment intensity, and let pooled tungsten and silhouette carry the
- * frame instead of surface detail.
+ * flat-shaded low-poly and the best props are photogrammetry-grade PBR. The old
+ * answer was to hide the difference — darken everything, roughen everything,
+ * let silhouette carry the frame. That is why the shop read as flat and toy-
+ * like: EVERY surface in it had the same matte response.
+ *
+ * The answer now is to differentiate instead. Bodywork becomes real car paint —
+ * `MeshPhysicalMaterial` with a full clearcoat over a coloured base, which is
+ * the actual physical difference between a painted panel and a plastic one.
+ * Rubber goes near-black and dead matte. Bright trim keeps its bite. The props
+ * are left alone because they were always right.
  */
-function grade(scene: THREE.Object3D, isVehicle: boolean) {
+function grade(scene: THREE.Object3D, finish: Finish) {
   if (GRADED.has(scene)) return;
   GRADED.add(scene);
+
+  const isVehicle = finish !== "prop";
+
+  // One physical material per source material, so a body panel shared by nine
+  // meshes still compiles one program and issues one uniform upload.
+  const swapped = new Map<THREE.Material, THREE.Material>();
 
   scene.traverse((child) => {
     const mesh = child as THREE.Mesh;
@@ -142,28 +316,130 @@ function grade(scene: THREE.Object3D, isVehicle: boolean) {
     mesh.receiveShadow = false;
 
     const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const rebuilt: THREE.Material[] = [];
+    let replaced = false;
+
     for (const entry of list) {
       const material = entry as THREE.MeshStandardMaterial;
-      if (!material?.isMeshStandardMaterial) continue;
-
-      if (isVehicle) {
-        // Knock the plastic out of it: darker paint, a little specular life,
-        // and less of the environment than the real PBR props take.
-        tame(material.color, 0.32, 0.3);
-        material.roughness = 0.5;
-        material.metalness = 0.3;
-        material.envMapIntensity = 0.6;
-      } else if (material.map) {
-        // Photogrammetry props already carry their own values — leave them be.
-        material.envMapIntensity = 1.0;
-      } else {
-        // Flat-colour Poly Pizza dressing. Left alone, a rack of primary-colour
-        // barrels reads as a toy shelf next to the PBR set; taming it is what
-        // lets the two sources share a bay.
-        tame(material.color, 0.5, 0.42);
-        material.roughness = Math.max(material.roughness, 0.6);
-        material.envMapIntensity = 0.75;
+      if (!material?.isMeshStandardMaterial) {
+        rebuilt.push(entry);
+        continue;
       }
+
+      // Flat shading is a per-material override that beats any normals we
+      // compute below, so it has to go first and it has to go everywhere.
+      material.flatShading = false;
+
+      if (!isVehicle) {
+        if (material.map) {
+          // Photogrammetry props already carry their own values.
+          material.envMapIntensity = 1.05;
+        } else {
+          // Flat-colour dressing. Left alone, a rack of primary-colour barrels
+          // reads as a toy shelf next to the PBR set.
+          tame(material.color, 0.52, 0.38);
+          material.roughness = THREE.MathUtils.clamp(material.roughness, 0.45, 0.85);
+          material.metalness = Math.min(material.metalness, 0.35);
+          material.envMapIntensity = 0.85;
+        }
+        material.needsUpdate = true;
+        rebuilt.push(material);
+        continue;
+      }
+
+      /* ── vehicles ── */
+      const cached = swapped.get(material);
+      if (cached) {
+        rebuilt.push(cached);
+        replaced = true;
+        continue;
+      }
+
+      const luma = lumaOf(material.color);
+      const name = material.name.toLowerCase();
+      const isGlass =
+        material.transparent ||
+        material.opacity < 1 ||
+        /glass|window|windscreen|windshield|screen/.test(name);
+      const isRubber = luma < 0.045 || /tyre|tire|rubber|wheel/.test(name);
+
+      if (isGlass) {
+        // Dark, hard, reflective. Glass is the one place a low-poly car gets a
+        // mirror for free, and it is what makes a windscreen read as glazed.
+        material.color.setRGB(0.03, 0.033, 0.04);
+        material.roughness = 0.08;
+        material.metalness = 0.2;
+        material.envMapIntensity = 1.5;
+        material.needsUpdate = true;
+        rebuilt.push(material);
+        continue;
+      }
+
+      if (isRubber) {
+        material.color.setRGB(0.018, 0.019, 0.022);
+        material.roughness = 0.94;
+        material.metalness = 0;
+        material.envMapIntensity = 0.35;
+        material.needsUpdate = true;
+        rebuilt.push(material);
+        continue;
+      }
+
+      // Bright, near-neutral surfaces are trim: bumpers, grilles, mirrors,
+      // exhaust tips. Those are chrome, not paint.
+      const chromeish =
+        finish === "paint" &&
+        luma > 0.62 &&
+        material.color.getHSL({ h: 0, s: 0, l: 0 }).s < 0.14;
+      const bare = finish === "matte";
+
+      const paint = new THREE.MeshPhysicalMaterial({
+        name: material.name,
+        color: material.color.clone(),
+        map: material.map,
+        normalMap: material.normalMap,
+        vertexColors: material.vertexColors,
+        side: material.side,
+        // Automotive paint is a DIELECTRIC. Pushing metalness up to fake
+        // "metallic paint" eats the diffuse term, and in a dark garage that
+        // turns a silver body into a black one — which is exactly what
+        // happened on the first pass. A little flake, a coloured base, and let
+        // the coat below do the shine.
+        metalness: chromeish ? 1 : bare ? 0.06 : 0.14,
+        roughness: chromeish ? 0.09 : bare ? 0.78 : 0.44,
+        // The whole point. A coloured base under a near-mirror second layer is
+        // what a painted panel physically IS; without it the same colour is
+        // just a lump of tinted plastic, which is precisely how these bodies
+        // have been reading. Primer and rust get almost none of it — a shell
+        // that has not been painted yet must not be the shiniest thing in the
+        // building, which is exactly what it became on the first pass.
+        clearcoat: chromeish ? 0 : bare ? 0.08 : 1,
+        // Hard. Once the bay lights were moved off the cars' centrelines the
+        // blown circle in the middle of every bonnet went with them, and a
+        // tight coat is what turns the overhead strips into the long clean
+        // streak down a wing that says "this paint is three feet deep".
+        clearcoatRoughness: 0.07,
+        envMapIntensity: chromeish ? 1.35 : bare ? 0.6 : 1,
+      });
+      if (chromeish) {
+        // nothing to tame — trim keeps its brightness
+      } else if (bare) {
+        tame(paint.color, 0.5, 0.42);
+      } else {
+        tame(paint.color, 0.6, 0.12);
+      }
+
+      swapped.set(material, paint);
+      rebuilt.push(paint);
+      replaced = true;
+    }
+
+    // Softer crease on bodywork than on dressing: a car is mostly one big
+    // swept surface and wants to hold together across it.
+    smooth(mesh, isVehicle ? THREE.MathUtils.degToRad(55) : THREE.MathUtils.degToRad(42));
+
+    if (replaced) {
+      mesh.material = Array.isArray(mesh.material) ? rebuilt : rebuilt[0];
     }
   });
 }
@@ -224,7 +500,7 @@ function orientOf(box: THREE.Box3, orient: Orient): THREE.Euler {
 
 function useShopModel(url: string) {
   const gltf = useGLTF(url, false);
-  grade(gltf.scene, VEHICLES.has(url));
+  grade(gltf.scene, finishOf(url));
   return gltf.scene;
 }
 
@@ -248,7 +524,54 @@ export type PlacedProps = {
   shadow?: number | false;
   shadowSpread?: [number, number];
   shadowOpacity?: number;
+  /**
+   * Repaint the BODYWORK of this one instance — the panels `grade` gave a
+   * clearcoat — leaving glass, rubber, trim and every other instance of the
+   * same file untouched. This is what lets two clones of one .glb read as two
+   * different customers' cars instead of a copy-paste.
+   */
+  tint?: string;
 };
+
+/**
+ * Swap the clearcoated paint materials on a freshly cloned subtree for tinted
+ * copies. Runs on the CLONE's meshes, so the shared source materials — and
+ * every other instance — are never touched. The clones are cached per call
+ * site and disposed with it.
+ */
+function useTint(group: React.RefObject<THREE.Group | null>, tint?: string) {
+  useLayoutEffect(() => {
+    if (!tint) return;
+    const swapped = new Map<THREE.Material, THREE.MeshPhysicalMaterial>();
+
+    group.current?.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const rebuilt = list.map((entry) => {
+        const material = entry as THREE.MeshPhysicalMaterial;
+        // Clearcoat is how `grade` marks body paint; everything else keeps its
+        // shared material.
+        if (!material?.isMeshPhysicalMaterial || material.clearcoat < 0.5) return entry;
+        let paint = swapped.get(entry);
+        if (!paint) {
+          paint = material.clone();
+          paint.color.set(tint);
+          // Gentler than the grade pass on authored paint: a repaint is chosen
+          // to READ as a colour under tungsten, so it keeps more of its value.
+          tame(paint.color, 0.78, 0.08);
+          swapped.set(entry, paint);
+        }
+        return paint;
+      });
+      mesh.material = Array.isArray(mesh.material) ? rebuilt : rebuilt[0];
+    });
+
+    return () => {
+      for (const material of swapped.values()) material.dispose();
+    };
+  }, [group, tint]);
+}
 
 /**
  * One model, stood up, fitted to a real size, sat on the floor and grounded
@@ -268,8 +591,11 @@ export function Placed({
   shadow = false,
   shadowSpread = [1, 1],
   shadowOpacity = 0.5,
+  tint,
 }: PlacedProps) {
   const scene = useShopModel(url);
+  const clone = useRef<THREE.Group>(null);
+  useTint(clone, tint);
 
   const fit = useMemo(() => {
     const euler = orientOf(measure(scene), orient);
@@ -303,7 +629,7 @@ export function Placed({
   return (
     <group position={position} rotation={[tilt?.[0] ?? 0, yaw, tilt?.[1] ?? 0]}>
       <group position={fit.offset} scale={fit.scale}>
-        <group rotation={fit.euler}>
+        <group ref={clone} rotation={fit.euler}>
           <Clone object={scene} />
         </group>
       </group>

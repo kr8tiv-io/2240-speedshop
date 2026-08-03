@@ -10,6 +10,7 @@ import {
   CAST_IRON,
   CHROME,
   DARK_STEEL,
+  ENAMEL_COAT,
   ENGINE_ORANGE,
   GRIME,
   LIFT_RED,
@@ -108,21 +109,40 @@ function SwingArm({
       {/* Inner arm */}
       <mesh position={[length * 0.3, 0, 0]}>
         <boxGeometry args={[length * 0.62, 0.14, 0.22]} />
-        <meshStandardMaterial {...LIFT_RED} />
+        <meshPhysicalMaterial {...LIFT_RED} {...ENAMEL_COAT} />
       </mesh>
       {/* Telescoping outer section, drawn out to reach the pinch weld */}
       <mesh position={[length * 0.75, 0, 0]}>
         <boxGeometry args={[length * 0.5, 0.11, 0.16]} />
         <meshStandardMaterial {...STEEL} />
       </mesh>
-      {/* Pad stack — screw pad, then the rubber puck the sill actually sits on */}
-      <mesh position={[length, 0.06, 0]}>
-        <cylinderGeometry args={[0.055, 0.05, 0.12, 12]} />
+      {/* Pad stack — screw pad wound UP to the rocker, then the rubber puck the
+          sill actually sits on. The screw is tall on purpose: a car's rocker
+          panel rides well above its tyres' contact patch, and a short pad left
+          daylight between arm and sill — the whole car read as levitating. */}
+      <mesh position={[length, 0.155, 0]}>
+        <cylinderGeometry args={[0.05, 0.046, 0.3, 12]} />
         <meshStandardMaterial {...CHROME} />
       </mesh>
-      <mesh position={[length, 0.135, 0]}>
-        <cylinderGeometry args={[0.115, 0.11, 0.05, 16]} />
+      <mesh position={[length, 0.33, 0]}>
+        <cylinderGeometry args={[0.115, 0.11, 0.055, 16]} />
         <meshStandardMaterial {...RUBBER} />
+      </mesh>
+    </group>
+  );
+}
+
+/** The block that rides the column — split out so a moving lift can carry it. */
+function Carriage({ side, deck, span }: { side: number; deck: number; span: number }) {
+  return (
+    <group position={[side * span, 0, 0]}>
+      <mesh position={[-side * 0.14, deck - 0.1, 0]}>
+        <boxGeometry args={[0.28, 0.7, 0.56]} />
+        <meshStandardMaterial {...DARK_STEEL} />
+      </mesh>
+      <mesh position={[-side * 0.22, deck - 0.1, 0]}>
+        <boxGeometry args={[0.06, 0.5, 0.44]} />
+        <meshStandardMaterial {...STEEL} />
       </mesh>
     </group>
   );
@@ -138,7 +158,7 @@ function LiftColumn({ side, deck, span }: { side: number; deck: number; span: nu
       </mesh>
       <mesh position={[0, 0.115, 0]}>
         <boxGeometry args={[0.92, 0.012, 1.44]} />
-        <meshStandardMaterial {...SAFETY} />
+        <meshPhysicalMaterial {...SAFETY} {...ENAMEL_COAT} />
       </mesh>
       {[-0.42, 0.42].map((x) =>
         [-0.62, 0.62].map((z) => (
@@ -152,7 +172,7 @@ function LiftColumn({ side, deck, span }: { side: number; deck: number; span: nu
       {/* Column, and the darker channel the carriage rides in */}
       <mesh position={[0, 2.36, 0]}>
         <boxGeometry args={[0.34, 4.5, 0.46]} />
-        <meshStandardMaterial {...LIFT_RED} />
+        <meshPhysicalMaterial {...LIFT_RED} {...ENAMEL_COAT} />
       </mesh>
       <mesh position={[-side * 0.18, 2.36, 0]}>
         <boxGeometry args={[0.05, 4.3, 0.3]} />
@@ -165,16 +185,6 @@ function LiftColumn({ side, deck, span }: { side: number; deck: number; span: nu
           <meshStandardMaterial {...STEEL} />
         </mesh>
       ))}
-
-      {/* Carriage */}
-      <mesh position={[-side * 0.14, deck - 0.1, 0]}>
-        <boxGeometry args={[0.28, 0.7, 0.56]} />
-        <meshStandardMaterial {...DARK_STEEL} />
-      </mesh>
-      <mesh position={[-side * 0.22, deck - 0.1, 0]}>
-        <boxGeometry args={[0.06, 0.5, 0.44]} />
-        <meshStandardMaterial {...STEEL} />
-      </mesh>
 
       {/* Cap and the equalizer cable running down inside the column */}
       <mesh position={[0, 4.66, 0]}>
@@ -194,15 +204,32 @@ export function TwoPostLift({
   yaw = 0,
   deck = 1.78,
   span = 1.76,
+  travel,
   children,
 }: {
   position: Vec3;
   yaw?: number;
   deck?: number;
   span?: number;
+  /** Cycle the carriage between two heights — the shop is WORKING, not posed.
+      A raised-cosine loop: rise, apex, settle, floor, again. Metres and
+      seconds. */
+  travel?: { min: number; max: number; period?: number };
   /** Whatever is up in the air — normally a car. */
   children?: ReactNode;
 }) {
+  const moving = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!travel || !moving.current) return;
+    const period = travel.period ?? 34;
+    // Phase-shifted by position so two animated lifts never move in sync.
+    const phase = (state.clock.elapsedTime + position[0] * 3.1) / period;
+    const height =
+      travel.min +
+      (travel.max - travel.min) * (0.5 - 0.5 * Math.cos(phase * Math.PI * 2));
+    moving.current.position.y = height - deck;
+  });
   // Hydraulic line looping between the two column bases, as it always does.
   const hose = tubeGeo(
     `lift-hose:${span}`,
@@ -221,15 +248,24 @@ export function TwoPostLift({
       <LiftColumn side={-1} deck={deck} span={span} />
       <LiftColumn side={1} deck={deck} span={span} />
 
-      <SwingArm side={-1} end={-1} deck={deck} span={span} />
-      <SwingArm side={-1} end={1} deck={deck} span={span} />
-      <SwingArm side={1} end={-1} deck={deck} span={span} />
-      <SwingArm side={1} end={1} deck={deck} span={span} />
+      {/* Everything that rides the columns — carriages, arms, the vehicle —
+          moves as one body when `travel` is set. */}
+      <group ref={moving}>
+        <Carriage side={-1} deck={deck} span={span} />
+        <Carriage side={1} deck={deck} span={span} />
+
+        <SwingArm side={-1} end={-1} deck={deck} span={span} />
+        <SwingArm side={-1} end={1} deck={deck} span={span} />
+        <SwingArm side={1} end={-1} deck={deck} span={span} />
+        <SwingArm side={1} end={1} deck={deck} span={span} />
+
+        <group position={[0, deck - 0.04, 0]}>{children}</group>
+      </group>
 
       {/* Overhead assembly: beam, cable trough and the shut-off bar */}
       <mesh position={[0, 4.82, 0]}>
         <boxGeometry args={[span * 2 + 0.44, 0.28, 0.38]} />
-        <meshStandardMaterial {...LIFT_RED} />
+        <meshPhysicalMaterial {...LIFT_RED} {...ENAMEL_COAT} />
       </mesh>
       <mesh position={[0, 4.62, 0]}>
         <boxGeometry args={[span * 2 - 0.1, 0.1, 0.16]} />
@@ -237,7 +273,7 @@ export function TwoPostLift({
       </mesh>
       <mesh position={[0, 4.42, 0.16]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.03, 0.03, span * 2 - 0.2, 8]} />
-        <meshStandardMaterial {...SAFETY} />
+        <meshPhysicalMaterial {...SAFETY} {...ENAMEL_COAT} />
       </mesh>
 
       {/* Power unit and its little green pilot lamp */}
@@ -265,10 +301,6 @@ export function TwoPostLift({
         <meshStandardMaterial color="#1a1b1f" roughness={0.86} metalness={0.1} />
       </mesh>
 
-      {/* Whatever is up on the pads. Dropped a hand below pad height because a
-          car's tyres hang lower than the rocker the arms are actually under. */}
-      <group position={[0, deck - 0.1, 0]}>{children}</group>
-
       {/* A raised car still darkens the floor — just softer and wider. */}
       <ContactShadow
         radius={2.6}
@@ -277,6 +309,98 @@ export function TwoPostLift({
         power={1.2}
         position={[0, 0.014, 0]}
       />
+    </group>
+  );
+}
+
+/* ═══ TURNTABLE ═════════════════════════════════════════════════════════════
+   The showroom beat: a finished car revolving slowly on a display base. The
+   oldest trick in the car business, and the single cheapest piece of ongoing
+   motion in the shop — one rotation a frame, no lights, no shader work. */
+
+export function Turntable({
+  position,
+  speed = 0.14,
+  children,
+}: {
+  position: Vec3;
+  /** Radians per second. Showroom slow — a full lap every ~45 s. */
+  speed?: number;
+  children?: ReactNode;
+}) {
+  const disc = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    if (disc.current) disc.current.rotation.y += Math.min(delta, 0.1) * speed;
+  });
+
+  return (
+    <group position={position}>
+      {/* Static plinth ring with a safety stripe kerb */}
+      <mesh position={[0, 0.055, 0]}>
+        <cylinderGeometry args={[2.8, 2.9, 0.11, 40]} />
+        <meshStandardMaterial {...DARK_STEEL} />
+      </mesh>
+      <mesh position={[0, 0.112, 0]}>
+        <cylinderGeometry args={[2.82, 2.82, 0.012, 40]} />
+        <meshPhysicalMaterial {...SAFETY} {...ENAMEL_COAT} />
+      </mesh>
+      {/* The revolving deck and whatever is parked on it */}
+      <group ref={disc} position={[0, 0.13, 0]}>
+        <mesh>
+          <cylinderGeometry args={[2.62, 2.62, 0.06, 40]} />
+          <meshPhysicalMaterial
+            color="#23262c"
+            roughness={0.3}
+            metalness={0.42}
+            {...ENAMEL_COAT}
+          />
+        </mesh>
+        <group position={[0, 0.03, 0]}>{children}</group>
+      </group>
+      <ContactShadow radius={3.1} opacity={0.4} />
+    </group>
+  );
+}
+
+/* ═══ CEILING FAN ═══════════════════════════════════════════════════════════
+   Industrial drum fan hung off the trusses, always turning. Nothing sells a
+   big quiet building like slow air movement overhead. */
+
+export function CeilingFan({
+  position,
+  speed = 3.2,
+}: {
+  position: Vec3;
+  speed?: number;
+}) {
+  const rotor = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    if (rotor.current) rotor.current.rotation.y += Math.min(delta, 0.1) * speed;
+  });
+
+  return (
+    <group position={position}>
+      {/* Drop rod and motor can */}
+      <mesh position={[0, 0.34, 0]}>
+        <cylinderGeometry args={[0.028, 0.028, 0.68, 6]} />
+        <meshStandardMaterial {...DARK_STEEL} />
+      </mesh>
+      <mesh>
+        <cylinderGeometry args={[0.15, 0.18, 0.24, 14]} />
+        <meshStandardMaterial {...STEEL} />
+      </mesh>
+      <group ref={rotor} position={[0, -0.12, 0]}>
+        {[0, 1, 2, 3].map((i) => (
+          <group key={i} rotation={[0, (i * Math.PI) / 2, 0]}>
+            <mesh position={[0.64, 0, 0]} rotation={[0, 0, 0.15]}>
+              <boxGeometry args={[1.04, 0.014, 0.24]} />
+              <meshStandardMaterial color="#4a4f58" roughness={0.5} metalness={0.6} />
+            </mesh>
+          </group>
+        ))}
+      </group>
     </group>
   );
 }
@@ -325,6 +449,18 @@ for (const side of [-1, 1]) {
   }
 }
 
+/**
+ * Eight polished pipes.
+ *
+ * These are the piece of hardware the whole engine shot hangs on, and for a
+ * long time they were the worst thing in the building: at a wide roughness they
+ * mirrored the whole overhead emitter down their length, cleared the bloom
+ * threshold everywhere at once, and read as eight glowing NEON TUBES. Nothing
+ * about them is emissive and nothing about them ever was — the fix is entirely
+ * in the lobe. `CHROME` is now a true mirror, so each pipe catches one hard
+ * strip-light streak with dark room either side of it, which is what chrome
+ * looks like.
+ */
 function ZoomieHeaders() {
   const pipes = HEADER_PIPES;
 
@@ -335,7 +471,8 @@ function ZoomieHeaders() {
           <meshStandardMaterial {...CHROME} />
         </mesh>
       ))}
-      {/* Flared tips, burnt blue at the collector */}
+      {/* Flared tips. Heat-blued and sooted where the gas actually leaves —
+          darker and rougher than the pipe, which is what sells the pipe. */}
       {[-1, 1].map((side) =>
         [0, 1, 2, 3].map((i) => (
           <mesh
@@ -345,9 +482,9 @@ function ZoomieHeaders() {
           >
             <cylinderGeometry args={[0.052, 0.036, 0.1, 12, 1, true]} />
             <meshStandardMaterial
-              color="#7d7f88"
-              roughness={0.26}
-              metalness={0.9}
+              color="#41505f"
+              roughness={0.34}
+              metalness={0.95}
               side={THREE.DoubleSide}
             />
           </mesh>
@@ -380,7 +517,7 @@ function CylinderBank({ side }: { side: number }) {
       {/* Valve cover */}
       <mesh position={[0, 0.17, 0]}>
         <boxGeometry args={[0.3, 0.15, 0.64]} />
-        <meshStandardMaterial {...ENGINE_ORANGE} />
+        <meshPhysicalMaterial {...ENGINE_ORANGE} {...ENAMEL_COAT} />
       </mesh>
       {/* Hold-down bolts */}
       {[-0.22, -0.07, 0.07, 0.22].map((z) => (
@@ -586,12 +723,12 @@ export function EngineStand({
       {[-0.44, 0.44].map((x) => (
         <mesh key={x} position={[x, 0.14, 0.16]}>
           <boxGeometry args={[0.13, 0.1, 1.3]} />
-          <meshStandardMaterial {...TOOL_RED} />
+          <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
         </mesh>
       ))}
       <mesh position={[0, 0.14, -0.42]}>
         <boxGeometry args={[1.0, 0.1, 0.13]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       <Caster position={[-0.44, 0, 0.74]} />
       <Caster position={[0.44, 0, 0.74]} />
@@ -601,11 +738,11 @@ export function EngineStand({
       {/* Mast and the rotating head */}
       <mesh position={[0, 0.72, -0.42]}>
         <boxGeometry args={[0.16, 1.15, 0.16]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       <mesh position={[0, 1.24, -0.22]}>
         <boxGeometry args={[0.16, 0.16, 0.5]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       <mesh position={[0, 1.24, 0.04]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.13, 0.13, 0.1, 16]} />
@@ -668,12 +805,12 @@ export function CherryPicker({
       {[-0.56, 0.56].map((x) => (
         <mesh key={x} position={[x, 0.15, 1.0]}>
           <boxGeometry args={[0.14, 0.16, 2.4]} />
-          <meshStandardMaterial {...TOOL_RED} />
+          <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
         </mesh>
       ))}
       <mesh position={[0, 0.15, -0.12]}>
         <boxGeometry args={[1.26, 0.16, 0.36]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       <Caster position={[-0.56, 0, 2.06]} radius={0.08} />
       <Caster position={[0.56, 0, 2.06]} radius={0.08} />
@@ -683,7 +820,7 @@ export function CherryPicker({
       {/* Mast */}
       <mesh position={[0, 1.1, -0.12]}>
         <boxGeometry args={[0.22, 1.9, 0.22]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       <mesh position={[0, 2.05, -0.12]}>
         <boxGeometry args={[0.3, 0.16, 0.3]} />
@@ -694,7 +831,7 @@ export function CherryPicker({
       <group position={[0, 2.05, -0.12]} rotation={[-boomTilt, 0, 0]}>
         <mesh position={[0, 0, reach / 2]}>
           <boxGeometry args={[0.17, 0.17, reach]} />
-          <meshStandardMaterial {...TOOL_RED} />
+          <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
         </mesh>
         <mesh position={[0, 0, reach * 0.78]}>
           <boxGeometry args={[0.13, 0.13, reach * 0.5]} />
@@ -742,12 +879,12 @@ export function FloorJack({ position, yaw = 0 }: { position: Vec3; yaw?: number 
       {[-0.14, 0.14].map((x) => (
         <mesh key={x} position={[x, 0.14, 0]}>
           <boxGeometry args={[0.05, 0.16, 1.0]} />
-          <meshStandardMaterial {...TOOL_RED} />
+          <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
         </mesh>
       ))}
       <mesh position={[0, 0.1, -0.1]}>
         <boxGeometry args={[0.26, 0.1, 0.7]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       {/* Ram housing */}
       <mesh position={[0, 0.24, -0.24]} rotation={[0.16, 0, 0]}>
@@ -807,7 +944,7 @@ export function JackStand({
             rotation={[Math.sin(a) * 0.34, 0, -Math.cos(a) * 0.34]}
           >
             <boxGeometry args={[0.05, height * 0.78, 0.05]} />
-            <meshStandardMaterial {...SAFETY} />
+            <meshPhysicalMaterial {...SAFETY} {...ENAMEL_COAT} />
           </mesh>
         );
       })}
@@ -836,11 +973,11 @@ export function Creeper({ position, yaw = 0 }: { position: Vec3; yaw?: number })
       </mesh>
       <mesh position={[0, 0.145, 0.02]}>
         <boxGeometry args={[0.4, 0.05, 1.0]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       <mesh position={[0, 0.2, -0.44]} rotation={[0.42, 0, 0]}>
         <boxGeometry args={[0.34, 0.06, 0.28]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       {[-1, 1].map((s) =>
         [-0.46, 0, 0.46].map((z) => (
@@ -954,14 +1091,14 @@ export function DynoRollers({
         [-2.5, 0, 2.5].map((z) => (
           <mesh key={`${x}:${z}`} position={[x, 0.5, z]}>
             <cylinderGeometry args={[0.045, 0.045, 1.0, 8]} />
-            <meshStandardMaterial {...SAFETY} />
+            <meshPhysicalMaterial {...SAFETY} {...ENAMEL_COAT} />
           </mesh>
         )),
       )}
       {[-1.95, 1.95].map((x) => (
         <mesh key={x} position={[x, 0.96, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.04, 0.04, 5.2, 8]} />
-          <meshStandardMaterial {...SAFETY} />
+          <meshPhysicalMaterial {...SAFETY} {...ENAMEL_COAT} />
         </mesh>
       ))}
 
@@ -1016,7 +1153,7 @@ export function HoseReel({ position }: { position: Vec3 }) {
       </mesh>
       <mesh rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.3, 0.3, 0.24, 16]} />
-        <meshStandardMaterial {...TOOL_RED} />
+        <meshPhysicalMaterial {...TOOL_RED} {...ENAMEL_COAT} />
       </mesh>
       <mesh rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.14, 0.14, 0.28, 12]} />

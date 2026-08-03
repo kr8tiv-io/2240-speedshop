@@ -1,8 +1,16 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentRef,
+  type RefObject,
+} from "react";
 import * as THREE from "three";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Environment,
   Lightformer,
@@ -13,7 +21,9 @@ import {
 import {
   Bloom,
   ChromaticAberration,
+  DepthOfField,
   EffectComposer,
+  N8AO,
   Vignette,
 } from "@react-three/postprocessing";
 
@@ -77,6 +87,16 @@ import {
      4 TUNING BAY · 5 OFFICE WALL · 6 ROLL-UP DOOR
    ────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * Render tiers. `full` is the desktop scene as designed. `lite` is the SAME
+ * shop — every model, every station, the whole rail and the cold start — with
+ * the passes a phone GPU pays double for stripped out: no planar reflection
+ * (the floor is rendered twice for it), no AO/DoF/chromatic passes, a smaller
+ * environment map, fewer dust points and a capped device-pixel ratio. Chosen
+ * by `ShopWorldMount` from viewport and hardware, not by user agent.
+ */
+export type WorldTier = "full" | "lite";
+
 /** Module-level so the effect is never rebuilt on a re-render. */
 /* Halved. At the old strength the corrugated cladding — ~190 high-contrast
    vertical edges — fringed visibly red/blue and read as a glitch rather than a
@@ -90,49 +110,71 @@ const CHROMATIC_OFFSET = new THREE.Vector2(0.00016, 0.00024);
    Five files instead of seven, ~1 MB lighter, and none of it blocks paint. */
 
 const WALL_PHOTO = {
-  d100: "/shop/car-d100.jpg",
+  d100: "/shop/car-d100-truck.jpg",
   coupe: "/shop/car-green-coupe.jpg",
   muscle: "/shop/car-black-muscle.jpg",
   bluePickup: "/shop/car-blue-pickup.jpg",
-  badge: "/shop/shop-storefront-sign.jpg",
+  redPickup: "/shop/car-red-pickup.jpg",
+  blackClassic: "/shop/car-black-classic.jpg",
+  badge: "/shop/badge-2240-sign.png",
 } as const;
 
 type PhotoKey = keyof typeof WALL_PHOTO;
 
 const ASPECT: Record<PhotoKey, number> = {
-  d100: 1440 / 1795,
+  d100: 900 / 1125,
   coupe: 977 / 710,
   muscle: 1536 / 2048,
   bluePickup: 1939 / 1177,
-  badge: 1536 / 2048,
+  redPickup: 1536 / 2048,
+  blackClassic: 1536 / 2048,
+  badge: 1060 / 860,
 };
 
 useTexture.preload(Object.values(WALL_PHOTO) as string[]);
 
 /* ── Shell ──────────────────────────────────────────────────────────────── */
 
-function Shell() {
+function Shell({ tier }: { tier: WorldTier }) {
   return (
     <group>
-      {/* Sealed concrete. Low mirror, heavy blur — wet-looking, not a skating rink. */}
+      {/* Sealed concrete. Low mirror, heavy blur — wet-looking, not a skating
+          rink. The reflector renders the whole scene a second time, which a
+          phone GPU cannot afford: the lite floor is plain sealed concrete that
+          takes its sheen from the environment map instead. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, MID_Z]}>
         <planeGeometry args={[HALF_W * 2 + 1, LENGTH]} />
-        <MeshReflectorMaterial
-          resolution={256}
-          blur={[380, 110]}
-          mixBlur={1}
-          // 7, not 15. At 15 the floor multiplied every specular highlight it
-          // caught — one hot chrome header printed a solid white bar across the
-          // concrete. This wants wet-looking sheen, not a second light source.
-          mixStrength={6}
-          mirror={0}
-          depthScale={1.15}
-          minDepthThreshold={0.4}
-          maxDepthThreshold={1.4}
-          color="#292c33"
-          metalness={0.15}
-          roughness={0.74}
-        />
+        {tier === "full" ? (
+          <MeshReflectorMaterial
+            /* 128, not 256. The reflection is blurred to within an inch of its
+               life before anyone sees it, so the extra resolution was buying a
+               detail the blur immediately threw away — while costing four times
+               the fill on a second full pass over a scene that is already the
+               most expensive thing on the page. */
+            resolution={128}
+            blur={[220, 70]}
+            mixBlur={1}
+            // 4, not 15. At 15 the floor multiplied every specular highlight it
+            // caught — one hot chrome header printed a solid white bar across the
+            // concrete. This wants wet-looking sheen, not a second light source,
+            // and once the headers became real mirrors it had to come down again.
+            mixStrength={4}
+            mirror={0}
+            depthScale={1.15}
+            minDepthThreshold={0.4}
+            maxDepthThreshold={1.4}
+            color="#292c33"
+            metalness={0.15}
+            roughness={0.74}
+          />
+        ) : (
+          <meshStandardMaterial
+            color="#2c2f36"
+            metalness={0.22}
+            roughness={0.42}
+            envMapIntensity={0.85}
+          />
+        )}
       </mesh>
 
       {/* Side walls */}
@@ -230,6 +272,296 @@ function Corrugation() {
   useEffect(() => () => disposeInstanced(ribs), [ribs]);
 
   return <primitive object={ribs} />;
+}
+
+/**
+ * Grime on the concrete.
+ *
+ * A `MeshReflectorMaterial` plane with one flat colour is the flattest thing in
+ * any frame that shows the floor, and this scene shows the floor constantly. A
+ * single transparent quad carrying a two-octave value noise breaks it into
+ * patches — pale where the concrete has been ground back, dark where forty
+ * years of oil has soaked in — plus a scatter of long directional smears in the
+ * drive line. It writes no depth, blends normally over the reflection, and
+ * costs one draw call.
+ */
+function FloorGrime() {
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          uDark: { value: new THREE.Color("#08090b") },
+          uPale: { value: new THREE.Color("#565c66") },
+        },
+        vertexShader: /* glsl */ `
+          varying vec2 vUv;
+          varying float vFade;
+          void main() {
+            vUv = uv;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            // Let it go with the fog, or the far end of the shop keeps a
+            // crisp pattern the haze has already swallowed.
+            vFade = 1.0 - smoothstep(30.0, 90.0, -mv.z);
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          varying vec2 vUv;
+          varying float vFade;
+          uniform vec3 uDark;
+          uniform vec3 uPale;
+
+          float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+          }
+          float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+              mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+              mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+              f.y);
+          }
+
+          void main() {
+            // Two octaves is plenty; a third only shows up as sparkle.
+            float n = noise(vUv * vec2(9.0, 42.0)) * 0.62
+                    + noise(vUv * vec2(23.0, 104.0)) * 0.38;
+
+            float dark = smoothstep(0.54, 0.92, n) * 0.56;
+            float pale = smoothstep(0.5, 0.12, n) * 0.13;
+
+            vec3 colour = mix(uDark, uPale, pale / max(pale + dark, 0.0001));
+            float a = (dark + pale) * vFade;
+            if (a < 0.004) discard;
+            gl_FragColor = vec4(colour, a);
+          }
+        `,
+      }),
+    [],
+  );
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, 0.006, MID_Z]}
+      renderOrder={1}
+    >
+      <planeGeometry args={[HALF_W * 2, LENGTH]} />
+      <primitive object={material} attach="material" />
+    </mesh>
+  );
+}
+
+/**
+ * What stops the cladding reading as a barcode.
+ *
+ * ~340 identical ribs at an identical pitch is a texture, not a building, and
+ * the eye has nothing to land on anywhere along 68 metres of it. Real cladding
+ * is interrupted constantly: girts band it horizontally, sheets butt at panel
+ * seams, conduit and air line run down it, and everything above hand height
+ * streaks rust. Adding those back costs five instanced draw calls and buys the
+ * single biggest compositional improvement in the shell.
+ */
+function WallFurniture() {
+  const parts = useMemo(() => {
+    const wall = HALF_W - 0.04;
+
+    /* Horizontal girts — the structural bands a steel building is actually
+       hung on, and the thing that gives the wall a horizon. */
+    const girtGeometry = new THREE.BoxGeometry(0.14, 0.2, LENGTH - 1);
+    const girtMaterial = new THREE.MeshStandardMaterial({
+      color: "#454a54",
+      roughness: 0.66,
+      metalness: 0.4,
+    });
+    const girtSpecs: InstanceSpec[] = [];
+    for (const y of [1.95, 3.85, 5.75]) {
+      girtSpecs.push({ position: [-wall, y, MID_Z] });
+      girtSpecs.push({ position: [wall, y, MID_Z] });
+    }
+    const girts = buildInstances(girtGeometry, girtMaterial, girtSpecs);
+
+    /* Panel seams — where one sheet of cladding butts the next. Wider and
+       darker than a rib, so the barcode resolves into panels. */
+    const seamGeometry = new THREE.BoxGeometry(0.2, CEIL - 0.3, 0.16);
+    const seamMaterial = new THREE.MeshStandardMaterial({
+      color: "#282c33",
+      roughness: 0.84,
+      metalness: 0.18,
+    });
+    const seamSpecs: InstanceSpec[] = [];
+    for (let z = FRONT_Z - 3.4; z > DOOR_Z + 1; z -= 4.6) {
+      seamSpecs.push({ position: [-wall, CEIL / 2, z] });
+      seamSpecs.push({ position: [wall, CEIL / 2, z] });
+    }
+    const seams = buildInstances(seamGeometry, seamMaterial, seamSpecs);
+
+    /* Conduit and the shop air line, dropping down the wall to junction boxes.
+       Vertical runs at irregular spacing — the counter-rhythm to the ribs. */
+    const pipeGeometry = new THREE.CylinderGeometry(0.045, 0.045, CEIL - 1.2, 6);
+    const pipeMaterial = new THREE.MeshStandardMaterial({
+      color: "#5a5f68",
+      roughness: 0.44,
+      metalness: 0.72,
+    });
+    const boxGeometry = new THREE.BoxGeometry(0.18, 0.3, 0.22);
+    const boxMaterial = new THREE.MeshStandardMaterial({
+      color: "#3a3e46",
+      roughness: 0.6,
+      metalness: 0.44,
+    });
+    const pipeSpecs: InstanceSpec[] = [];
+    const boxSpecs: InstanceSpec[] = [];
+    const DROPS: Array<[number, number]> = [
+      [-1, 4.2],
+      [1, -2.6],
+      [-1, -13.4],
+      [1, -21.8],
+      [-1, -28.2],
+      [1, -35.6],
+      [-1, -44.8],
+      [1, -50.2],
+    ];
+    for (const [side, z] of DROPS) {
+      pipeSpecs.push({ position: [side * (HALF_W - 0.16), CEIL / 2 + 0.3, z] });
+      boxSpecs.push({ position: [side * (HALF_W - 0.2), 1.5, z] });
+    }
+    const pipes = buildInstances(pipeGeometry, pipeMaterial, pipeSpecs);
+    const boxes = buildInstances(boxGeometry, boxMaterial, boxSpecs);
+
+    /* Rust weeping out from under the girts. A vertical gradient plane, one
+       draw call for the lot, and the only thing in the shell that is not a
+       straight edge — which is precisely why it works. */
+    const streakGeometry = new THREE.PlaneGeometry(1, 1);
+    const streakMaterial = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: { uColor: { value: new THREE.Color("#5a3220") } },
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix *
+            instanceMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        varying vec2 vUv;
+        uniform vec3 uColor;
+        void main() {
+          // Strong where it leaves the fixing, gone before it reaches the
+          // floor, and feathered off both sides so it has no cut edges.
+          float run = pow(1.0 - vUv.y, 1.7);
+          float across = smoothstep(0.0, 0.22, vUv.x) * smoothstep(1.0, 0.78, vUv.x);
+          gl_FragColor = vec4(uColor, run * across * 0.55);
+        }
+      `,
+    });
+    const streakSpecs: InstanceSpec[] = [];
+    const STREAKS: Array<[number, number, number, number]> = [
+      [-1, 6.0, 3.85, 1.5],
+      [1, -0.8, 3.85, 1.1],
+      [-1, -9.6, 5.75, 2.1],
+      [1, -16.2, 3.85, 1.3],
+      [-1, -23.5, 5.75, 1.8],
+      [1, -30.9, 3.85, 1.6],
+      [-1, -38.4, 5.75, 2.0],
+      [1, -46.1, 3.85, 1.2],
+      [-1, -52.6, 3.85, 1.5],
+    ];
+    for (const [side, z, top, drop] of STREAKS) {
+      streakSpecs.push({
+        position: [side * (HALF_W - 0.08), top - drop / 2, z],
+        rotation: [0, side * -Math.PI / 2, 0],
+        scale: [0.5, drop, 1],
+      });
+    }
+    const streaks = buildInstances(streakGeometry, streakMaterial, streakSpecs);
+    streaks.renderOrder = 1;
+
+    return { girts, seams, pipes, boxes, streaks };
+  }, []);
+
+  useEffect(
+    () => () => {
+      disposeInstanced(parts.girts);
+      disposeInstanced(parts.seams);
+      disposeInstanced(parts.pipes);
+      disposeInstanced(parts.boxes);
+      disposeInstanced(parts.streaks);
+    },
+    [parts],
+  );
+
+  return (
+    <group>
+      <primitive object={parts.girts} />
+      <primitive object={parts.seams} />
+      <primitive object={parts.pipes} />
+      <primitive object={parts.boxes} />
+      <primitive object={parts.streaks} />
+    </group>
+  );
+}
+
+/**
+ * Cable and air line slung under the roof, sagging between the trusses. Three
+ * catenaries down the length of the building: they cross every frame that
+ * includes the ceiling, they break the truss rhythm, and they cost three
+ * tube geometries built once at module scope.
+ */
+function CeilingRuns() {
+  const runs = useMemo(() => {
+    const make = (x: number, y: number, sag: number, colour: string, radius: number) => {
+      const points: THREE.Vector3[] = [];
+      for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const z = FRONT_Z - 2 + t * (DOOR_Z + 2 - (FRONT_Z - 2));
+        // Sag between every truss bay, not once across the whole span.
+        const bay = Math.sin(t * Math.PI * 11);
+        points.push(new THREE.Vector3(x + Math.sin(t * 6.2) * 0.12, y - Math.abs(bay) * sag, z));
+      }
+      const curve = new THREE.CatmullRomCurve3(points);
+      const geometry = new THREE.TubeGeometry(curve, 96, radius, 5, false);
+      const material = new THREE.MeshStandardMaterial({
+        color: colour,
+        roughness: 0.82,
+        metalness: 0.2,
+      });
+      return new THREE.Mesh(geometry, material);
+    };
+
+    return [
+      make(-6.6, CEIL - 0.9, 0.26, "#15161a", 0.028),
+      make(6.9, CEIL - 0.85, 0.2, "#15161a", 0.024),
+      make(-0.4, CEIL - 0.7, 0.14, "#4d525b", 0.036),
+    ];
+  }, []);
+
+  useEffect(
+    () => () => {
+      for (const mesh of runs) {
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      }
+    },
+    [runs],
+  );
+
+  return (
+    <group>
+      {runs.map((mesh, i) => (
+        <primitive key={i} object={mesh} />
+      ))}
+    </group>
+  );
 }
 
 /** Roof structure — open web trusses every 5.5 units. */
@@ -342,6 +674,10 @@ function ShopLight({
   const poolMaterial = useRadialGlow(TUNGSTEN, 0.27, 2.6);
 
   const height = position[1];
+  const anchor = useMemo(
+    () => new THREE.Vector3(position[0], 1.4, position[2]),
+    [position],
+  );
 
   useFrame((state) => {
     const k = introAt(state.clock.elapsedTime - delay);
@@ -349,6 +685,17 @@ function ShopLight({
     if (bulb.current) bulb.current.intensity = power * k;
     fadeGlow(beam.current, 0.095 * k);
     fadeGlow(pool.current, 0.27 * k);
+
+    /* Fill-rate governor. The beam is a full-height double-sided cone and the
+       pool is a wide additive disc; from the doorway ALL SEVEN of them stack up
+       the length of the building and the frame ends up drawing the screen a
+       dozen times over. Past ~30 m the fog has eaten them anyway, so they go
+       away. Toggling `visible` on a MESH is free — unlike doing the same to a
+       light, which changes the light count and forces every material in the
+       scene to recompile. */
+    const far = state.camera.position.distanceToSquared(anchor) > 30 * 30;
+    if (beam.current) beam.current.visible = !far;
+    if (pool.current) pool.current.visible = !far;
   });
 
   return (
@@ -409,6 +756,44 @@ function ShopLight({
   );
 }
 
+/**
+ * A cool kicker set BEHIND the hero of a station, off to one side. This is the
+ * oldest trick in automotive photography and the cheapest depth in the file: a
+ * dark car in front of a dark wall is a silhouette-shaped hole until something
+ * cold draws its top edge and its shoulder line away from the background. Warm
+ * key in front, cool rim behind — that ratio is most of what "cinematic" means.
+ */
+function RimLight({
+  position,
+  power = 46,
+  color = "#a8c4f2",
+  distance = 15,
+  delay = 0.4,
+}: {
+  position: [number, number, number];
+  power?: number;
+  color?: string;
+  distance?: number;
+  delay?: number;
+}) {
+  const light = useRef<THREE.PointLight>(null);
+  useFrame((state) => {
+    if (light.current) {
+      light.current.intensity = power * introAt(state.clock.elapsedTime - delay);
+    }
+  });
+  return (
+    <pointLight
+      ref={light}
+      color={color}
+      intensity={0}
+      distance={distance}
+      decay={2}
+      position={position}
+    />
+  );
+}
+
 function Ambience() {
   const ambient = useRef<THREE.AmbientLight>(null);
   const fill = useRef<THREE.HemisphereLight>(null);
@@ -416,14 +801,15 @@ function Ambience() {
 
   useFrame((state) => {
     const k = introAt(state.clock.elapsedTime);
-    // Restraint on purpose. Legibility is bought in the CSS layers in front of
-    // the canvas, NOT by flooding the room: ambient and hemisphere this high
-    // flatten the shop into an evenly-lit grey box and the whole "warm pools in
-    // darkness" read is gone. Keep the fill low and let the bay lights below do
-    // the work — contrast is what makes it look like a photograph.
-    if (ambient.current) ambient.current.intensity = 0.26 * k;
-    if (fill.current) fill.current.intensity = 0.58 * k;
-    if (street.current) street.current.intensity = 42 * k;
+    // Restraint on purpose, and a notch tighter than it was. Legibility is
+    // bought in the CSS layers in front of the canvas, NOT by flooding the
+    // room: ambient and hemisphere this high flatten the shop into an evenly-
+    // lit grey box. A wide key-to-fill ratio is what makes the frame read as a
+    // photograph rather than a diagram, so the fill goes down and the bay
+    // lights and rims below carry it.
+    if (ambient.current) ambient.current.intensity = 0.2 * k;
+    if (fill.current) fill.current.intensity = 0.44 * k;
+    if (street.current) street.current.intensity = 46 * k;
   });
 
   return (
@@ -440,10 +826,10 @@ function Ambience() {
       {/* Up ~30% against the lowered ambient — same net brightness on the
           benches and bodywork, but it now ARRIVES as pools instead of wash. */}
       <ShopLight position={[0.4, 5.2, 1.6]} delay={0} power={80} spread={3.4} />
-      <ShopLight position={[-3.2, 5.1, -7.0]} delay={0.16} power={100} />
-      <ShopLight position={[3.6, 5.1, -17.2]} delay={0.34} power={88} />
+      <ShopLight position={[-5.0, 5.1, -8.6]} delay={0.16} power={76} />
+      <ShopLight position={[1.4, 5.1, -18.6]} delay={0.34} power={76} />
       <ShopLight position={[-5.6, 5.1, -26.8]} delay={0.52} power={86} />
-      <ShopLight position={[1.2, 5.1, -36.8]} delay={0.7} power={86} />
+      <ShopLight position={[-1.6, 5.1, -35.4]} delay={0.7} power={68} />
       {/* Hung close to the office wall — this one is a wall wash, not a bay
           light, so the gallery is actually readable when the camera arrives. */}
       <ShopLight
@@ -454,6 +840,15 @@ function Ambience() {
         spread={1.5}
       />
       <ShopLight position={[2.8, 5.1, -47.6]} delay={1.02} power={78} />
+
+      {/* Four kickers, one per hero. Four and not seven on purpose — every
+          extra point light is paid for by every lit fragment in a 68 m
+          building, so they go where a vehicle or a hero machine actually needs
+          separating and nowhere else. */}
+      <RimLight position={[-7.6, 3.4, -11.6]} power={30} distance={17} delay={0.5} />
+      <RimLight position={[7.4, 3.0, -21.6]} power={26} distance={16} delay={0.7} />
+      <RimLight position={[-8.2, 2.9, -34.6]} power={24} distance={15} delay={0.9} />
+      <RimLight position={[4.2, 3.2, -42.8]} power={28} distance={17} delay={1.1} />
 
       {/* Sodium spill from the street, just inside the open bay */}
       <pointLight
@@ -680,23 +1075,24 @@ function OfficeGallery() {
 
   return (
     <group>
-      {/* Corkboard the gallery hangs on */}
-      <mesh position={[-(HALF_W - 0.14), 2.9, -43.4]} rotation={[0, Math.PI / 2, 0]}>
-        <boxGeometry args={[7.2, 4.2, 0.1]} />
+      {/* Corkboard the gallery hangs on — widened for the two extra prints */}
+      <mesh position={[-(HALF_W - 0.14), 2.9, -43.6]} rotation={[0, Math.PI / 2, 0]}>
+        <boxGeometry args={[8.4, 4.2, 0.1]} />
         <meshStandardMaterial color="#2f251c" roughness={0.94} metalness={0.05} />
       </mesh>
-      <mesh position={[-(HALF_W - 0.08), 2.9, -43.4]} rotation={[0, Math.PI / 2, 0]}>
-        <boxGeometry args={[7.4, 4.4, 0.04]} />
+      <mesh position={[-(HALF_W - 0.08), 2.9, -43.6]} rotation={[0, Math.PI / 2, 0]}>
+        <boxGeometry args={[8.6, 4.4, 0.04]} />
         <meshStandardMaterial color="#5e4126" roughness={0.8} metalness={0.2} />
       </mesh>
 
       {/* X is 0.28 off the wall so the frames hang PROUD of the corkboard
-          rather than inside it. */}
+          rather than inside it. Centrepiece is the shop's REAL badge — the
+          laser-cut corten sign off the front of the building, redrawn clean. */}
       <WallFrame
         map={maps.badge}
         aspect={ASPECT.badge}
-        height={2.3}
-        position={[-(HALF_W - 0.28), 3.05, -43.4]}
+        height={1.9}
+        position={[-(HALF_W - 0.28), 2.95, -43.4]}
         rotation={Math.PI / 2}
       />
       <WallFrame
@@ -725,6 +1121,31 @@ function OfficeGallery() {
         aspect={ASPECT.muscle}
         height={1.2}
         position={[-(HALF_W - 0.28), 2.2, -45.6]}
+        rotation={Math.PI / 2}
+      />
+      <WallFrame
+        map={maps.redPickup}
+        aspect={ASPECT.redPickup}
+        height={1.05}
+        position={[-(HALF_W - 0.28), 3.5, -47.1]}
+        rotation={Math.PI / 2}
+      />
+
+      {/* Shop signage: a second badge board hung mid-shop on the right wall,
+          where the rail passes it twice — the brand lives IN the room, not
+          just over the office desk. */}
+      <WallFrame
+        map={maps.badge}
+        aspect={ASPECT.badge}
+        height={1.5}
+        position={[HALF_W - 0.28, 3.55, -22.4]}
+        rotation={-Math.PI / 2}
+      />
+      <WallFrame
+        map={maps.blackClassic}
+        aspect={ASPECT.blackClassic}
+        height={1.1}
+        position={[-(HALF_W - 0.28), 2.1, -47.1]}
         rotation={Math.PI / 2}
       />
     </group>
@@ -765,7 +1186,75 @@ function WelderArc() {
         <planeGeometry args={[2.4, 2.4]} />
         <primitive object={material} attach="material" />
       </mesh>
+      <WeldSparks />
     </group>
+  );
+}
+
+const SPARK_COUNT = 42;
+
+/**
+ * The fountain of orange sparks under the arc. Deterministic per index — each
+ * spark loops its own ballistic hop, staggered so the stream never pulses —
+ * and driven by the same arrival influence as the arc, so the corner is quiet
+ * until the reader is actually standing in it. One Points draw call.
+ */
+function WeldSparks() {
+  const points = useRef<THREE.Points>(null);
+  const seeds = useMemo(() => {
+    const array: Array<{ vx: number; vy: number; vz: number; life: number; offset: number }> = [];
+    for (let i = 0; i < SPARK_COUNT; i++) {
+      const angle = (i / SPARK_COUNT) * Math.PI * 2;
+      const kick = 0.6 + ((i * 37) % 17) / 17;
+      array.push({
+        vx: Math.cos(angle) * 0.9 * kick,
+        vy: 1.4 + ((i * 13) % 11) / 9,
+        vz: Math.sin(angle) * 0.9 * kick,
+        life: 0.55 + ((i * 7) % 13) / 26,
+        offset: ((i * 29) % 19) / 19,
+      });
+    }
+    return array;
+  }, []);
+  const positions = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
+
+  useFrame((state) => {
+    if (!points.current) return;
+    const arrival = influence(railOf(state.camera).t, 3);
+    points.current.visible = arrival > 0.05;
+    if (!points.current.visible) return;
+
+    const elapsed = state.clock.elapsedTime;
+    for (let i = 0; i < SPARK_COUNT; i++) {
+      const s = seeds[i];
+      const t = ((elapsed / s.life + s.offset) % 1) * s.life;
+      positions[i * 3] = s.vx * t;
+      positions[i * 3 + 1] = Math.max(s.vy * t - 4.9 * t * t, -1.1);
+      positions[i * 3 + 2] = s.vz * t;
+    }
+    const attribute = points.current.geometry.getAttribute(
+      "position",
+    ) as THREE.BufferAttribute;
+    attribute.needsUpdate = true;
+    const material = points.current.material as THREE.PointsMaterial;
+    material.opacity = 0.85 * arrival;
+  });
+
+  return (
+    <points ref={points} visible={false} frustumCulled={false}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.035}
+        color="#ffb257"
+        sizeAttenuation
+        transparent
+        opacity={0}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </points>
   );
 }
 
@@ -792,14 +1281,31 @@ function RollUpDoor() {
   );
 }
 
-const TOWERS = [
-  { x: -34, z: -104, w: 13, h: 30 },
-  { x: -18, z: -96, w: 10, h: 22 },
-  { x: -4, z: -112, w: 15, h: 42 },
-  { x: 12, z: -98, w: 11, h: 26 },
-  { x: 28, z: -108, w: 14, h: 35 },
-  { x: 44, z: -95, w: 10, h: 19 },
+/* The yard across the lane. 91 Avenue is an industrial strip, not downtown:
+   what stands behind the shop is low tilt-up warehouses with parapet caps,
+   strip windows at office height, a lit loading door or two and junk on the
+   roof — not a wall of towers. Close enough (26–36 m) to resolve as buildings
+   through the door instead of punch-card silhouettes. */
+const WAREHOUSES = [
+  { x: -29, z: -87, w: 22, d: 12, h: 9, door: 0.3, windows: 2 },
+  { x: -5, z: -93, w: 18, d: 14, h: 12.5, door: -0.28, windows: 3 },
+  { x: 15, z: -85, w: 19, d: 11, h: 8, door: 0.22, windows: 2 },
+  { x: 36, z: -91, w: 16, d: 12, h: 10.5, door: 0, windows: 2 },
 ] as const;
+
+/* A second rank of taller blocks well behind, silhouette only. */
+const FAR_BLOCKS = [
+  { x: -46, z: -112, w: 15, h: 24 },
+  { x: 6, z: -118, w: 18, h: 30 },
+  { x: 46, z: -108, w: 13, h: 19 },
+] as const;
+
+/* Yard lights over the back lot — the reason the lot reads at all. */
+const LOT_POLES: Array<[number, number]> = [
+  [-11, -63],
+  [3, -67],
+  [15, -62],
+];
 
 function NightOutside() {
   const sky = useMemo(
@@ -808,8 +1314,11 @@ function NightOutside() {
         depthWrite: false,
         fog: false,
         uniforms: {
-          uTop: { value: new THREE.Color("#121829") },
-          uHorizon: { value: new THREE.Color("#46536e") },
+          // A city night is never black: high overcast bounces every sodium
+          // lamp in the district back down. Lighter than it was on purpose —
+          // "out back it just looks like a square with holes" was mostly this.
+          uTop: { value: new THREE.Color("#1b2440") },
+          uHorizon: { value: new THREE.Color("#647399") },
         },
         vertexShader: /* glsl */ `
           varying vec2 vUv;
@@ -835,66 +1344,7 @@ function NightOutside() {
     [],
   );
 
-  /* Lit windows on a unit plane. The mesh scale carries the tower's real size
-     into the shader, so the window grid is a fixed number of METRES rather than
-     a fixed number of cells — every tower gets the same window, whatever its
-     size — and the whole thing fades with distance so the skyline sits back
-     behind the haze instead of shouting through the door. */
-  const windows = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        fog: false,
-        blending: THREE.AdditiveBlending,
-        uniforms: { uColor: { value: new THREE.Color("#e8c489") } },
-        vertexShader: /* glsl */ `
-          varying vec2 vUv;
-          varying vec2 vScale;
-          varying float vDepth;
-          void main() {
-            vUv = uv;
-            vScale = vec2(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz));
-            vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            vDepth = -mv.z;
-            gl_Position = projectionMatrix * mv;
-          }
-        `,
-        fragmentShader: /* glsl */ `
-          varying vec2 vUv;
-          varying vec2 vScale;
-          varying float vDepth;
-          uniform vec3 uColor;
-          float hash(vec2 p) {
-            return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453);
-          }
-          void main() {
-            // Finer than life-size on purpose: at ~100 units out, metre-scale
-            // panes render as fat chunks and the towers read as Lego. Halving
-            // the cell doubles the count and it resolves into a skyline.
-            vec2 grid = max(floor(vScale / vec2(0.5, 0.72)), vec2(3.0));
-            vec2 cell = floor(vUv * grid);
-            vec2 f = fract(vUv * grid);
-            float lit = step(0.78, hash(cell));
-            float pane =
-              step(0.22, f.x) * step(f.x, 0.78) *
-              step(0.26, f.y) * step(f.y, 0.74);
-            float atten = 1.0 - smoothstep(45.0, 120.0, vDepth);
-            float a = lit * pane * 0.72 * atten;
-            gl_FragColor = vec4(uColor * a, a);
-          }
-        `,
-      }),
-    [],
-  );
-
-  useEffect(
-    () => () => {
-      sky.dispose();
-      windows.dispose();
-    },
-    [sky, windows],
-  );
+  useEffect(() => () => sky.dispose(), [sky]);
 
   return (
     <group>
@@ -904,37 +1354,142 @@ function NightOutside() {
         <primitive object={sky} attach="material" />
       </mesh>
 
-      {/* Skyline */}
-      {TOWERS.map((t) => (
-        <group key={`${t.x}:${t.z}`}>
-          <mesh position={[t.x, t.h / 2, t.z]}>
-            <boxGeometry args={[t.w, t.h, 9]} />
-            {/* `fog={false}` is load-bearing. These towers stand 95–112 units
-                out, past the fog far plane, so with fog on they resolved to
-                FLAT FOG COLOUR — which is lighter than the night sky behind
-                them. The silhouette inverted: pale slabs with dark gaps, and
-                the lit windows read as confetti floating in front of nothing.
-                Out of the fog they are solid black cut-outs again. */}
-            <meshStandardMaterial color="#080b11" roughness={1} metalness={0} fog={false} />
+      {/* The warehouses across the lane — real buildings, not punch cards */}
+      {WAREHOUSES.map((b) => (
+        <group key={`${b.x}:${b.z}`} position={[b.x, 0, b.z]}>
+          {/* Body and parapet cap */}
+          <mesh position={[0, b.h / 2, 0]}>
+            <boxGeometry args={[b.w, b.h, b.d]} />
+            <meshStandardMaterial color="#161b25" roughness={0.92} metalness={0.06} fog={false} />
           </mesh>
-          <mesh
-            position={[t.x, t.h / 2, t.z + 4.55]}
-            scale={[t.w * 0.88, t.h * 0.9, 1]}
-          >
-            <planeGeometry args={[1, 1]} />
-            <primitive object={windows} attach="material" />
+          <mesh position={[0, b.h + 0.22, 0]}>
+            <boxGeometry args={[b.w + 0.5, 0.45, b.d + 0.5]} />
+            <meshStandardMaterial color="#2c3442" roughness={0.85} metalness={0.1} fog={false} />
+          </mesh>
+          {/* Rooftop units */}
+          <mesh position={[-b.w * 0.22, b.h + 0.85, -1]}>
+            <boxGeometry args={[2.2, 1.3, 1.8]} />
+            <meshStandardMaterial color="#232a36" roughness={0.9} metalness={0.12} fog={false} />
+          </mesh>
+          <mesh position={[b.w * 0.28, b.h + 0.6, 1.2]}>
+            <boxGeometry args={[1.4, 0.85, 1.4]} />
+            <meshStandardMaterial color="#1d232e" roughness={0.9} metalness={0.12} fog={false} />
+          </mesh>
+          {/* Office strip windows, lit warm, tone mapped — glow, not bloom */}
+          {Array.from({ length: b.windows }, (_, i) => (
+            <mesh
+              key={i}
+              position={[
+                (i - (b.windows - 1) / 2) * (b.w / (b.windows + 0.4)),
+                b.h * 0.42,
+                b.d / 2 + 0.02,
+              ]}
+            >
+              <planeGeometry args={[b.w / (b.windows + 1.6), 1.15]} />
+              <meshStandardMaterial
+                color="#241d12"
+                emissive="#e3c18f"
+                emissiveIntensity={0.85}
+                roughness={0.4}
+                fog={false}
+              />
+            </mesh>
+          ))}
+          {/* One lit loading door */}
+          <mesh position={[b.door * b.w, 1.7, b.d / 2 + 0.02]}>
+            <planeGeometry args={[2.9, 3.4]} />
+            <meshStandardMaterial
+              color="#131720"
+              emissive="#9fb6dc"
+              emissiveIntensity={0.55}
+              roughness={0.5}
+              fog={false}
+            />
           </mesh>
         </group>
       ))}
 
-      {/* Wet asphalt out front */}
+      {/* Far rank — silhouettes only, holding the horizon */}
+      {FAR_BLOCKS.map((t) => (
+        <mesh key={`${t.x}:${t.z}`} position={[t.x, t.h / 2, t.z]}>
+          <boxGeometry args={[t.w, t.h, 10]} />
+          <meshStandardMaterial color="#0c101a" roughness={1} metalness={0} fog={false} />
+        </mesh>
+      ))}
+
+      {/* Yard lights over the lot — warm pools the parked cars sit in */}
+      {LOT_POLES.map(([x, z]) => (
+        <LotLight key={`${x}:${z}`} position={[x, 0, z]} />
+      ))}
+
+      {/* Wet asphalt out back, a step lighter so the lot reads under its lamps */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, -92]}>
         <planeGeometry args={[220, 70]} />
-        <meshStandardMaterial color="#101319" roughness={0.42} metalness={0.2} fog={false} />
+        <meshStandardMaterial color="#181d27" roughness={0.36} metalness={0.22} fog={false} />
       </mesh>
+
+      {/* Stall lines painted on the lot */}
+      {[-16, -11.6, -7.2, 6.4, 10.8, 15.2].map((x) => (
+        <mesh key={x} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.004, -66]}>
+          <planeGeometry args={[0.14, 5.6]} />
+          <meshStandardMaterial color="#525a68" roughness={0.8} metalness={0.02} fog={false} />
+        </mesh>
+      ))}
 
       <Headlights offset={0} speed={2.6} />
       <Headlights offset={34} speed={-1.9} />
+    </group>
+  );
+}
+
+/** One sodium yard light: pole, hooded head, a real point light and a pool. */
+function LotLight({ position }: { position: [number, number, number] }) {
+  const lamp = useRef<THREE.PointLight>(null);
+  const head = useRef<THREE.MeshStandardMaterial>(null);
+  const pool = useRef<THREE.Mesh>(null);
+  const poolMaterial = useRadialGlow("#ffc27a", 0.3, 2.2);
+
+  useFrame((state) => {
+    const k = introAt(state.clock.elapsedTime - 0.8);
+    if (lamp.current) lamp.current.intensity = 60 * k;
+    if (head.current) head.current.emissiveIntensity = 2.6 * k;
+    fadeGlow(pool.current, 0.3 * k);
+  });
+
+  return (
+    <group position={position}>
+      <mesh position={[0, 3.3, 0]}>
+        <cylinderGeometry args={[0.07, 0.09, 6.6, 8]} />
+        <meshStandardMaterial color="#2c3037" roughness={0.7} metalness={0.4} fog={false} />
+      </mesh>
+      <mesh position={[0, 6.6, 0.34]}>
+        <boxGeometry args={[0.5, 0.22, 1.0]} />
+        <meshStandardMaterial color="#33383f" roughness={0.6} metalness={0.42} fog={false} />
+      </mesh>
+      <mesh position={[0, 6.48, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.4, 0.7]} />
+        <meshStandardMaterial
+          ref={head}
+          color="#000000"
+          emissive="#ffc98a"
+          emissiveIntensity={0}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+          fog={false}
+        />
+      </mesh>
+      <pointLight
+        ref={lamp}
+        color="#ffc27a"
+        intensity={0}
+        distance={26}
+        decay={2}
+        position={[0, 6.2, 0.5]}
+      />
+      <mesh ref={pool} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0.5]}>
+        <circleGeometry args={[5.2, 24]} />
+        <primitive object={poolMaterial} attach="material" />
+      </mesh>
     </group>
   );
 }
@@ -986,8 +1541,11 @@ function Haze() {
 
   return (
     <group ref={sheets}>
-      {[0, 1, 2].map((i) => (
-        <mesh key={i} position={[i * 1.6 - 1.6, 1.7 + i * 0.4, -i * 2.4]}>
+      {/* Two sheets, not three. Each one is a 16x7 additive plane that fills a
+          large slice of the frame at the door stations, and the third was worth
+          almost nothing visually for a third of the haze bill. */}
+      {[0, 1].map((i) => (
+        <mesh key={i} position={[i * 2.2 - 1.6, 1.8 + i * 0.5, -i * 3.0]}>
           <planeGeometry args={[16, 7]} />
           <primitive object={material} attach="material" />
         </mesh>
@@ -1042,57 +1600,92 @@ function Dust({ count = 460 }: { count?: number }) {
    art styles in the model library: every surface in the building, stylized or
    photogrammetric, takes its reflections from the same six emitters. */
 
-function ShopEnvironment() {
+/* Three long, THIN, bright emitters overhead. Shape is the whole trick: a fat
+   soft panel smeared across a chrome pipe blows the pipe out into a glowing
+   rod, whereas a strip lays one hard bright line down it with dark either side
+   — which is what the eye has been trained by every photograph of a workshop to
+   read as polish. Same emitters give bodywork its long highlight down the
+   shoulder line, and they sit where the real ceiling fixtures are so the
+   reflections agree with the room. */
+const STRIPS: Array<[number, number]> = [
+  [-5.1, -1],
+  [0, -6],
+  [5.1, -11],
+];
+
+function ShopEnvironment({ tier }: { tier: WorldTier }) {
   return (
-    <Environment resolution={64} frames={1} environmentIntensity={1.15}>
-      {/* Overhead tungsten run */}
+    <Environment
+      resolution={tier === "lite" ? 64 : 128}
+      frames={1}
+      environmentIntensity={0.92}
+    >
+      {STRIPS.map(([x, z]) => (
+        <Lightformer
+          key={x}
+          form="rect"
+          intensity={3.7}
+          color="#ffd7ac"
+          scale={[0.5, 26, 1]}
+          position={[x, 9, z]}
+          rotation={[Math.PI / 2, 0, 0]}
+        />
+      ))}
+
+      {/* One soft box over the working side of the room — the key. Broad enough
+          to wrap paint, dim enough not to compete with the strips in chrome. */}
       <Lightformer
         form="rect"
-        intensity={2.1}
-        color="#ffd2a0"
-        scale={[2.2, 14, 1]}
-        position={[0, 9, -4]}
+        intensity={1.5}
+        color="#ffcb9a"
+        scale={[5, 7, 1]}
+        position={[-2.4, 8.2, -5]}
         rotation={[Math.PI / 2, 0, 0]}
       />
-      {/* Cold light from the open bay */}
+
+      {/* Cold light from the open bay. This is the KICKER: it is the only thing
+          in the map behind the vehicles, so it draws the cool edge that lifts a
+          dark car off a dark wall. */}
       <Lightformer
         form="rect"
-        intensity={1.25}
-        color="#8fa9d2"
-        scale={[9, 5, 1]}
-        position={[0, 2.5, -14]}
+        intensity={2.6}
+        color="#a2c0ee"
+        scale={[11, 6, 1]}
+        position={[0, 3, -19]}
       />
       {/* Neon bounce */}
       <Lightformer
         form="ring"
-        intensity={1.35}
+        intensity={1.2}
         color={NEON_BLOOM}
-        scale={2.6}
+        scale={3.1}
         position={[9, 4, 2]}
       />
-      {/* Dim wall fill, both sides — keeps metal from going flat black */}
+      {/* Wall fill, both sides. Deliberately LOWER than it was: metal needs
+          somewhere dark to be or every surface reads at the same value, which
+          is exactly what made the room look flat. */}
       <Lightformer
         form="rect"
-        intensity={0.46}
+        intensity={0.28}
         color="#6b5545"
-        scale={[14, 6, 1]}
-        position={[-11, 3, 0]}
+        scale={[16, 6, 1]}
+        position={[-12, 3, 0]}
         rotation={[0, Math.PI / 2, 0]}
       />
       <Lightformer
         form="rect"
-        intensity={0.46}
+        intensity={0.28}
         color="#6b5545"
-        scale={[14, 6, 1]}
-        position={[11, 3, 0]}
+        scale={[16, 6, 1]}
+        position={[12, 3, 0]}
         rotation={[0, -Math.PI / 2, 0]}
       />
       {/* Floor bounce */}
       <Lightformer
         form="rect"
-        intensity={0.34}
-        color="#4a4038"
-        scale={[14, 14, 1]}
+        intensity={0.24}
+        color="#463b32"
+        scale={[16, 16, 1]}
         position={[0, -6, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
       />
@@ -1121,9 +1714,10 @@ function CameraRig() {
     const read = () => {
       const y = window.scrollY;
       target.current = THREE.MathUtils.clamp(y / span, 0, 1);
-      // The still fades out as the reader leaves the hero, revealing the shop.
-      const vh = Math.max(window.innerHeight, 1);
-      heroTarget.current = 1 - THREE.MathUtils.clamp((y - vh * 0.12) / (vh * 0.72), 0, 1);
+      // The moment this rig is running, the shop IS the hero: the still plate
+      // dissolves outright and the reader opens on the cold-start animation,
+      // full bleed. Machines that never mount the rig keep the photograph.
+      heroTarget.current = 0;
     };
 
     const measure = () => {
@@ -1205,7 +1799,7 @@ function CameraRig() {
     state.camera.lookAt(focus);
 
     // Hand the hero still its opacity. Untouched if this rig never mounts, so
-    // phones, reduced-motion and no-WebGL machines keep the photograph at 1.
+    // reduced-motion and no-WebGL machines keep the photograph at 1.
     heroValue.current = THREE.MathUtils.damp(heroValue.current, heroTarget.current, 6, step);
     const rounded = Math.round(heroValue.current * 200) / 200;
     if (rounded !== heroWritten.current) {
@@ -1217,21 +1811,102 @@ function CameraRig() {
   return null;
 }
 
+/**
+ * Hold the HORIZONTAL field of view, not the vertical one.
+ *
+ * The seven stations were composed for a landscape frame at 40° vertical. A
+ * phone held upright has a quarter of that aspect, so the same vertical FOV
+ * crops the horizontal down to a keyhole — the hoist bay arrives as a slice of
+ * one lift column. Solving the vertical FOV from a fixed ~52° horizontal keeps
+ * each station's composition intact on any screen; the clamp stops a fisheye
+ * on the very tallest viewports and reproduces the designed 40° on desktop.
+ */
+function PortraitLens() {
+  const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera;
+  const size = useThree((state) => state.size);
+
+  useEffect(() => {
+    const aspect = size.width / Math.max(size.height, 1);
+    const H_FOV = THREE.MathUtils.degToRad(52);
+    const vertical = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(H_FOV / 2) / aspect));
+    camera.fov = THREE.MathUtils.clamp(vertical, 40, 74);
+    camera.updateProjectionMatrix();
+  }, [camera, size]);
+
+  return null;
+}
+
+/* ── Focus ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Rack focus onto whatever the station is looking at.
+ *
+ * `DepthOfField` will happily take a fixed distance, but a station's subject
+ * sits anywhere between two and thirteen metres out, so a fixed plane blurs
+ * the hero half the time. Handing the effect a Vector3 we own and moving it
+ * along the same LOOK curve the camera aims down means the thing the shot is
+ * ABOUT is always the thing in focus — for one curve evaluation a frame.
+ *
+ * The effect reads `target` on every update and re-derives focus distance from
+ * it, so mutating the vector in place is enough; nothing needs re-rendering
+ * and nothing needs a ref across the composer boundary.
+ */
+/** The effect instance behind `<DepthOfField>`, without importing its package. */
+type DofEffect = ComponentRef<typeof DepthOfField>;
+
+/* Any non-null Vector3 makes the wrapper allocate the effect its own target;
+   the value never matters, because `FocusRig` overwrites it every frame. */
+const ORIGIN = new THREE.Vector3();
+
+function FocusRig({ effect }: { effect: RefObject<DofEffect | null> }) {
+  const point = useRef(new THREE.Vector3());
+
+  useFrame((state) => {
+    const target = effect.current?.target;
+    if (!target) return;
+
+    LOOK_CURVE.getPoint(railOf(state.camera).t, point.current);
+    // Pulled a fifth of the way back toward the lens. The LOOK point is where
+    // the camera is AIMED, which at the roll-up door is the night outside —
+    // focus it literally and the finished car in the foreground is the one
+    // thing in the frame that is soft. Biasing toward the camera puts the
+    // plane through the middle of the subject at every station instead.
+    point.current.lerp(state.camera.position, 0.2);
+
+    // Copy into the effect's OWN vector, not ours. Handing `target` a Vector3
+    // as a prop looks like it should work and does not: r3f sees a value with
+    // `.copy()` on the far side and copies INTO it once, so the effect keeps
+    // its own vector and every later mutation of ours goes nowhere. That is
+    // why the first cut of this rack focus left the whole shop soft and the
+    // skyline sharp — focus was pinned to wherever the camera started.
+    target.copy(point.current);
+  });
+
+  return null;
+}
+
 /* ── Scene graph ────────────────────────────────────────────────────────── */
 
-function SceneContents() {
+function SceneContents({ tier }: { tier: WorldTier }) {
+  const dof = useRef<DofEffect | null>(null);
+  const lite = tier === "lite";
+
   return (
     <>
       <color attach="background" args={[BAY_BLACK]} />
       <fog attach="fog" args={[FOG_GREY, 22, 94]} />
 
       <CameraRig />
-      <ShopEnvironment />
+      <PortraitLens />
+      <ShopEnvironment tier={tier} />
       <Ambience />
 
-      <Shell />
+      <Shell tier={tier} />
+      <FloorGrime />
       <Corrugation />
+      <WallFurniture />
       <Trusses />
+      <CeilingRuns />
       <CeilingStrips />
 
       <WelderArc />
@@ -1240,7 +1915,7 @@ function SceneContents() {
 
       <NeonSign />
       <TuningNeon />
-      <Dust />
+      <Dust count={lite ? 220 : 460} />
       <Haze />
 
       {/* Everything in the bays. Stations 0 and 1 are up on first paint; the
@@ -1273,24 +1948,77 @@ function SceneContents() {
         <OfficeGallery />
       </Suspense>
 
-      <EffectComposer multisampling={0} frameBufferType={THREE.HalfFloatType}>
-        {/* Threshold 1 — only true emissives (bulbs, neon, headlights) bloom. */}
-        <Bloom
-          mipmapBlur
-          intensity={1.15}
-          luminanceThreshold={1}
-          luminanceSmoothing={0.24}
-          radius={0.82}
-        />
-        <ChromaticAberration
-          offset={CHROMATIC_OFFSET}
-          radialModulation={false}
-          modulationOffset={0}
-        />
-        {/* Shallow. The CSS layers in front of the canvas do their own falloff;
-            a steep vignette here as well was double-darkening the corners. */}
-        <Vignette offset={0.42} darkness={0.38} />
-      </EffectComposer>
+      <FocusRig effect={dof} />
+
+      {lite ? (
+        /* The phone composer: bloom (the neon IS the brand) and the vignette,
+           nothing else. AO, rack focus and the lens fringe are desktop money. */
+        <EffectComposer multisampling={0} frameBufferType={THREE.HalfFloatType}>
+          <Bloom
+            mipmapBlur
+            intensity={0.95}
+            luminanceThreshold={1}
+            luminanceSmoothing={0.11}
+            radius={0.7}
+          />
+          <Vignette offset={0.42} darkness={0.38} />
+        </EffectComposer>
+      ) : (
+        <EffectComposer multisampling={0} frameBufferType={THREE.HalfFloatType}>
+          {/* GROUNDING. Nothing in this building casts a real shadow — a shadow
+              map across a 68 m span would cost more than the model budget — so
+              until now every object sat on a hand-painted blob and the corners,
+              the undersides and the gaps between stacked things all read at the
+              same value as open floor. Screen-space AO puts the contact back
+              everywhere at once: under the sills, inside the wheel arches, where
+              a drum meets concrete, in the rib shadows of the cladding. Half
+              resolution and the cheapest quality tier, because it only has to be
+              felt, not read. */}
+
+          <N8AO
+            halfRes
+            quality="performance"
+            aoSamples={6}
+            denoiseSamples={2}
+            denoiseRadius={6}
+            aoRadius={1.4}
+            distanceFalloff={0.8}
+            intensity={2.4}
+            color="#04050a"
+          />
+          {/* Threshold 1 — only true emissives (bulbs, neon, headlights) bloom. */}
+          <Bloom
+            mipmapBlur
+            intensity={0.95}
+            luminanceThreshold={1}
+            luminanceSmoothing={0.11}
+            radius={0.7}
+          />
+          {/* A real lens, shallow-ish and cheap. Focus rides the LOOK curve, so
+              whatever the station is about is the thing that is sharp and the
+              far end of the shop falls away — which is most of the difference
+              between a render and a photograph. Quarter-resolution bokeh: at
+              this blur radius nobody can tell, and it is the only reason the
+              pass is affordable. */}
+
+          <DepthOfField
+            ref={dof}
+            target={ORIGIN}
+            focusDistance={7}
+            focusRange={9}
+            bokehScale={1.3}
+            resolutionScale={0.25}
+          />
+          <ChromaticAberration
+            offset={CHROMATIC_OFFSET}
+            radialModulation={false}
+            modulationOffset={0}
+          />
+          {/* Shallow. The CSS layers in front of the canvas do their own falloff;
+              a steep vignette here as well was double-darkening the corners. */}
+          <Vignette offset={0.42} darkness={0.38} />
+        </EffectComposer>
+      )}
     </>
   );
 }
@@ -1301,10 +2029,11 @@ function SceneContents() {
    in front of it. The scrim keeps body copy legible over the shop — lightened
    along with the scene, because a shop nobody can see is not a backdrop. */
 
-export function ShopWorld() {
+export function ShopWorld({ tier = "full" }: { tier?: WorldTier }) {
   const [lit, setLit] = useState(false);
   const [awake, setAwake] = useState(true);
-  const [dpr, setDpr] = useState(1.5);
+  // Phones ship 3x panels; rendering this scene at native DPR would melt them.
+  const [dpr, setDpr] = useState(tier === "lite" ? 1 : 1.5);
 
   useEffect(() => {
     // Park the loop when the tab goes away, wake it when it comes back. Driven
@@ -1336,13 +2065,14 @@ export function ShopWorld() {
           requestAnimationFrame(() => setLit(true));
         }}
       >
-        {/* Degrade features, never frame rate (concept §2.4.4). */}
+        {/* Degrade features, never frame rate (concept §2.4.4). Lite never
+            climbs past 1.3 — the headroom goes to frame rate, not pixels. */}
         <PerformanceMonitor
-          onDecline={() => setDpr(1)}
-          onIncline={() => setDpr(1.75)}
-          onFallback={() => setDpr(1)}
+          onDecline={() => setDpr(tier === "lite" ? 0.8 : 1)}
+          onIncline={() => setDpr(tier === "lite" ? 1.3 : 1.75)}
+          onFallback={() => setDpr(tier === "lite" ? 0.8 : 1)}
         />
-        <SceneContents />
+        <SceneContents tier={tier} />
       </Canvas>
 
       {/* Legibility scrim — the shop is a backdrop, the copy is the product.
