@@ -21,6 +21,12 @@
 
 :root {
   color-scheme: dark;
+
+  /* How much flat black stands between the shop and the copy.
+     Long-form pages (services, guides, quote) get a near-solid plate; the
+     homepage is the tour, so it opens the shutter right up — see the
+     `body:has([data-world-stage])` rule below. */
+  --world-veil: 0.82;
 }
 
 html {
@@ -29,11 +35,100 @@ html {
 }
 
 body {
-  background: #0b0b0d;
+  /* The page colour lives on <html> above, so the fixed shop canvas (z-index
+     -10, painted in the root stacking context) can sit BETWEEN the two. An
+     opaque body background would paint straight over it. Visually identical
+     with JS off — html is still bay-black. */
+  background: transparent;
   color: #f2f0ec;
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   THE WORLD LAYER
+
+   `ShopWorldMount` is the first child of <body> (layout.tsx). It parks a fixed,
+   aria-hidden, pointer-events-none canvas at z-index -10 in the ROOT stacking
+   context — between <html>'s bay-black background and the page. `.world-veil`
+   sits one step in front of it at -9 and is the single dial between "the shop
+   is the backdrop" and "the copy is the product".
+
+   The same element is the no-WebGL fallback. Its gradients paint
+   unconditionally, so a phone, a reduced-motion reader or a machine that never
+   mounts the canvas still gets a graded room — warm wash off the ceiling, cold
+   spill at the floor, dark in the corners — instead of flat black with panels
+   floating on it. Nothing here holds layout and nothing here takes a click.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.world-veil {
+  position: fixed;
+  inset: 0;
+  z-index: -9;
+  pointer-events: none;
+  background:
+    /* tungsten wash off the ceiling */
+    radial-gradient(120% 70% at 50% -12%, rgba(255, 176, 102, 0.07), transparent 62%),
+    /* sodium spill through the far bay */
+    radial-gradient(90% 55% at 50% 118%, rgba(125, 156, 204, 0.05), transparent 64%),
+    /* corner vignette — gentle. The canvas already renders a Vignette pass, and
+       stacking a second steep one here is what crushed the corners of the shop
+       to flat black. Keep it as a hint of falloff, not a second iris. */
+    radial-gradient(
+      132% 100% at 50% 46%,
+      transparent 0%,
+      rgba(11, 11, 13, 0.1) 64%,
+      rgba(11, 11, 13, 0.46) 100%
+    ),
+    /* the dial itself */
+    rgb(11 11 13 / var(--world-veil));
+}
+
+/* The homepage is the drive-through: the seven stations must be visible in the
+   gaps between panels. Every other route keeps the shop as a rumour behind a
+   near-solid plate, because those pages are long-form reading.
+
+   0.06, not 0.24: this veil is only ONE of the layers between the reader and
+   the shop — the canvas host carries its own wash and every block of copy sits
+   on a `.scrim`. Contrast is bought where the words are, not across the whole
+   viewport, so the gaps between sections read as a lit room. */
+body:has([data-world-stage]) {
+  --world-veil: 0.06;
+}
+
+/* Content sits ON something. Translucent so the shop keeps moving behind it,
+   blurred so no headlight or neon tube ever competes with a line of body copy.
+   Unlayered, so it wins over Tailwind's `bg-*` utilities — set borders and
+   shadows with utilities, not with a background. */
+.scrim {
+  /* 0.82, up from 0.74. The full-viewport veil gave up most of its opacity so
+     the shop could be seen; the plates take that contrast back HERE, under the
+     copy, where it costs nothing but a slightly heavier panel. */
+  background-color: rgb(11 11 13 / 0.82);
+  /* Unprefixed only: Lightning CSS (Tailwind v4) adds the vendor prefixes from
+     its own target list. Writing `-webkit-` by hand here makes it collapse the
+     pair and ship ONLY the prefixed property, which drops the blur. */
+  backdrop-filter: blur(16px) saturate(0.92);
+  box-shadow:
+    0 28px 80px -40px rgba(0, 0, 0, 0.95),
+    inset 0 1px 0 rgba(242, 240, 236, 0.045);
+}
+
+/* The closing beat — the reader is at the roll-up door, so the plate closes up. */
+.scrim-strong {
+  background-color: rgb(11 11 13 / 0.93);
+}
+
+/* No backdrop-filter (older Firefox, some embedded browsers): buy the contrast
+   back with opacity rather than shipping grey text over a moving image. */
+@supports not (backdrop-filter: blur(1px)) {
+  .scrim {
+    background-color: rgb(11 11 13 / 0.94);
+  }
+  .scrim-strong {
+    background-color: rgb(11 11 13 / 0.97);
+  }
 }
 
 /* Red is scarce: one neon element per viewport (concept §2.1). */

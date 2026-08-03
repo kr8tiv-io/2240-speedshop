@@ -4,6 +4,7 @@ import "./globals.css";
 import { site } from "@/lib/site";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { ShopWorldMount } from "@/components/ShopWorldMount";
 import { businessSchema } from "@/lib/schema";
 
 const bebas = Bebas_Neue({ variable: "--font-bebas", subsets: ["latin"], weight: "400", display: "swap" });
@@ -37,7 +38,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en-CA"
       className={`${bebas.variable} ${archivo.variable} ${barlow.variable} ${plexMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col bg-bay-black text-bone">
+      {/* No background utility on <body>: the page colour lives on <html> so the
+          fixed shop can sit BETWEEN the two (globals.css, "THE WORLD LAYER"). */}
+      <body className="min-h-full flex flex-col text-bone">
+        {/* THE SHOP. Mounted once, here, for the whole site — a fixed
+            aria-hidden canvas at z-index -10 that takes no clicks and holds no
+            layout. It is decoration: every word on this site is in the
+            server-rendered HTML in front of it. Both of these are
+            out-of-flow, so neither becomes a flex item of <body>. */}
+        <ShopWorldMount />
+        <div className="world-veil" aria-hidden="true" role="presentation" />
+
         {/* AI crawlers do not execute JS (AI-SEO playbook §3), so the entity
             graph ships in the server-rendered HTML, never from the canvas. */}
         <script
@@ -51,7 +62,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           Skip to content
         </a>
         <Nav />
-        <main id="main" className="flex-1">
+        {/* `relative` puts the whole document in front of the world layer and
+            keeps every link, button and field interactive. */}
+        <main id="main" className="relative flex-1">
           {children}
         </main>
         <Footer />

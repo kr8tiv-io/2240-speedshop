@@ -82,15 +82,34 @@ const process = [
   },
 ] as const;
 
+/**
+ * The homepage is the drive-through.
+ *
+ * `data-world-stage` is the opt-in: globals.css drops `--world-veil` to a
+ * quarter for any document that contains it, so the shop mounted in
+ * app/layout.tsx is clearly visible in the gaps between panels. Every other
+ * route keeps the near-solid plate, because those pages are long-form reading.
+ *
+ * Section order IS station order — the camera rig reads raw document scroll
+ * progress and walks stations 0 → 6 down the page, so the copy at each stop is
+ * matched to what the camera is looking at when it arrives. Nothing on this
+ * page lives in the canvas; all of it is server-rendered HTML.
+ */
 export default function HomePage() {
   return (
-    <>
-      {/* S1 — HERO. The 3D drift lives here; it is decoration over real HTML. */}
+    <div data-world-stage="homepage">
+      {/* STATION 0 — DOORWAY. Cold start, breakers in, the shop wakes up. */}
       <Hero />
 
-      {/* S2 — ENTITY BLOCK. Answer-first, machine-liftable: who, what, where. */}
-      <Section id="who" eyebrow="Edmonton, Alberta" labelledBy="entity-heading">
-        <div className="border border-l-2 border-rust/40 border-l-speed-red bg-panel/60 p-7 sm:p-10">
+      {/* STATION 1 — THE HOIST · entity block. Answer-first, machine-liftable. */}
+      <Section
+        id="who"
+        station={1}
+        eyebrow="Edmonton, Alberta"
+        labelledBy="entity-heading"
+        surface="bare"
+      >
+        <div className="scrim border border-l-2 border-rust/40 border-l-speed-red p-7 sm:p-10">
           <h2
             id="entity-heading"
             className="font-display text-3xl uppercase leading-none tracking-wide text-bone sm:text-4xl"
@@ -135,13 +154,13 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* S3 — SIGNATURE PROOF: the D100. */}
+      {/* STATION 1 — THE HOIST · the D100 itself is on the deck out there. */}
       <Section
         id="d100"
+        station={1}
         eyebrow="Signature build"
         divider
         labelledBy="d100-heading"
-        className="bg-panel/30"
       >
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <div>
@@ -177,8 +196,14 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* S4 — SIX TRADES. One pillar page per keyword cluster. */}
-      <Section id="services" eyebrow="What we do" divider labelledBy="services-heading">
+      {/* STATION 2 — THE ENGINE ROOM · six trades. One pillar page per cluster. */}
+      <Section
+        id="services"
+        station={2}
+        eyebrow="What we do"
+        divider
+        labelledBy="services-heading"
+      >
         <h2
           id="services-heading"
           className="font-display text-4xl uppercase leading-none tracking-wide text-bone sm:text-5xl"
@@ -203,13 +228,13 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* S5 — RECENT BUILDS. Proof band. */}
+      {/* STATION 3 — THE FAB CORNER · recent builds. Proof band, arc on arrival. */}
       <Section
         id="builds"
+        station={3}
         eyebrow="Recent builds"
         divider
         labelledBy="builds-heading"
-        className="bg-panel/30"
       >
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h2
@@ -255,8 +280,14 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* S6 — PROCESS. Four steps, no mystery. */}
-      <Section id="process" eyebrow="Why 2240" divider labelledBy="process-heading">
+      {/* STATION 4 — THE TUNING BAY · process. Four steps, rollers spinning up. */}
+      <Section
+        id="process"
+        station={4}
+        eyebrow="Why 2240"
+        divider
+        labelledBy="process-heading"
+      >
         <h2
           id="process-heading"
           className="font-display text-4xl uppercase leading-none tracking-wide text-bone sm:text-5xl"
@@ -270,7 +301,7 @@ export default function HomePage() {
 
         <ol className="mt-12 grid gap-px border border-rust/25 bg-rust/25 sm:grid-cols-2 lg:grid-cols-4">
           {process.map((p, i) => (
-            <li key={p.step} className="bg-bay-black p-6">
+            <li key={p.step} className="bg-bay-black/60 p-6">
               <span className="font-mono text-sm text-neon-bloom">
                 {String(i + 1).padStart(2, "0")}
               </span>
@@ -283,13 +314,13 @@ export default function HomePage() {
         </ol>
       </Section>
 
-      {/* S7 — AREAS. */}
+      {/* STATION 5 — THE OFFICE WALL · areas. The camera pushes into the gallery. */}
       <Section
         id="areas"
+        station={5}
         eyebrow="Where we work"
         divider
         labelledBy="areas-heading"
-        className="bg-panel/30"
       >
         <h2
           id="areas-heading"
@@ -324,16 +355,24 @@ export default function HomePage() {
         </ul>
       </Section>
 
-      {/* S8 — INSTAGRAM. */}
-      <Section id="instagram" eyebrow="Instagram" divider labelledBy="instagram-heading">
+      {/* STATION 5 — THE OFFICE WALL · the framed gallery is this grid, in 3D. */}
+      <Section
+        id="instagram"
+        station={5}
+        eyebrow="Instagram"
+        divider
+        labelledBy="instagram-heading"
+      >
         <InstagramGrid />
       </Section>
 
-      {/* S9 — CLOSING CTA. */}
+      {/* STATION 6 — THE ROLL-UP DOOR · closing CTA. The plate closes up here:
+          the reader is looking out at the street, so the copy has to hold. */}
       <Section
         id="start"
+        station={6}
         labelledBy="cta-heading"
-        className="border-t border-speed-red/40 bg-panel/70"
+        surfaceClassName="scrim-strong border-speed-red/40"
       >
         <div className="flex flex-col items-start gap-10 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -366,6 +405,6 @@ export default function HomePage() {
           </div>
         </div>
       </Section>
-    </>
+    </div>
   );
 }
