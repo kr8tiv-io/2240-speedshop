@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { markWorldSkipped } from "./shop/boot";
 
 /**
  * The gate in front of the shop.
@@ -62,7 +63,14 @@ export function ShopWorldMount() {
       // passes a mobile GPU pays double for. Weak desktops get it too.
       const full = wide.matches && cores >= 6 && memory >= 4;
 
-      setVerdict(capable ? (full ? "run-full" : "run-lite") : "skip");
+      const next = capable ? (full ? "run-full" : "run-lite") : "skip";
+      if (window.location.search.includes("perf")) {
+        console.log(`[shop] verdict ${next} @${Math.round(performance.now())} ms`);
+      }
+      // Tell the plate at the door there is nothing coming, so it lifts at once
+      // rather than sitting through its grace timer on a machine that opted out.
+      if (next === "skip") markWorldSkipped();
+      setVerdict(next);
     };
 
     decide();

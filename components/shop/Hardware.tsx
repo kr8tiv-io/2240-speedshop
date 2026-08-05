@@ -701,6 +701,48 @@ export function V8Engine({
         <meshStandardMaterial {...DARK_STEEL} />
       </mesh>
 
+      {/* ── Detail pass: the parts an engine builder would notice missing ── */}
+
+      {/* Alternator on its bracket, front left: finned case and a pulley. */}
+      <group position={[-0.34, 0.66, 0.38]} rotation={[0, 0, 0.28]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.085, 0.095, 0.15, 14]} />
+          <meshStandardMaterial {...ALLOY} />
+        </mesh>
+        <mesh position={[0, 0, 0.1]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.05, 0.05, 0.03, 12]} />
+          <meshStandardMaterial color="#4a4e56" roughness={0.44} metalness={0.72} />
+        </mesh>
+        <mesh position={[0.1, -0.12, -0.02]} rotation={[0, 0, 0.5]}>
+          <boxGeometry args={[0.03, 0.22, 0.05]} />
+          <meshStandardMaterial {...STEEL} />
+        </mesh>
+      </group>
+
+      {/* Spin-on oil filter, low on the block's right side. */}
+      <mesh position={[0.33, 0.3, 0.12]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.055, 0.055, 0.15, 14]} />
+        <meshStandardMaterial color="#c8c2b4" roughness={0.42} metalness={0.24} />
+      </mesh>
+
+      {/* Braided line, pump to carburettor — the bright thread that makes the
+          front of the motor read as plumbed rather than moulded. */}
+      <mesh
+        geometry={tubeGeo(
+          "v8-fuel-line",
+          [
+            [0.3, 0.42, 0.44],
+            [0.34, 0.7, 0.34],
+            [0.2, 0.95, 0.18],
+            [0.06, 1.02, 0.06],
+          ],
+          0.014,
+          16,
+        )}
+      >
+        <meshStandardMaterial color="#9aa0aa" roughness={0.32} metalness={0.9} />
+      </mesh>
+
       {headers && <ZoomieHeaders />}
     </group>
   );
@@ -1035,13 +1077,17 @@ export function DynoRollers({
     }
   });
 
+  /* The extraction duct rises from the FLOOR behind the pit, well clear of
+     the car's tail. The old route began at bumper height right off the rear
+     valance, and from the station-4 orbit it read as a strange appendage
+     bolted to the back of the car. */
   const duct = tubeGeo(
     "dyno-duct",
     [
-      [0.9, 0.4, -2.5],
-      [1.7, 0.7, -2.9],
-      [2.4, 1.7, -3.0],
-      [2.7, 3.2, -2.6],
+      [1.9, 0.16, -3.4],
+      [2.35, 0.7, -3.5],
+      [2.6, 1.7, -3.3],
+      [2.75, 3.2, -2.7],
       [2.6, 4.7, -2.0],
     ],
     0.11,
@@ -1110,11 +1156,13 @@ export function DynoRollers({
               <boxGeometry args={[0.18, 0.08, 0.18]} />
               <meshStandardMaterial {...DARK_STEEL} />
             </mesh>
+            {/* Low and taut, anchor to sill — not tall flags off the bumpers,
+                which is what the old 0.95 m straps read as from the orbit. */}
             <mesh
-              position={[s * 1.28, 0.34, e * 2.1]}
-              rotation={[e * 0.66, 0, s * 0.42]}
+              position={[s * 1.34, 0.22, e * 2.28]}
+              rotation={[e * 0.9, 0, s * 0.3]}
             >
-              <boxGeometry args={[0.05, 0.95, 0.012]} />
+              <boxGeometry args={[0.05, 0.6, 0.012]} />
               <meshStandardMaterial color="#7c2b22" roughness={0.9} metalness={0.05} />
             </mesh>
           </group>

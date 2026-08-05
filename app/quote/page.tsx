@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { QuoteForm } from "@/components/QuoteForm";
@@ -65,30 +66,11 @@ const photoChecklist = [
   "The parts you already bought, in their boxes",
 ];
 
-function resolveService(raw: string | string[] | undefined): string {
-  if (!raw) return "";
-  const value = (Array.isArray(raw) ? raw[0] : raw).trim().toLowerCase();
-  if (!value) return "";
-  const exact = services.find((s) => s.slug === value);
-  if (exact) return exact.slug;
-  const loose = services.find(
-    (s) =>
-      s.slug.includes(value) ||
-      s.nav.toLowerCase() === value ||
-      s.title.toLowerCase() === value ||
-      s.keyword.toLowerCase().includes(value),
-  );
-  return loose ? loose.slug : "";
-}
-
-export default async function QuotePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const params = await searchParams;
-  const preselected = resolveService(params.lane ?? params.service);
-
+/**
+ * Fully static — the `?service=` lane preselect moved into QuoteForm on the
+ * client (behind Suspense), so this page prerenders under `output: export`.
+ */
+export default function QuotePage() {
   return (
     <>
       <JsonLd
@@ -103,8 +85,8 @@ export default async function QuotePage({
       <section className="relative overflow-hidden border-b border-rust/25">
         <div className="absolute inset-0">
           <Image
-            src="/shop/ig-D100-slide2-lightpatch.jpg"
-            alt="Light patch worn into the hood of a 1960s Dodge D100 at 2240 Speed Shop in Edmonton"
+            src="/shop/car-d100-truck.jpg"
+            alt="1960s Dodge D100 pickup with original patina at 2240 Speed Shop in Edmonton"
             fill
             priority
             sizes="100vw"
@@ -180,12 +162,8 @@ export default async function QuotePage({
             {services.map((s) => (
               <li key={s.slug}>
                 <Link
-                  href={`/quote?service=${s.slug}`}
-                  className={`inline-block border px-4 py-2 font-sub text-[11px] uppercase tracking-[0.16em] transition-colors ${
-                    preselected === s.slug
-                      ? "border-speed-red text-bone"
-                      : "border-rust/35 text-steel hover:border-rust hover:text-bone"
-                  }`}
+                  href={`/quote?service=${s.slug}#form`}
+                  className="inline-block border border-rust/35 px-4 py-2 font-sub text-[11px] uppercase tracking-[0.16em] text-steel transition-colors hover:border-rust hover:text-bone"
                 >
                   {s.nav}
                 </Link>
@@ -198,7 +176,9 @@ export default async function QuotePage({
       {/* -------------------------------------------------------------- form */}
       <section id="form" className="mx-auto max-w-6xl px-5 pb-16">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
-          <QuoteForm key={preselected || "open"} initialService={preselected} />
+          <Suspense fallback={null}>
+            <QuoteForm />
+          </Suspense>
 
           <aside className="space-y-8 lg:sticky lg:top-24">
             <div className="plate p-6">

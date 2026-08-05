@@ -29,84 +29,197 @@ export const MID_Z = (FRONT_Z + DOOR_Z) / 2;
 export const DOOR_HALF = 5.5;
 export const DOOR_H = 5;
 
-/* ── The rail ───────────────────────────────────────────────────────────────
-   Seven stations, two CatmullRom curves (eye and target). `getPoint` is used
-   rather than `getPointAt` precisely because it is NOT arc-length
-   parameterised: knot i lands exactly on t = i / 6, so a station is a real
-   address on the curve and the per-segment easing can hold there. */
+/* ── The rail: ORBIT AND REVEAL ─────────────────────────────────────────────
+   The signature move. The camera does not stand at a station — it CIRCLES the
+   station's subject. Scroll sweeps an arc around the turntable showpiece,
+   glides to the raised Challenger and sweeps around that, then the blown V8,
+   the primer shell, the car on the rollers, a motor outside the office, and
+   finally the finished car at the open door with the night behind it. Each
+   section's copy rises as its orbit comes around.
 
-export type Station = {
-  /** Where the camera stands. */
-  cam: [number, number, number];
-  /** What it is looking at. */
-  look: [number, number, number];
-  /** Slow creep toward the target while holding — used where the shot pushes in. */
-  dolly: number;
+   Every arc is a LIMITED arc, not a circle: the shop is dense on purpose, and
+   each sweep is plotted on the clear side of its subject — angles chosen
+   against the actual positions of the lifts, benches, carts and parked cars
+   so the lens never clips a fender. Travels between arcs are cubic Béziers
+   whose control points extend along the orbit tangents, so a glide leaves one
+   circle the way it was already moving and lands on the next the same way. */
+
+export type Orbit = {
+  /** Subject centre on the floor. */
+  cx: number;
+  cz: number;
+  /** Arc radius — clears the subject AND everything parked around it. */
+  r: number;
+  /** Eye height at the arc's ends; mid-orbit adds a gentle crane rise. */
+  h: number;
+  /** Height on the subject the lens holds — bonnet line, valve covers. */
+  lookY: number;
+  /** Sweep, radians. a0 → a1; sign of (a1 - a0) is the direction. */
+  a0: number;
+  a1: number;
 };
 
-export const STATIONS: Station[] = [
-  // 0 — DOORWAY / COLD START. Wide, high, straight down the length of the shop.
-  { cam: [0.9, 2.65, 7.4], look: [-0.4, 2.15, -12.0], dolly: 0 },
-  // 1 — THE HOIST. Swung ~43° off axis and dropped to knee height.
-  { cam: [2.2, 1.12, -1.6], look: [-3.2, 1.95, -7.2], dolly: 0 },
-  // 2 — THE ENGINE ROOM. Bumper height, sliding past the stand.
-  { cam: [-1.3, 0.86, -12.8], look: [3.9, 1.05, -18.4], dolly: 0 },
-  // 3 — THE FAB CORNER. Standing height, arc flash on arrival.
-  { cam: [1.9, 1.95, -23.0], look: [-5.6, 1.55, -27.8], dolly: 0 },
-  // 4 — THE TUNING BAY. Looking down into the rollers.
-  { cam: [-2.5, 2.5, -32.2], look: [2.2, 1.35, -37.9], dolly: 0 },
-  // 5 — THE OFFICE WALL. Slow push into the gallery.
-  { cam: [-1.4, 2.15, -38.2], look: [-8.6, 2.9, -43.4], dolly: 1.5 },
-  // 6 — THE ROLL-UP DOOR. Far enough back that the opening reads as a door,
-  // with the night framed inside it rather than filling the lens.
-  { cam: [0.6, 2.4, -45.8], look: [0.1, 2.62, -58.5], dolly: 0.9 },
+const D = Math.PI / 180;
+
+export const ORBITS: Orbit[] = [
+  // 0 — THE TURNTABLE. The entry beat Matt called for: the finished Charger
+  // revolving one way, the camera sweeping 150° around it the other, menus
+  // rising as it comes around. Arc stays east of the copper camaro and north
+  // of the hoist bay.
+  { cx: -1.1, cz: -2.75, r: 4.3, h: 2.05, lookY: 0.95, a0: -55 * D, a1: 95 * D },
+  // 1 — THE HOIST. 140° around the Challenger up on the posts, knee-to-chest
+  // height looking up at the pans. East-to-south sweep — the turntable circle
+  // owns the north and the drums own the west wall.
+  { cx: -3.2, cz: -7.0, r: 4.4, h: 1.55, lookY: 1.85, a0: 75 * D, a1: 215 * D },
+  // 2 — THE BLOWN V8. Tight 110° around the headers side of the stand. The
+  // roll cab parks off the north-east of it, so the arc takes the west face.
+  { cx: 3.3, cz: -17.1, r: 3.2, h: 1.5, lookY: 1.35, a0: -125 * D, a1: -15 * D },
+  // 3 — THE PRIMER SHELL. 145° around the body on stands, bench side to open
+  // floor. The rusted donor lives off the south-west corner — arc stops short.
+  { cx: -4.3, cz: -30.4, r: 3.6, h: 1.75, lookY: 1.15, a0: -30 * D, a1: 115 * D },
+  // 4 — THE DYNO. North-to-south down the WEST side of the rollers — the gold
+  // convertible and the storage row block the east, and going west keeps the
+  // gauge wall and the tuning neon in frame behind the car the whole sweep.
+  { cx: 0.9, cz: -37.4, r: 3.8, h: 2.0, lookY: 1.05, a0: 0 * D, a1: -180 * D },
+  // 5 — THE PULLED MOTOR. A close 160° around the engine stand outside the
+  // office, gallery wall and corkboard swinging through the background.
+  { cx: -5.3, cz: -41.7, r: 2.9, h: 1.65, lookY: 1.25, a0: -20 * D, a1: 140 * D },
+  // 6 — THE COLLECTED CAR. The finale: 160° around the green Challenger nosed
+  // at the open door, ending on the north side looking south — the car, the
+  // doorway, the rain and the skyline stacked in one closing frame.
+  { cx: -3.4, cz: -53.2, r: 4.1, h: 1.85, lookY: 1.0, a0: -130 * D, a1: 30 * D },
 ];
 
-export const SEGMENTS = STATIONS.length - 1;
-
-export const CAM_CURVE = new THREE.CatmullRomCurve3(
-  STATIONS.map((s) => new THREE.Vector3(...s.cam)),
-  false,
-  "centripetal",
-  0.5,
-);
-
-export const LOOK_CURVE = new THREE.CatmullRomCurve3(
-  STATIONS.map((s) => new THREE.Vector3(...s.look)),
-  false,
-  "centripetal",
-  0.5,
-);
+export const SEGMENTS = ORBITS.length - 1;
 
 /** Smootherstep — zero first AND second derivative at both ends. */
 export const smootherstep = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 
-/**
- * Sections should read as ARRIVALS. Raw scroll is eased per segment instead of
- * swept linearly, so the camera accelerates out of one station, covers the
- * ground between fast, and settles into the next.
- */
-export function stationEase(progress: number) {
-  const scaled = THREE.MathUtils.clamp(progress, 0, 1) * SEGMENTS;
-  const index = Math.min(Math.floor(scaled), SEGMENTS - 1);
-  return (index + smootherstep(scaled - index)) / SEGMENTS;
+/* Phase layout: orbits are the hero, so they get the wider share of scroll.
+   The page starts on orbit 0 and ends exactly as orbit 6 completes. */
+const W_ORBIT = 1.4;
+const W_TRAVEL = 1.0;
+const TOTAL = ORBITS.length * W_ORBIT + (ORBITS.length - 1) * W_TRAVEL;
+
+/* Inside an orbit the station float advances i → i + ORBIT_SPAN; the travel
+   carries it the rest of the way to i + 1. Reveals key off this: a section
+   rises once its orbit is genuinely underway. */
+export const ORBIT_SPAN = 0.35;
+
+function orbitEye(o: Orbit, a: number, lift: number, out: THREE.Vector3) {
+  return out.set(o.cx + o.r * Math.sin(a), o.h + lift, o.cz + o.r * Math.cos(a));
 }
 
-/** How present station `index` is at curve position `t` — 1 on the knot, 0 away. */
+/** Unit tangent of the sweep at angle `a`, respecting sweep direction. */
+function orbitTangent(o: Orbit, a: number, out: THREE.Vector3) {
+  const sign = Math.sign(o.a1 - o.a0) || 1;
+  return out.set(sign * Math.cos(a), 0, sign * -Math.sin(a));
+}
+
+type Travel = {
+  p0: THREE.Vector3;
+  p1: THREE.Vector3;
+  p2: THREE.Vector3;
+  p3: THREE.Vector3;
+};
+
+/* Control points once, at module scope — pathAt runs every frame. */
+const TRAVELS: Travel[] = ORBITS.slice(0, -1).map((from, i) => {
+  const to = ORBITS[i + 1];
+  const p0 = orbitEye(from, from.a1, 0, new THREE.Vector3());
+  const p3 = orbitEye(to, to.a0, 0, new THREE.Vector3());
+  const reach = p0.distanceTo(p3) * 0.35;
+  const t0 = orbitTangent(from, from.a1, new THREE.Vector3());
+  const t3 = orbitTangent(to, to.a0, new THREE.Vector3());
+  return {
+    p0,
+    p1: p0.clone().addScaledVector(t0, reach),
+    p2: p3.clone().addScaledVector(t3, -reach),
+    p3,
+  };
+});
+
+const BEZ = new THREE.Vector3();
+
+function bezier(tr: Travel, v: number, out: THREE.Vector3) {
+  const u = 1 - v;
+  out.copy(tr.p0).multiplyScalar(u * u * u);
+  out.addScaledVector(tr.p1, 3 * u * u * v);
+  out.addScaledVector(tr.p2, 3 * u * v * v);
+  out.addScaledVector(tr.p3, v * v * v);
+  return out;
+}
+
+/**
+ * The whole camera film, one function: scroll progress in, eye + look out,
+ * station float returned. Orbits sweep with smootherstep (the camera glides
+ * into a sweep, carries it, and settles), travels ease the same way, so every
+ * phase joint arrives at zero velocity — a beat of stillness between moves,
+ * which is what makes the sweeps read as intentional shots.
+ */
+export function pathAt(
+  progress: number,
+  eye: THREE.Vector3,
+  look: THREE.Vector3,
+): number {
+  const scaled = THREE.MathUtils.clamp(progress, 0, 1) * TOTAL;
+  const cycle = W_ORBIT + W_TRAVEL;
+  const index = Math.min(Math.floor(scaled / cycle), ORBITS.length - 1);
+  const local = scaled - index * cycle;
+  const o = ORBITS[index];
+
+  if (local <= W_ORBIT || index === ORBITS.length - 1) {
+    // ON THE ARC.
+    const u = smootherstep(THREE.MathUtils.clamp(local / W_ORBIT, 0, 1));
+    const a = THREE.MathUtils.lerp(o.a0, o.a1, u);
+    // The crane breathes: up a touch through the middle of the sweep.
+    orbitEye(o, a, Math.sin(u * Math.PI) * 0.3, eye);
+    look.set(o.cx, o.lookY, o.cz);
+    return index + u * ORBIT_SPAN;
+  }
+
+  // GLIDING TO THE NEXT ONE.
+  const next = ORBITS[index + 1];
+  const v = smootherstep((local - W_ORBIT) / W_TRAVEL);
+  bezier(TRAVELS[index], v, eye);
+  // The lens hands off mid-glide: it lets one subject go and finds the next.
+  look.set(
+    THREE.MathUtils.lerp(o.cx, next.cx, v),
+    THREE.MathUtils.lerp(o.lookY, next.lookY, v),
+    THREE.MathUtils.lerp(o.cz, next.cz, v),
+  );
+  return index + ORBIT_SPAN + v * (1 - ORBIT_SPAN);
+}
+
+/** Where the camera opens: the top of orbit 0, before the cold-start settle. */
+export const CAM_START = orbitEye(
+  ORBITS[0],
+  ORBITS[0].a0,
+  0,
+  new THREE.Vector3(),
+);
+
+/**
+ * How present station `index` is at rail position `t` — with a PLATEAU: full
+ * strength across the whole of the station's orbit (the dyno keeps spinning
+ * and the arc keeps striking for the entire sweep), decaying through the
+ * travel to the next subject.
+ */
 export function influence(t: number, index: number) {
   const distance = Math.abs(t * SEGMENTS - index);
-  const w = THREE.MathUtils.clamp(1 - distance * 2.3, 0, 1);
+  const w = THREE.MathUtils.clamp(1 - Math.max(0, distance - ORBIT_SPAN) * 2.6, 0, 1);
   return w * w * (3 - 2 * w);
 }
 
 /* Where the camera sits on the rail, parked on the camera itself. Set by the
    rig each frame, read by the props that react to arrivals — no context, no
-   re-render, and no shared mutable module state. */
-export type Rail = { t: number };
+   re-render, and no shared mutable module state. `look` is the point the
+   current orbit is circling, for the focus rack. */
+export type Rail = { t: number; look: THREE.Vector3 };
 
 export function railOf(camera: THREE.Camera): Rail {
   const data = camera.userData as { rail?: Rail };
-  if (!data.rail) data.rail = { t: 0 };
+  if (!data.rail) data.rail = { t: 0, look: new THREE.Vector3() };
   return data.rail;
 }
 

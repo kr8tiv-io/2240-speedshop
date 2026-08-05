@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useCallback,
   useState,
   type ComponentRef,
   type RefObject,
@@ -15,19 +16,42 @@ import {
   Environment,
   Lightformer,
   MeshReflectorMaterial,
-  PerformanceMonitor,
+
   useTexture,
 } from "@react-three/drei";
 import {
   Bloom,
+  BrightnessContrast,
   ChromaticAberration,
   DepthOfField,
   EffectComposer,
+  HueSaturation,
   N8AO,
+  Noise,
   Vignette,
 } from "@react-three/postprocessing";
 
-import { StationBundle } from "./shop/Loaders";
+import {
+  DoorShaft,
+  ExhaustHaze,
+  GroundFog,
+  InspectionLight,
+  RainCurtain,
+  SheetLightning,
+} from "./shop/Effects";
+import {
+  DetailCull,
+  StationBundle,
+  WarmScene,
+  primeLoaders,
+  setWorldTier,
+} from "./shop/Loaders";
+import {
+  markWorldSkipped,
+  noteMotion,
+  reportBootProgress,
+  subscribeBoot,
+} from "./shop/boot";
 import {
   StationDoor,
   StationDoorway,
@@ -51,7 +75,7 @@ import {
   LENGTH,
   MID_Z,
   NEON_BLOOM,
-  STATIONS,
+  SEGMENTS,
   STREET,
   TUNGSTEN,
   buildInstances,
@@ -59,10 +83,9 @@ import {
   flickerAt,
   influence,
   introAt,
+  pathAt,
   railOf,
-  stationEase,
-  CAM_CURVE,
-  LOOK_CURVE,
+  CAM_START,
   type InstanceSpec,
 } from "./shop/world";
 
@@ -77,9 +100,9 @@ import {
 
    The building, the light and the weather are built from THREE primitives and a
    procedural Lightformer environment: no HDRI, no CDN, no preset. What is IN
-   the building is 35 real models out of the 105 licence-cleared .glb files in
-   `public/models/`, plus the machines nobody publishes for free — a two-post
-   lift, a blown V8, an engine stand, a crane, jacks and a dyno — modelled from
+   the building is 40 real models out of the 105 licence-cleared .glb files in
+   `public/models/`, plus the machines nobody publishes for free — two-post
+   lifts, blown V8s, engine stands, a crane, jacks and a dyno — modelled from
    primitives in `shop/Hardware.tsx`.
 
    Scroll maps to a camera rail through seven stations:
@@ -100,8 +123,16 @@ export type WorldTier = "full" | "lite";
 /** Module-level so the effect is never rebuilt on a re-render. */
 /* Halved. At the old strength the corrugated cladding — ~190 high-contrast
    vertical edges — fringed visibly red/blue and read as a glitch rather than a
-   lens. Brightening the room made it worse, so the lens got quieter. */
-const CHROMATIC_OFFSET = new THREE.Vector2(0.00016, 0.00024);
+   lens. Brightening the room made it worse, so the lens got quieter.
+
+   No longer constant: the rig scales it with scroll speed (LENS STRESS). At
+   rest it sits at this baseline; under hard travel the fringing opens up to
+   ~5x and the frame reads like glass being pushed — then settles clean on
+   arrival. The effect object holds this exact Vector2, so mutating it in
+   place is the whole API. */
+const CHROMATIC_BASE_X = 0.00016;
+const CHROMATIC_BASE_Y = 0.00024;
+const CHROMATIC_OFFSET = new THREE.Vector2(CHROMATIC_BASE_X, CHROMATIC_BASE_Y);
 
 /* ── The photographs ────────────────────────────────────────────────────────
    The freestanding lightbox prints that used to stand in for cars are gone —
@@ -109,14 +140,17 @@ const CHROMATIC_OFFSET = new THREE.Vector2(0.00016, 0.00024);
    was never a stand-in: it is the reputation beat, and those are real builds.
    Five files instead of seven, ~1 MB lighter, and none of it blocks paint. */
 
+/* Raw texture fetches bypass basePath like the models do — same prefix. */
+const SHOP_BASE = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/shop`;
+
 const WALL_PHOTO = {
-  d100: "/shop/car-d100-truck.jpg",
-  coupe: "/shop/car-green-coupe.jpg",
-  muscle: "/shop/car-black-muscle.jpg",
-  bluePickup: "/shop/car-blue-pickup.jpg",
-  redPickup: "/shop/car-red-pickup.jpg",
-  blackClassic: "/shop/car-black-classic.jpg",
-  badge: "/shop/badge-2240-sign.png",
+  d100: `${SHOP_BASE}/car-d100-truck.jpg`,
+  coupe: `${SHOP_BASE}/car-green-coupe.jpg`,
+  muscle: `${SHOP_BASE}/car-black-muscle.jpg`,
+  bluePickup: `${SHOP_BASE}/car-blue-pickup.jpg`,
+  redPickup: `${SHOP_BASE}/car-red-pickup.jpg`,
+  blackClassic: `${SHOP_BASE}/car-black-classic.jpg`,
+  badge: `${SHOP_BASE}/badge-2240-sign.png`,
 } as const;
 
 type PhotoKey = keyof typeof WALL_PHOTO;
@@ -131,7 +165,9 @@ const ASPECT: Record<PhotoKey, number> = {
   badge: 1060 / 860,
 };
 
-useTexture.preload(Object.values(WALL_PHOTO) as string[]);
+/* No module-scope preload: these are ~3 MB of photographs on the office wall at
+   station 5, and pulling them at boot means they race the two bays the reader
+   is actually looking at. They stream with their own station now. */
 
 /* ── Shell ──────────────────────────────────────────────────────────────── */
 
@@ -146,12 +182,12 @@ function Shell({ tier }: { tier: WorldTier }) {
         <planeGeometry args={[HALF_W * 2 + 1, LENGTH]} />
         {tier === "full" ? (
           <MeshReflectorMaterial
-            /* 128, not 256. The reflection is blurred to within an inch of its
-               life before anyone sees it, so the extra resolution was buying a
-               detail the blur immediately threw away — while costing four times
-               the fill on a second full pass over a scene that is already the
-               most expensive thing on the page. */
-            resolution={128}
+            /* Back up to 256 in the premium pass: with MSAA and the higher
+               DPR the wet concrete is in frame constantly, and at 128 the
+               reflected neon crawled with aliasing the blur could not hide.
+               The second pass costs, but it is the single surface every
+               station shows. */
+            resolution={256}
             blur={[220, 70]}
             mixBlur={1}
             // 4, not 15. At 15 the floor multiplied every specular highlight it
@@ -914,7 +950,14 @@ function NeonSign() {
 
   useFrame((state) => {
     const elapsed = state.clock.elapsedTime;
-    const k = introAt(elapsed - 0.5) * flickerAt(elapsed);
+    // Old neon never holds perfectly: every half minute or so one tube
+    // stutters for a beat. Deterministic — two beating sines gate a fast
+    // flicker, same trick as the lightning — so it costs no state and every
+    // visit shows the same tired transformer.
+    const gate = Math.sin(elapsed * 0.19 + 1.3) * Math.sin(elapsed * 0.057);
+    const relapse =
+      gate > 0.982 ? 0.3 + 0.7 * Math.abs(Math.sin(elapsed * 43)) : 1;
+    const k = introAt(elapsed - 0.5) * flickerAt(elapsed) * relapse;
     for (const material of tubes.current) {
       if (material) material.emissiveIntensity = 3.5 * k;
     }
@@ -1054,7 +1097,7 @@ function WallFrame({
         <meshStandardMaterial
           map={map}
           map-colorSpace={THREE.SRGBColorSpace}
-          map-anisotropy={4}
+          map-anisotropy={8}
           emissiveMap={map}
           emissive="#ffffff"
           emissiveIntensity={0.07}
@@ -1616,7 +1659,10 @@ const STRIPS: Array<[number, number]> = [
 function ShopEnvironment({ tier }: { tier: WorldTier }) {
   return (
     <Environment
-      resolution={tier === "lite" ? 64 : 128}
+      /* 256 on desktop: the env map is every reflection in the building —
+         chrome, paint, glass — and at 128 the streaks in a clearcoat resolved
+         as smeared blobs. One-time render cost; per-frame cost is identical. */
+      resolution={tier === "lite" ? 64 : 256}
       frames={1}
       environmentIntensity={0.92}
     >
@@ -1699,20 +1745,43 @@ function CameraRig() {
   const target = useRef(0);
   const eased = useRef(0);
   const previous = useRef(0);
+  const primed = useRef(false);
   const heroTarget = useRef(1);
   const heroValue = useRef(1);
   const heroWritten = useRef(-1);
+  // The photograph holds until the opening bays have actually arrived. Over a
+  // slow connection the canvas is up SECONDS before the trucks are — dissolving
+  // the plate on mount showed phone readers an empty grey room. Transient
+  // subscription, not the hook: the loading store updates DURING other
+  // components' renders, and a hook here would setState mid-render.
+  const loaded = useRef(false);
+  useEffect(
+    () =>
+      subscribeBoot((s) => {
+        loaded.current = s.ready;
+      }),
+    [],
+  );
   const pointer = useRef(new THREE.Vector2());
   const parallax = useRef(new THREE.Vector2());
   const position = useRef(new THREE.Vector3());
   const lookAt = useRef(new THREE.Vector3());
-  const forward = useRef(new THREE.Vector3());
+  const roll = useRef(0);
+  const lens = useRef(1);
 
   useEffect(() => {
     let span = 1;
 
     const read = () => {
-      const y = window.scrollY;
+      // NOT bare `window.scrollY`. On iOS Safari an overflow-clipped <body>
+      // can end up as the actual scroll container, in which case scrollY pins
+      // at 0 while body.scrollTop moves — which froze the whole camera rail on
+      // real phones. Take the largest of the three; the wrong ones read 0.
+      const y = Math.max(
+        window.scrollY || 0,
+        document.documentElement.scrollTop || 0,
+        document.body.scrollTop || 0,
+      );
       target.current = THREE.MathUtils.clamp(y / span, 0, 1);
       // The moment this rig is running, the shop IS the hero: the still plate
       // dissolves outright and the reader opens on the cold-start animation,
@@ -1726,14 +1795,18 @@ function CameraRig() {
     };
 
     measure();
-    window.addEventListener("scroll", read, { passive: true });
+    // Capture phase on document: catches the scroll event whichever element
+    // turns out to be the real scroller (window, root, or body).
+    document.addEventListener("scroll", read, { passive: true, capture: true });
     window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
     const observer = new ResizeObserver(measure);
     observer.observe(document.documentElement);
 
     return () => {
-      window.removeEventListener("scroll", read);
+      document.removeEventListener("scroll", read, { capture: true });
       window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
       observer.disconnect();
       document.documentElement.style.removeProperty("--hero-reveal");
     };
@@ -1751,34 +1824,48 @@ function CameraRig() {
   }, []);
 
   useFrame((state, delta) => {
-    const step = Math.min(delta, 0.1);
+    // Floor as well as cap. Two rAF callbacks can land on the same clock
+    // reading (double-buffered frames, screenshot-driven headless), and a
+    // zero step turns the speed terms below into 0/0 — one NaN in the lens
+    // damp and the whole post chain renders black forever after.
+    const step = THREE.MathUtils.clamp(delta, 1e-4, 0.1);
     const elapsed = state.clock.elapsedTime;
     const eye = position.current;
     const focus = lookAt.current;
+
+    // The renderer is parked while the shop compiles, and the reader is free
+    // to scroll the page in the meantime. The first frame therefore has to
+    // START where the document already is — damping up from zero would fly the
+    // camera through the whole building to catch up, which is a lovely shot
+    // and completely wrong as an arrival.
+    if (!primed.current) {
+      primed.current = true;
+      eased.current = target.current;
+      previous.current = target.current;
+    }
 
     // λ = 1.35. The camera behaves like it weighs 400 lb: flick the wheel and
     // it still arrives as a dolly move, never a jump cut.
     previous.current = eased.current;
     eased.current = THREE.MathUtils.damp(eased.current, target.current, 1.35, step);
 
-    const t = stationEase(eased.current);
-    railOf(state.camera).t = t;
-
-    CAM_CURVE.getPoint(t, eye);
-    LOOK_CURVE.getPoint(t, focus);
-
-    // Stations that push in do it here, on the hold, not on the travel.
-    let dolly = 0;
-    for (let i = 0; i < STATIONS.length; i++) {
-      if (STATIONS[i].dolly !== 0) dolly += STATIONS[i].dolly * influence(t, i);
-    }
-    if (dolly !== 0) {
-      forward.current.copy(focus).sub(eye).normalize();
-      eye.addScaledVector(forward.current, dolly * (0.5 - 0.5 * Math.cos(elapsed * 0.2)));
-    }
+    // THE FILM: orbit-and-reveal. pathAt sweeps the arc around the current
+    // subject (or the glide between subjects), hands back eye + look, and
+    // reports the station float everything else keys off. The old dolly is
+    // gone — the orbit IS the move now.
+    const s = pathAt(eased.current, eye, focus);
+    const rail = railOf(state.camera);
+    const t = s / SEGMENTS;
+    rail.t = t;
+    // FocusRig racks onto whatever the orbit is circling.
+    rail.look.copy(focus);
 
     // Idle breath — the shop stays alive when the reader stops scrolling.
     const speed = Math.abs(eased.current - previous.current) / step;
+    // Published for the quality controller — one write, no allocation.
+    MOTION.speed = speed;
+    // And for the streaming queue, which holds its work while the film moves.
+    noteMotion(speed > 0.0015);
     const idle = THREE.MathUtils.clamp(1 - speed * 14, 0, 1);
     eye.y += Math.sin(elapsed * 0.37) * 0.07 * idle;
     eye.x += Math.cos(elapsed * 0.23) * 0.09 * idle;
@@ -1798,9 +1885,58 @@ function CameraRig() {
     state.camera.position.copy(eye);
     state.camera.lookAt(focus);
 
+    // ARRIVAL ZOOM — the "push in on the item" beat. The lens tightens up to
+    // 9% while the camera holds at a station and relaxes on the travel, so
+    // every arrival reads as a deliberate rack-in on the hero rather than the
+    // rail simply stopping. Rides the same influence bell as the props.
+    const persp = state.camera as THREE.PerspectiveCamera;
+    const base = (persp.userData.baseFov as number) ?? persp.fov;
+    const bell = influence(t, Math.round(t * SEGMENTS));
+    const zoomed = base * (1 - 0.09 * bell);
+    if (Math.abs(persp.fov - zoomed) > 0.02) {
+      persp.fov = zoomed;
+      persp.updateProjectionMatrix();
+    }
+
+    // DUTCH ROLL — a degree and a half of lean, proportional to how hard the
+    // reader is scrolling and heavily damped, so fast travel banks the frame
+    // like a car taking a corner and every hold settles back to level.
+    const signedSpeed = (eased.current - previous.current) / step;
+    roll.current = THREE.MathUtils.damp(
+      roll.current,
+      THREE.MathUtils.clamp(-signedSpeed * 1.9, -0.026, 0.026),
+      3,
+      step,
+    );
+    state.camera.rotateZ(roll.current);
+
+    // LENS STRESS — chromatic fringing opens with scroll speed and closes on
+    // the hold. Damped separately from the roll so the two settle at
+    // different rates, the way real glass and a real tripod would.
+    const stress = THREE.MathUtils.clamp(Math.abs(signedSpeed) * 6, 0, 4);
+    lens.current = THREE.MathUtils.damp(lens.current, 1 + stress, 4, step);
+    // Insurance on top of the step floor: a non-finite value here paints
+    // every pixel of the composer NaN-black, so it must never persist.
+    if (!Number.isFinite(lens.current)) lens.current = 1;
+    if (!Number.isFinite(roll.current)) roll.current = 0;
+    CHROMATIC_OFFSET.set(
+      CHROMATIC_BASE_X * lens.current,
+      CHROMATIC_BASE_Y * lens.current,
+    );
+
+    // The boot channel owns "ready" now — it knows the difference between
+    // downloaded and DRAWABLE, which the loading manager never did. The
+    // elapsed-time floor is the last line of defence if it never reports.
+    if (!loaded.current && elapsed > 14) loaded.current = true;
+
     // Hand the hero still its opacity. Untouched if this rig never mounts, so
     // reduced-motion and no-WebGL machines keep the photograph at 1.
-    heroValue.current = THREE.MathUtils.damp(heroValue.current, heroTarget.current, 6, step);
+    heroValue.current = THREE.MathUtils.damp(
+      heroValue.current,
+      loaded.current ? heroTarget.current : 1,
+      6,
+      step,
+    );
     const rounded = Math.round(heroValue.current * 200) / 200;
     if (rounded !== heroWritten.current) {
       heroWritten.current = rounded;
@@ -1827,9 +1963,27 @@ function PortraitLens() {
 
   useEffect(() => {
     const aspect = size.width / Math.max(size.height, 1);
-    const H_FOV = THREE.MathUtils.degToRad(52);
+    // Portrait phones get a WIDER horizontal field. The orbits frame a five
+    // metre car from ~4 m out — about 60° of arc — so at the landscape 52°
+    // a phone would crop nose and tail out of every sweep. 64° keeps the
+    // whole car inside the frame on the closest orbit.
+    const H_FOV = THREE.MathUtils.degToRad(aspect < 0.9 ? 64 : 52);
     const vertical = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(H_FOV / 2) / aspect));
-    camera.fov = THREE.MathUtils.clamp(vertical, 40, 74);
+    /* THE CLAMP WAS EATING THE SHOT.
+       This lens holds a fixed HORIZONTAL field and solves the vertical from
+       the aspect — that is the whole reason a five-metre car fits on a phone.
+       A tall phone needs a very tall vertical field to hold 64° across: 107°
+       at 390x844, 96° at 320x568. The old ceiling of 92° silently overrode it,
+       which does not crop the top and bottom — it narrows the HORIZONTAL field
+       to about 51°, and the nose and tail of the car go off the sides. Which is
+       exactly what a 320-point screen was showing.
+       The ceiling now sits above what any phone in portrait actually asks for,
+       so the framing the orbits were composed for is the framing that ships. */
+    const clamped = THREE.MathUtils.clamp(vertical, 40, 112);
+    // The rig owns the live FOV (arrival zoom); this only re-derives the BASE
+    // when the viewport changes shape.
+    camera.userData.baseFov = clamped;
+    camera.fov = clamped;
     camera.updateProjectionMatrix();
   }, [camera, size]);
 
@@ -1853,6 +2007,83 @@ function PortraitLens() {
  */
 /** The effect instance behind `<DepthOfField>`, without importing its package. */
 type DofEffect = ComponentRef<typeof DepthOfField>;
+/** The ambient-occlusion PASS — it has an `enabled` flag the composer honours. */
+type AoPass = ComponentRef<typeof N8AO>;
+
+/* How hard the reader is currently moving the film, written once a frame by
+   the rig and read by the quality controller. A plain object, not state: this
+   changes every frame and must never touch React. */
+const MOTION = { speed: 0 };
+
+/**
+ * ADAPTIVE POST — spend the GPU where the eye is.
+ *
+ * Screen-space AO is the most expensive pass in the chain and the least
+ * visible one under motion: at speed the frame is already a smear of tungsten
+ * and the contact shadows under a jack stand are not what anyone is reading.
+ * So it eases out as the travel builds and eases back in as the camera settles
+ * — a ramp, not a switch, and the pass is only actually skipped once its
+ * contribution has faded to nothing, so there is no pop at either end.
+ *
+ * Bloom, grain, grade and the rack focus stay on at all times: those ARE the
+ * look, and they cost a fraction of what the AO does.
+ */
+function QualityRig({
+  ao,
+  onStruggle,
+}: {
+  ao: RefObject<AoPass | null>;
+  /** Called when the machine has been under target for a sustained stretch. */
+  onStruggle: (struggling: boolean) => void;
+}) {
+  const level = useRef(1);
+  const average = useRef(1 / 60);
+  const since = useRef(0);
+  const struggling = useRef(false);
+
+  useFrame((_, delta) => {
+    const step = THREE.MathUtils.clamp(delta, 1e-4, 0.1);
+
+    /* THE SECOND LEVER: sustained frame time.
+       Motion is not the only reason to spend less. A machine that cannot hold
+       the frame at rest will not hold it under a camera move either, and the
+       concept's own rule is to degrade FEATURES, never frame rate. A slow
+       exponential average — not a single frame — decides, and it has to hold
+       for two seconds either way, so nothing flickers between settings while
+       a bay is streaming in. */
+    average.current += (step - average.current) * 0.05;
+    const slow = average.current > 0.028; // worse than ~36 fps
+    const fast = average.current < 0.019; // better than ~53 fps
+    if ((slow && !struggling.current) || (fast && struggling.current)) {
+      since.current += step;
+      if (since.current > 2) {
+        struggling.current = slow;
+        since.current = 0;
+        onStruggle(slow);
+      }
+    } else {
+      since.current = 0;
+    }
+
+    const pass = ao.current as
+      | (AoPass & { enabled?: boolean; configuration?: { intensity: number } })
+      | null;
+    if (!pass?.configuration) return;
+
+    // Full AO under ~1.5% of the film per second; gone by ~6% — and gone
+    // outright on a machine that is already behind.
+    const want = struggling.current
+      ? 0
+      : THREE.MathUtils.clamp(1 - (MOTION.speed - 0.015) / 0.045, 0, 1);
+    level.current = THREE.MathUtils.damp(level.current, want, want < level.current ? 9 : 3.5, step);
+    if (!Number.isFinite(level.current)) level.current = 1;
+
+    pass.configuration.intensity = 2.4 * level.current;
+    pass.enabled = level.current > 0.03;
+  });
+
+  return null;
+}
 
 /* Any non-null Vector3 makes the wrapper allocate the effect its own target;
    the value never matters, because `FocusRig` overwrites it every frame. */
@@ -1865,12 +2096,10 @@ function FocusRig({ effect }: { effect: RefObject<DofEffect | null> }) {
     const target = effect.current?.target;
     if (!target) return;
 
-    LOOK_CURVE.getPoint(railOf(state.camera).t, point.current);
-    // Pulled a fifth of the way back toward the lens. The LOOK point is where
-    // the camera is AIMED, which at the roll-up door is the night outside —
-    // focus it literally and the finished car in the foreground is the one
-    // thing in the frame that is soft. Biasing toward the camera puts the
-    // plane through the middle of the subject at every station instead.
+    // The rig parks the orbit subject on the rail every frame; focus tracks
+    // it directly. Pulled a fifth of the way back toward the lens so the
+    // plane cuts through the near face of the subject, not its centre.
+    point.current.copy(railOf(state.camera).look);
     point.current.lerp(state.camera.position, 0.2);
 
     // Copy into the effect's OWN vector, not ours. Handing `target` a Vector3
@@ -1887,9 +2116,23 @@ function FocusRig({ effect }: { effect: RefObject<DofEffect | null> }) {
 
 /* ── Scene graph ────────────────────────────────────────────────────────── */
 
-function SceneContents({ tier }: { tier: WorldTier }) {
+function SceneContents({
+  tier,
+  onStruggle,
+}: {
+  tier: WorldTier;
+  onStruggle: (struggling: boolean) => void;
+}) {
   const dof = useRef<DofEffect | null>(null);
+  const ao = useRef<AoPass | null>(null);
+  const shell = useRef<THREE.Group>(null);
   const lite = tier === "lite";
+
+  // Before any child mounts: the loader's decoders, and which tier the bays
+  // are being built for. Both have to be set during render — an effect runs
+  // after the first bay has already decided how much of itself to build.
+  primeLoaders(useThree((state) => state.gl));
+  setWorldTier(lite);
 
   return (
     <>
@@ -1901,22 +2144,44 @@ function SceneContents({ tier }: { tier: WorldTier }) {
       <ShopEnvironment tier={tier} />
       <Ambience />
 
-      <Shell tier={tier} />
-      <FloorGrime />
-      <Corrugation />
-      <WallFurniture />
-      <Trusses />
-      <CeilingRuns />
-      <CeilingStrips />
+      {/* THE BUILDING — everything that is not a streaming bay, in one group
+          so the warm-up has something finite to wait for. The bays grow for
+          half a minute after this does; scoping the compile to the shell is
+          what lets the door roll up in three seconds instead of seventy. */}
+      <group ref={shell}>
+        <Shell tier={tier} />
+        <FloorGrime />
+        <Corrugation />
+        <WallFurniture />
+        <Trusses />
+        <CeilingRuns />
+        <CeilingStrips />
 
-      <WelderArc />
-      <RollUpDoor />
-      <NightOutside />
+        <WelderArc />
+        <RollUpDoor />
+        <NightOutside />
 
-      <NeonSign />
-      <TuningNeon />
-      <Dust count={lite ? 220 : 460} />
-      <Haze />
+        {/* The weather and the work — every one a single draw call, all
+            arrival-gated. Lightning and the cursor light are real point lights,
+            which every lit fragment pays for, so they are desktop money. */}
+        <RainCurtain />
+        <DoorShaft />
+        {/* Every one of these is a single draw call and a screen's worth of
+            transparent fragments — cheap on a desktop GPU, and exactly the
+            wrong thing to stack four deep on a phone. The rain through the
+            open door and the shaft of light off it are the two that carry the
+            picture; the exhaust wisp, the ground fog and the room haze are
+            atmosphere the scene's own distance fog is already providing. */}
+        {!lite && <ExhaustHaze position={[1.5, 0.38, -39.4]} />}
+        {!lite && <GroundFog />}
+        {!lite && <Haze />}
+        {!lite && <SheetLightning />}
+        {!lite && <InspectionLight />}
+
+        <NeonSign />
+        <TuningNeon />
+        <Dust count={lite ? 90 : 460} />
+      </group>
 
       {/* Everything in the bays. Stations 0 and 1 are up on first paint; the
           rest fetch when the camera is within ~1.4 stations of them, so the
@@ -1943,12 +2208,21 @@ function SceneContents({ tier }: { tier: WorldTier }) {
         <StationDoor />
       </StationBundle>
 
-      {/* The photographs arrive when they arrive; the shop never waits. */}
-      <Suspense fallback={null}>
+      {/* The photographs arrive with the bay they hang in. */}
+      <StationBundle station={5}>
         <OfficeGallery />
-      </Suspense>
+      </StationBundle>
+
+      {/* Shader warmup for everything that is NOT a station bundle — the shell,
+          the weather, the neon. Asynchronous, behind the plate, and the last
+          thing the door waits on. */}
+      {/* No padding lights on a phone: the bays there carry no real lights to
+          pad against, so the loop stays exactly as long as the building needs. */}
+      <WarmScene target={shell} padLights={lite ? 0 : 10} />
+      {lite && <DetailCull target={shell} />}
 
       <FocusRig effect={dof} />
+      {!lite && <QualityRig ao={ao} onStruggle={onStruggle} />}
 
       {lite ? (
         /* The phone composer: bloom (the neon IS the brand) and the vignette,
@@ -1961,10 +2235,20 @@ function SceneContents({ tier }: { tier: WorldTier }) {
             luminanceSmoothing={0.11}
             radius={0.7}
           />
+          {/* Film grain is the one desktop nicety a phone can afford — a
+              single extra texture fetch in the pass that already runs. It
+              also dithers the gradients a low-DPR canvas bands on. */}
+          <Noise premultiply opacity={0.5} />
           <Vignette offset={0.42} darkness={0.38} />
         </EffectComposer>
       ) : (
-        <EffectComposer multisampling={0} frameBufferType={THREE.HalfFloatType}>
+        /* 4x MSAA on the desktop composer. The canvas itself runs with
+           `antialias: false` because the composer owns the framebuffer — which
+           meant every edge in the full-tier scene was raw and stair-stepped,
+           and at ~200 hard vertical edges of cladding per frame that read as
+           "soft and shimmery" rather than crisp. WebGL2 multisampled
+           renderbuffers put real geometric AA back for one resolve per frame. */
+        <EffectComposer multisampling={4} frameBufferType={THREE.HalfFloatType}>
           {/* GROUNDING. Nothing in this building casts a real shadow — a shadow
               map across a 68 m span would cost more than the model budget — so
               until now every object sat on a hand-painted blob and the corners,
@@ -1976,6 +2260,7 @@ function SceneContents({ tier }: { tier: WorldTier }) {
               felt, not read. */}
 
           <N8AO
+            ref={ao}
             halfRes
             quality="performance"
             aoSamples={6}
@@ -2014,6 +2299,16 @@ function SceneContents({ tier }: { tier: WorldTier }) {
             radialModulation={false}
             modulationOffset={0}
           />
+          {/* The GRADE — the difference between "rendered" and "shot". A
+              touch more saturation so the tungsten pools and the neon carry,
+              and a gentle S-curve of contrast to sink the shadows. Kept
+              subtle: the room's exposure was tuned by hand and the grade must
+              flatter it, not fight it. */}
+          <HueSaturation saturation={0.08} />
+          <BrightnessContrast contrast={0.07} />
+          {/* Film grain, premultiplied so it lives in the midtones and leaves
+              the blacks black — the last percent of "shot on film". */}
+          <Noise premultiply opacity={0.5} />
           {/* Shallow. The CSS layers in front of the canvas do their own falloff;
               a steep vignette here as well was double-darkening the corners. */}
           <Vignette offset={0.42} darkness={0.38} />
@@ -2032,8 +2327,27 @@ function SceneContents({ tier }: { tier: WorldTier }) {
 export function ShopWorld({ tier = "full" }: { tier?: WorldTier }) {
   const [lit, setLit] = useState(false);
   const [awake, setAwake] = useState(true);
-  // Phones ship 3x panels; rendering this scene at native DPR would melt them.
-  const [dpr, setDpr] = useState(tier === "lite" ? 1 : 1.5);
+  /* THE RENDERER STARTS PARKED.
+     A WebGL scene compiles itself on the first frame that draws it, and on this
+     one that frame measured five seconds on a Radeon 740M — the single longest
+     stall in the whole profile. So no frame is drawn at all until the shell has
+     been compiled off the animation loop (`WarmScene`), which happens while the
+     plate at the door is still up and the reader is watching a percentage. */
+  const [warm, setWarm] = useState(false);
+  /* Sharpness lives here, and it is chosen once.
+     Full tier opens at native DPR, capped at 2 — a 4K panel at DPR 2 is already
+     8M fragments per pass.
+     Lite opens at exactly ONE device pixel per CSS pixel. A 390-point phone
+     reports a ratio of three; at the old 1.25 the shop was pushing 640k
+     fragments through bloom and a grain pass on a chip that also has a browser
+     to run. At 1.0 it is 330k — and on a screen where the whole car is four
+     inches wide, the sharpness difference is not visible and the frame rate
+     is. */
+  const [dpr, setDpr] = useState(() =>
+    tier === "lite"
+      ? 1
+      : Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1.5 : 1.5, 2),
+  );
 
   useEffect(() => {
     // Park the loop when the tab goes away, wake it when it comes back. Driven
@@ -2042,6 +2356,39 @@ export function ShopWorld({ tier = "full" }: { tier?: WorldTier }) {
     const visibility = () => setAwake(document.visibilityState === "visible");
     document.addEventListener("visibilitychange", visibility);
     return () => document.removeEventListener("visibilitychange", visibility);
+  }, []);
+
+  useEffect(
+    () =>
+      subscribeBoot((s) => {
+        if (s.warm) setWarm(true);
+      }),
+    [],
+  );
+
+  /* WHAT NOT TO DO WHEN THE MACHINE IS STRUGGLING: change the resolution.
+     It is the obvious lever — fewer pixels, more frames — and on this post
+     chain it is a trap. Every resize rebuilds the composer's targets AND
+     re-translates its shaders, which on the Radeon test machine measured a
+     TWENTY-FOUR SECOND stall: the cure was fifty times worse than the disease,
+     and it fires exactly when the machine is already behind.
+     So the struggle signal spends what is free instead — the AO pass switches
+     off in `QualityRig`, which costs nothing to change and buys back the most
+     expensive pass in the chain. Resolution is chosen once, at mount, and left
+     alone. */
+  const onStruggle = useCallback((_struggling: boolean) => {}, []);
+
+  useEffect(() => {
+    // The meter at the door. Downloads own the first 70% — everything past
+    // that is compile, and compile is reported by the bays themselves.
+    const manager = THREE.DefaultLoadingManager;
+    reportBootProgress(0.06);
+    manager.onProgress = (_url, loaded, total) => {
+      reportBootProgress(0.06 + 0.64 * (loaded / Math.max(total, 1)));
+    };
+    return () => {
+      manager.onProgress = () => {};
+    };
   }, []);
 
   return (
@@ -2053,26 +2400,87 @@ export function ShopWorld({ tier = "full" }: { tier?: WorldTier }) {
       }`}
     >
       <Canvas
-        dpr={dpr}
-        frameloop={awake ? "always" : "never"}
+        /* A FIFTH OF A PIXEL PER PIXEL, UNTIL IT IS WARM.
+           The warm-up renders its first frames by hand, and those frames are
+           where the post chain is built: the AO pass alone re-draws the whole
+           building through a depth material, which is another fifty programs
+           for Direct3D to translate. At full resolution that came to a single
+           fifteen-second command buffer — past the Windows display watchdog,
+           which resets the driver and drops the WebGL context.
+           Shader translation does not care how many pixels it is asked to
+           cover, so the warm frames are rendered at a fifth of the resolution
+           and cost a fraction of the time. The moment the shop is warm the
+           canvas snaps back to full sharpness, and the only thing that first
+           real frame has left to do is allocate its buffers. */
+        dpr={warm ? dpr : 0.2}
+        frameloop={awake && warm ? "always" : "never"}
         gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
-        camera={{ fov: 40, near: 0.1, far: 130, position: STATIONS[0].cam }}
-        onCreated={({ gl }) => {
+        camera={{ fov: 40, near: 0.1, far: 130, position: CAM_START.toArray() }}
+        onCreated={({ gl, scene, camera }) => {
           // ACES rolls the highlights off, and every true emissive in the shop
           // (bulbs, neon, headlights) is `toneMapped={false}`, so exposure lifts
           // the ROOM without touching the light sources — the mood survives.
           gl.toneMappingExposure = 1.24;
+          /* THE SINGLE BIGGEST WIN IN THE WHOLE PROFILE.
+             three checks every program for link errors the first time it is
+             used, and that check calls `getProgramInfoLog` and
+             `getShaderInfoLog`. On Windows/ANGLE those calls block until D3D
+             has finished translating and linking the shader — a V8 CPU profile
+             of the old build put THIRTY-NINE SECONDS inside three's
+             `onFirstUse`, which is where the twelve- to twenty-one-second
+             frames came from. It is a development aid; a shipped build has no
+             use for the logs, and turning it off leaves the compile to the
+             driver's own parallel path. Kept on under `?perf` so a broken
+             shader still says so out loud in development. */
+          gl.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
+          // `?perf` hands the renderer to the console so a profiling run can
+          // read draw calls, triangles and program count without a dev build.
+          if (window.location.search.includes("perf")) {
+            console.log(
+              `[shop] renderer created @${Math.round(performance.now())} ms · dpr ${gl.getPixelRatio()}`,
+            );
+            gl.info.autoReset = false;
+            (window as unknown as { __shop?: unknown }).__shop = {
+              gl,
+              scene,
+              camera,
+              /** Per-frame draw calls and triangles, averaged over `frames`. */
+              cost: (frames = 30) =>
+                new Promise((resolve) => {
+                  gl.info.reset();
+                  let n = 0;
+                  const tick = () => {
+                    if (++n < frames) return requestAnimationFrame(tick);
+                    resolve({
+                      calls: Math.round(gl.info.render.calls / frames),
+                      triangles: Math.round(gl.info.render.triangles / frames),
+                      programs: gl.info.programs?.length ?? 0,
+                      geometries: gl.info.memory.geometries,
+                      textures: gl.info.memory.textures,
+                    });
+                  };
+                  requestAnimationFrame(tick);
+                }),
+              parallelCompile: Boolean(
+                gl.getContext().getExtension("KHR_parallel_shader_compile"),
+              ),
+            };
+          }
           requestAnimationFrame(() => setLit(true));
         }}
       >
-        {/* Degrade features, never frame rate (concept §2.4.4). Lite never
-            climbs past 1.3 — the headroom goes to frame rate, not pixels. */}
-        <PerformanceMonitor
-          onDecline={() => setDpr(tier === "lite" ? 0.8 : 1)}
-          onIncline={() => setDpr(tier === "lite" ? 1.3 : 1.75)}
-          onFallback={() => setDpr(tier === "lite" ? 0.8 : 1)}
-        />
-        <SceneContents tier={tier} />
+        {/* THE DPR MONITOR IS GONE, DELIBERATELY.
+            A `PerformanceMonitor` sat here walking the device pixel ratio up
+            and down with the frame rate, which is the textbook answer and, on
+            this post chain, a doom loop: every DPR change rebuilds the
+            composer's render targets and re-translates its shaders — measured
+            at up to twenty-four seconds of frozen main thread on the Radeon
+            test machine. It fired precisely when frames were already being
+            missed, which made the frames worse, which fired it again.
+            Resolution is now decided once from the tier and left alone; the
+            quality that flexes at runtime is the AO pass, which costs nothing
+            to switch. */}
+        <SceneContents tier={tier} onStruggle={onStruggle} />
       </Canvas>
 
       {/* Legibility scrim — the shop is a backdrop, the copy is the product.

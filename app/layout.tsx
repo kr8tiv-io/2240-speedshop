@@ -5,6 +5,7 @@ import { site } from "@/lib/site";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ShopWorldMount } from "@/components/ShopWorldMount";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import { businessSchema } from "@/lib/schema";
 
 const bebas = Bebas_Neue({ variable: "--font-bebas", subsets: ["latin"], weight: "400", display: "swap" });
@@ -63,11 +64,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </a>
         <Nav />
         {/* `relative` puts the whole document in front of the world layer and
-            keeps every link, button and field interactive. */}
-        <main id="main" className="relative flex-1">
-          {children}
-        </main>
-        <Footer />
+            keeps every link, button and field interactive. SmoothScroll —
+            Lenis plus the station snap — wraps the document here; the
+            component existed for a long time WITHOUT being mounted, which is
+            why the page always scrolled raw. */}
+        <SmoothScroll>
+          <main id="main" className="relative flex-1">
+            {children}
+          </main>
+          <Footer />
+        </SmoothScroll>
       </body>
     </html>
   );

@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { site } from "@/lib/site";
 
+// Metadata routes must declare staticness explicitly under `output: export`.
+export const dynamic = "force-static";
+
 /**
  * Crawler policy: allow everything, deliberately.
  *

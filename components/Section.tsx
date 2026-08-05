@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { StationReveal } from "./StationReveal";
 
 type SectionProps = {
   /** Anchor id, so in-page nav and deep links can target the block. */
@@ -70,6 +71,17 @@ export function Section({
     </>
   );
 
+  const panel =
+    surface === "scrim" ? (
+      <div
+        className={`scrim border border-rust/25 px-6 py-10 sm:px-10 sm:py-14 ${surfaceClassName}`.trim()}
+      >
+        {content}
+      </div>
+    ) : (
+      content
+    );
+
   return (
     <section
       id={id}
@@ -82,14 +94,13 @@ export function Section({
             between one station and the next. */}
         {divider ? <div className="weld mb-14" aria-hidden="true" /> : null}
 
-        {surface === "scrim" ? (
-          <div
-            className={`scrim border border-rust/25 px-6 py-10 sm:px-10 sm:py-14 ${surfaceClassName}`.trim()}
-          >
-            {content}
-          </div>
+        {/* Choreography: the panel holds invisible until the camera rail has
+            settled into this section's station, then rises. The hero (station
+            0) never gates — it IS the arrival. */}
+        {station !== undefined && station > 0 ? (
+          <StationReveal station={station}>{panel}</StationReveal>
         ) : (
-          content
+          panel
         )}
       </div>
     </section>

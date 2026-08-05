@@ -1,7 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { services, site } from "@/lib/site";
+
+/**
+ * `?service=` / `?lane=` → a service slug, forgivingly. Read on the CLIENT so
+ * the /quote page prerenders fully static (`output: export` needs it) while a
+ * link from a service page still lands with its lane pre-picked.
+ */
+function resolveService(raw: string | null): string {
+  if (!raw) return "";
+  const value = raw.trim().toLowerCase();
+  if (!value) return "";
+  const exact = services.find((s) => s.slug === value);
+  if (exact) return exact.slug;
+  const loose = services.find(
+    (s) =>
+      s.slug.includes(value) ||
+      s.nav.toLowerCase() === value ||
+      s.title.toLowerCase() === value ||
+      s.keyword.toLowerCase().includes(value),
+  );
+  return loose ? loose.slug : "";
+}
 
 /* ------------------------------------------------------------------ config */
 
@@ -288,8 +310,18 @@ function RadioCard({
 
 /* -------------------------------------------------------------- component */
 
-export function QuoteForm({ initialService = "" }: { initialService?: string }) {
-  const [form, setForm] = useState<FormState>({ ...EMPTY, service: initialService });
+export function QuoteForm({ initialService }: { initialService?: string }) {
+  const params = useSearchParams();
+  const preselected =
+    initialService ?? resolveService(params.get("service") ?? params.get("lane"));
+  const [form, setForm] = useState<FormState>({ ...EMPTY, service: preselected });
+
+  // Client-side navigation between lanes updates the param after mount; adopt
+  // it as long as the reader has not picked a lane by hand.
+  useEffect(() => {
+    if (preselected) setForm((f) => (f.service ? f : { ...f, service: preselected }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselected]);
   const [photos, setPhotos] = useState<PhotoRef[]>([]);
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Errors>({});
@@ -402,7 +434,7 @@ export function QuoteForm({ initialService = "" }: { initialService?: string }) 
   }
 
   function reset() {
-    setForm({ ...EMPTY, service: initialService });
+    setForm({ ...EMPTY, service: preselected });
     setPhotos([]);
     setErrors({});
     setSent(null);

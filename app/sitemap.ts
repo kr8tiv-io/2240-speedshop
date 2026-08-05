@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { site, services, areas } from "@/lib/site";
 
+// Metadata routes must declare staticness explicitly under `output: export`.
+export const dynamic = "force-static";
+
 /**
  * Build case-study slugs.
  * Keep this array in sync with the directories under `app/builds/`.

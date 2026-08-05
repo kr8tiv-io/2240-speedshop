@@ -94,21 +94,36 @@ export function InstagramGrid({
         </a>
       </div>
 
-      <ul className="mt-10 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      {/* ONE PIECE OF WALL, NOT TWELVE FRAMED PICTURES.
+          Every tile used to carry its own rusted border with a two-unit gap
+          around it, which on a dark page reads as a dozen little black-framed
+          squares floating in a grid — the exact "weird square frames" note.
+          Butted edge to edge they read as one contact sheet pinned to the
+          shop wall, and the feathered mask lets the bottom of it dissolve into
+          the section below instead of stopping on a hard rectangle. */}
+      <ul
+        className="ig-sheet mt-10 grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-6"
+        style={{
+          maskImage:
+            "linear-gradient(to bottom, transparent 0%, #000 7%, #000 82%, transparent 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent 0%, #000 7%, #000 82%, transparent 100%)",
+        }}
+      >
         {thumbs.map((t) => (
           <li key={t.file}>
             <a
               href={site.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative block aspect-square overflow-hidden border border-rust/25 transition-colors hover:border-neon-bloom/60"
+              className="group relative block aspect-square overflow-hidden"
             >
               <Image
                 src={`/shop/${t.file}`}
                 alt={t.alt}
                 fill
                 sizes="(min-width: 1024px) 12rem, (min-width: 640px) 33vw, 50vw"
-                className="graded object-cover transition-transform duration-500 group-hover:scale-105"
+                className="graded object-cover transition-[transform,filter] duration-500 group-hover:scale-[1.04] group-hover:brightness-110"
               />
             </a>
           </li>

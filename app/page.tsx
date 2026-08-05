@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { CinemaRail } from "@/components/CinemaRail";
 import { Hero } from "@/components/Hero";
+import { Preloader } from "@/components/Preloader";
 import { InstagramGrid } from "@/components/InstagramGrid";
 import { Section } from "@/components/Section";
 import { ServiceCard } from "@/components/ServiceCard";
@@ -98,6 +100,13 @@ const process = [
 export default function HomePage() {
   return (
     <div data-world-stage="homepage">
+      {/* The cold start: every model in the shop loads behind this plate so
+          the tour never hitches mid-scroll. */}
+      <Preloader />
+
+      {/* Film furniture: the travel letterbox and the seven-orbit index. */}
+      <CinemaRail />
+
       {/* STATION 0 — DOORWAY. Cold start, breakers in, the shop wakes up. */}
       <Hero />
 

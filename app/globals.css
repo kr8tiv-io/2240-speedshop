@@ -43,7 +43,14 @@ body {
   color: #f2f0ec;
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  /* `clip`, NOT `hidden`. On iOS Safari, `overflow-x: hidden` quietly turns
+     <body> into the scroll container: window.scrollY pins at 0 (which froze
+     the camera rail on real phones) and fixed negative-z-index layers — the
+     entire 3D shop — stop painting. `clip` cuts horizontal overflow without
+     creating a scroll container. The plain `hidden` line stays first as the
+     fallback for engines too old to know `clip`. */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -185,6 +192,158 @@ body:has([data-world-stage]) {
 /* One grade over every source photo so iPhone shots and pro shots share a world. */
 .graded {
   filter: brightness(0.9) contrast(1.08) saturate(0.92);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ORBIT CHOREOGRAPHY — the 2D half of the orbit-and-reveal.
+
+   The wrapper (StationReveal) rises as one plate when the camera comes around
+   its subject; these rules make the CONTENT of the plate arrive as a cascade —
+   eyebrow, headline, copy, actions — each a beat behind the last. Luxury is
+   mostly timing.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+@keyframes rise-child {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-rise="risen"] .scrim > * {
+  animation: rise-child 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+[data-rise="risen"] .scrim > :nth-child(2) { animation-delay: 110ms; }
+[data-rise="risen"] .scrim > :nth-child(3) { animation-delay: 220ms; }
+[data-rise="risen"] .scrim > :nth-child(4) { animation-delay: 330ms; }
+[data-rise="risen"] .scrim > :nth-child(5) { animation-delay: 430ms; }
+[data-rise="risen"] .scrim > :nth-child(n + 6) { animation-delay: 520ms; }
+
+/* ── The callout — a spec-sheet leader pulled out of the subject ────────────
+   Dot ignites at the subject's edge of the frame, line draws down, panel
+   scales up its length. The line's scaleY and the dot's opacity are driven
+   per-frame from the rail; everything here is just geometry. */
+
+.callout {
+  position: absolute;
+  left: 18%;
+  top: -96px;
+  height: 96px;
+  width: 1px;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .callout {
+    top: -64px;
+    height: 64px;
+    left: 12%;
+  }
+}
+
+.callout-dot {
+  position: absolute;
+  top: -5px;
+  left: -3.5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e04545;
+  box-shadow:
+    0 0 8px rgba(224, 69, 69, 0.9),
+    0 0 22px rgba(224, 69, 69, 0.5);
+  opacity: 0;
+}
+
+.callout-line {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(224, 69, 69, 0.9),
+    rgba(224, 69, 69, 0.35) 55%,
+    rgba(199, 201, 204, 0.25)
+  );
+  transform: scaleY(0);
+  transform-origin: top;
+}
+
+/* ── Letterbox — film language for the travels ──────────────────────────────
+   Two bars ride in while the camera is genuinely moving between subjects and
+   lift as it settles into an orbit. Pointer-transparent, under the nav. */
+
+.cine-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 5.5vh;
+  max-height: 62px;
+  background: #050507;
+  z-index: 30;
+  pointer-events: none;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cine-bar-top {
+  top: 0;
+  transform: translateY(-101%);
+  border-bottom: 1px solid rgba(242, 240, 236, 0.05);
+}
+
+.cine-bar-bottom {
+  bottom: 0;
+  transform: translateY(101%);
+  border-top: 1px solid rgba(242, 240, 236, 0.05);
+}
+
+.cine-on .cine-bar-top,
+.cine-on .cine-bar-bottom {
+  transform: translateY(0);
+}
+
+/* ── The station rail — a film-strip index of the seven orbits ────────────── */
+
+.station-rail button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.station-rail .tick {
+  display: block;
+  width: 18px;
+  height: 1px;
+  background: rgba(199, 201, 204, 0.4);
+  transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1), background-color 300ms ease;
+}
+
+.station-rail .label {
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 260ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.station-rail button:hover .label,
+.station-rail button[data-active="true"] .label {
+  opacity: 1;
+  transform: none;
+}
+
+.station-rail button:hover .tick {
+  width: 26px;
+  background: rgba(242, 240, 236, 0.75);
+}
+
+.station-rail button[data-active="true"] .tick {
+  width: 34px;
+  background: #e04545;
+  box-shadow: 0 0 8px rgba(224, 69, 69, 0.7);
 }
 
 :focus-visible {

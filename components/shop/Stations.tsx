@@ -211,9 +211,16 @@ export function StationDoorway() {
       {/* Pallet of parts against the left wall */}
       <Placed url={M.pallet} size={1.2} position={[-7.4, 0, 4.6]} yaw={0.22} shadow={0.62} />
 
-      {/* Prewar hotrod donor waiting its turn against the left wall — the
-          establishing shot used to run out of shop halfway down its left side. */}
-      <Vehicle url={M.prewarDonor} size={4.5} position={[-5.9, 0, -2.6]} yaw={0.38} />
+      {/* THE FIRST THING ANYONE SEES: a finished build, gleaming, revolving on
+          the showroom turntable square in the establishing frame. The landing
+          sells the dream result; the rust lives deeper in the scroll where
+          "before" belongs. */}
+      {/* Half a metre deeper and further left than it was: the station-1 hold
+          now pushes toward this spot, and the old position put the revolving
+          car's swing circle inside the camera's dolly line. */}
+      <Turntable position={[-1.1, 0, -2.75]} speed={0.13}>
+        <Vehicle url={M.charger} size={5.0} position={[0, 0, 0]} shadow={false} />
+      </Turntable>
 
       {/* A wheel and a tyre left where they were rolled */}
       <Placed
@@ -232,6 +239,47 @@ export function StationDoorway() {
         yaw={0.1}
         tilt={[0, 0.2]}
         shadow={0.26}
+      />
+
+      {/* Copper custom parked at the left wall — a second finished car in the
+          establishing frame, so the first thing the reader sees is a shop with
+          MORE than one build worth looking at. */}
+      <Vehicle
+        url={M.camaro}
+        size={4.75}
+        position={[-6.7, 0, -1.3]}
+        yaw={-0.16}
+        tint="#6b3b1e"
+      />
+
+      {/* Fresh crate motor on a pallet by the right wall, waiting on its car —
+          the first engine in the scroll shows up before the first section does. */}
+      <Placed url={M.pallet} size={1.2} position={[7.5, 0, 2.5]} yaw={-0.24} shadow={0.62} />
+      <V8Engine position={[7.5, 0.15, 2.5]} yaw={-1.15} scale={0.92} headers={false} />
+      <Placed
+        url={M.jerryCan}
+        size={0.42}
+        axis="y"
+        position={[6.6, 0, 3.4]}
+        yaw={0.8}
+        shadow={0.22}
+      />
+      <Placed
+        url={M.jerrycanGreen}
+        size={0.5}
+        axis="y"
+        position={[7.3, 0, 5.5]}
+        yaw={-0.5}
+        shadow={0.26}
+      />
+      <Placed
+        url={M.wheelMag}
+        size={0.62}
+        orient="disc"
+        position={[-5.5, 0, 3.6]}
+        yaw={0.5}
+        tilt={[0, 0.24]}
+        shadow={0.3}
       />
 
       <HoseReel position={[-3.4, CEIL - 1.5, 2.0]} />
@@ -264,12 +312,14 @@ export function StationHoist() {
         />
       </TwoPostLift>
 
-      {/* Second bay, second hoist — the old cab-over up at chest height with a
-          bare shell's worth of work left in it. Two lifts is what makes the
-          room read as a working shop rather than one photogenic bay. */}
+      {/* Second bay, second hoist — a hood-up coupe mid-service. Two lifts is
+          what makes the room read as a working shop rather than one
+          photogenic bay. (The boxy cab-over that used to ride here read as
+          low-poly at this distance — the coupe with its hood up carries real
+          engine-bay detail AND makes mechanical sense on a moving lift.) */}
       <BayOutline centre={[4.1, -9.8]} width={4.4} depth={6.2} yaw={-0.12} />
-      {/* This one is WORKING: the cab-over rides slowly between knee and chest
-          height on a half-minute cycle — the single strongest life sign in the
+      {/* This one is WORKING: it rides slowly between knee and chest height
+          on a half-minute cycle — the single strongest life sign in the
           establishing shot. */}
       <TwoPostLift
         position={[4.1, 0, -9.8]}
@@ -277,7 +327,13 @@ export function StationHoist() {
         deck={1.26}
         travel={{ min: 0.42, max: 1.62, period: 36 }}
       >
-        <Vehicle url={M.flatnose} size={5.3} position={[0, 0, 0]} shadow={false} />
+        <Vehicle
+          url={M.coupeHoodUp}
+          size={5.0}
+          position={[0, 0, 0]}
+          shadow={false}
+          tint="#3d4653"
+        />
       </TwoPostLift>
       <Placed
         url={M.wheelStack}
@@ -312,6 +368,28 @@ export function StationHoist() {
       />
       <FloorJack position={[2.2, 0, -11.9]} yaw={0.7} />
       <DropLight position={[4.3, 2.7, -9.2]} cord={2.1} power={11} delay={0.85} />
+
+      {/* The coupe's motor, already out and on a stand at the right wall —
+          the hoist bay tells the whole story: car up, engine out, job live. */}
+      <EngineStand position={[7.3, 0, -8.9]} yaw={-1.9} blower={false} />
+      {/* Breaker box on the wall behind the bay — photogrammetry piece the
+          orbit's east sweep passes straight by. */}
+      <Placed
+        url={M.powerBox}
+        size={0.95}
+        axis="y"
+        anchor="center"
+        position={[HALF_W - 0.28, 1.5, -4.9]}
+        yaw={-Math.PI / 2}
+      />
+      <Placed
+        url={M.jerryCan}
+        size={0.42}
+        axis="y"
+        position={[-4.4, 0, -9.2]}
+        yaw={-0.6}
+        shadow={0.22}
+      />
 
       {/* The job, underneath */}
       <Creeper position={[-4.3, 0, -5.6]} yaw={0.62} />
@@ -394,6 +472,16 @@ export function StationEngineRoom() {
       <EngineStand position={[3.3, 0, -17.1]} yaw={1.18} blower />
       <DropLight position={[4.3, 2.6, -15.4]} cord={2.4} power={10} delay={0.9} />
 
+      {/* A second build on a second stand behind the hero — an engine ROOM has
+          a queue, not a single motor. Bare four-barrel, headers off. */}
+      <EngineStand position={[2.7, 0, -19.9]} yaw={-0.72} blower={false} />
+      {/* And a short block strapped to a pallet, fresh back from the machine
+          shop. LEFT of the rail on purpose: the first placement sat almost on
+          the station-2 sight line, filled the foreground and hid the hero
+          stand behind its own valve covers. */}
+      <Placed url={M.pallet} size={1.2} position={[-3.3, 0, -16.4]} yaw={0.9} shadow={0.62} />
+      <V8Engine position={[-3.3, 0.15, -16.4]} yaw={0.35} scale={0.88} headers={false} />
+
       {/* Crane mid-lift, a bare motor hanging off the chain, reaching over the
           coupe's empty bay. Parked on the far side of the bay so its boom does
           not swing through the fab-corner shot at the next station. */}
@@ -404,6 +492,27 @@ export function StationEngineRoom() {
 
       {/* The car the motor came out of */}
       <Vehicle url={M.coupeHoodUp} size={5.0} position={[5.6, 0, -21.7]} yaw={0.34} />
+
+      {/* Finished custom waiting for pickup, nosed at the left wall under the
+          cool rim light — gold over the dark cladding. */}
+      <Vehicle
+        url={M.camaro}
+        size={4.75}
+        position={[-6.2, 0, -14.6]}
+        yaw={1.32}
+        tint="#8a6a24"
+      />
+
+      {/* Second customer car queued behind it down the left wall — plum over
+          black, nose angled at the cladding the way cars actually get parked
+          when the shop is full. */}
+      <Vehicle
+        url={M.charger}
+        size={5.25}
+        position={[-6.2, 0, -19.1]}
+        yaw={1.18}
+        tint="#46325e"
+      />
 
       {/* Clean assembly bench down the wall, with the small stuff on it */}
       <Workbench position={[HALF_W - 0.62, 0, -15.4]} yaw={-Math.PI / 2} length={3.4} />
@@ -435,6 +544,23 @@ export function StationEngineRoom() {
         axis="y"
         position={[HALF_W - 0.7, 0.955, -16.3]}
         yaw={0.2}
+      />
+      <Placed
+        url={M.metalJug}
+        size={0.34}
+        axis="y"
+        position={[HALF_W - 0.66, 0.955, -13.95]}
+        yaw={-0.7}
+      />
+      {/* Industrial pipe run against the wall past the bench — the big
+          photogrammetry backdrop for the travel toward the fab corner. */}
+      <Placed
+        url={M.pipesIndustrial}
+        size={2.6}
+        position={[HALF_W - 0.5, 0, -21.6]}
+        yaw={-Math.PI / 2}
+        shadow={1.1}
+        shadowSpread={[0.4, 1]}
       />
       <Placed
         url={M.jumperCables}
@@ -491,6 +617,14 @@ export function StationEngineRoom() {
       {/* Drums, a crate and a pallet of boxes filling the dead floor */}
       <Placed url={M.barrel} size={0.9} axis="y" position={[7.7, 0, -13.0]} yaw={0.5} shadow={0.4} />
       <Placed url={M.barrel} size={0.9} axis="y" position={[7.2, 0, -12.3]} yaw={-1.1} shadow={0.4} />
+      <Placed
+        url={M.gasTank}
+        size={0.6}
+        axis="y"
+        position={[6.8, 0, -13.4]}
+        yaw={0.9}
+        shadow={0.3}
+      />
       <Placed url={M.crate} size={0.78} position={[1.2, 0, -14.4]} yaw={0.42} shadow={0.5} />
       <Placed url={M.crate} size={0.66} position={[1.45, 0.62, -14.2]} yaw={-0.2} shadow={false} />
       <Placed url={M.pallet} size={1.2} position={[7.4, 0, -22.6]} yaw={-0.3} shadow={0.62} />
@@ -613,6 +747,59 @@ export function StationFabCorner() {
       <Workbench position={[-(HALF_W - 0.62), 0, -27.2]} yaw={Math.PI / 2} length={4.4} />
       <ToolWall />
 
+      {/* The vice bolted to the bench end — the one tool that defines a fab
+          bench, straight out of the PBR library. */}
+      <Placed
+        url={M.benchVice}
+        size={0.44}
+        position={[-(HALF_W - 0.66), 0.955, -25.5]}
+        yaw={Math.PI / 2 + 0.35}
+      />
+      {/* Bench-top spend where the primer-shell orbit passes closest: a spray
+          can, a real adjustable wrench, an ammo box of fittings under the
+          light, and a caged work lamp hung over the wall. */}
+      <Placed
+        url={M.lubricantSpray}
+        size={0.26}
+        axis="y"
+        position={[-(HALF_W - 0.7), 0.955, -26.5]}
+        yaw={1.9}
+      />
+      <Placed
+        url={M.wrenchAdjustable}
+        size={0.42}
+        position={[-(HALF_W - 0.72), 0.955, -28.2]}
+        yaw={1.15}
+      />
+      <Placed
+        url={M.ammoBox}
+        size={0.55}
+        position={[-(HALF_W - 1.0), 0, -24.5]}
+        yaw={0.4}
+        shadow={0.32}
+      />
+      <Placed
+        url={M.lampCaged}
+        size={1.0}
+        axis="y"
+        anchor="center"
+        position={[-(HALF_W - 1.4), 3.1, -27.9]}
+      />
+
+      {/* Fourth hoist, right wall, mid-shop: a steel-blue custom at chest
+          height, visible deep in the engine-room frame and again on the travel
+          to the tuning bay. Four lifts is a shop with a waiting list. */}
+      <TwoPostLift position={[6.5, 0, -26.0]} yaw={-0.08} deck={1.35}>
+        <Vehicle
+          url={M.charger}
+          size={5.25}
+          position={[0, 0, 0]}
+          shadow={false}
+          tint="#24455e"
+        />
+      </TwoPostLift>
+      <FloorJack position={[4.6, 0, -24.2]} yaw={1.8} />
+
       {/* Kenney's anvil and grinder benches, at the end of the run */}
       <Placed
         url={M.benchAnvil}
@@ -628,6 +815,10 @@ export function StationFabCorner() {
         yaw={Math.PI / 2 - 0.04}
         shadow={0.85}
       />
+
+      {/* The prewar donor waiting its turn — "before" belongs HERE, deep in
+          the build-process beat, never in the first frame. */}
+      <Vehicle url={M.prewarDonor} size={4.5} position={[-6.4, 0, -21.8]} yaw={-0.2} />
 
       {/* The welding cart, bottles chained upright, parked at the arc */}
       <Placed
@@ -647,14 +838,16 @@ export function StationFabCorner() {
         shadow={0.26}
       />
 
-      {/* Work light on its stand, aimed into the primer shell's door aperture */}
+      {/* A drop light hung over the shell and the body man's toolbox on the
+          floor beside it — the light a panel actually gets worked under. */}
+      <DropLight position={[-3.6, 2.7, -29.6]} cord={2.2} power={12} delay={1.0} />
       <Placed
-        url={M.searchlight}
-        size={1.35}
+        url={M.toolboxMetal}
+        size={0.6}
         axis="y"
-        position={[-2.6, 0, -28.9]}
-        yaw={2.5}
-        shadow={0.5}
+        position={[-2.7, 0, -28.7]}
+        yaw={0.7}
+        shadow={0.4}
       />
       <Placed
         url={M.barrelC}
@@ -690,6 +883,17 @@ export function StationFabCorner() {
 
       {/* The rusted donor shell, back in the dark */}
       <Vehicle url={M.rustedShell} size={4.4} position={[-6.9, 0, -34.6]} yaw={-0.42} />
+
+      {/* Bare tyre off the donor, leaning where it was rolled */}
+      <Placed
+        url={M.tyreBare}
+        size={0.7}
+        orient="disc"
+        position={[-7.5, 0, -32.6]}
+        yaw={0.6}
+        tilt={[0, 0.26]}
+        shadow={0.32}
+      />
 
       {/* Steel stock leaning in the corner */}
       {[0, 1, 2, 3, 4].map((i) => (
@@ -728,13 +932,18 @@ export function StationTuningBay() {
   return (
     <group>
       <DynoRollers position={[0.9, 0, -37.4]} />
-      {/* Strapped down on the rollers, sitting in the valley between the drums */}
+      {/* Strapped down on the rollers, sitting in the valley between the
+          drums. The Challenger body, not the camaro: its tail is a clean
+          fastback with real lamps, so the station-4 orbit's close pass over
+          the rear reads as bodywork — the camaro's low-poly ducktail plus the
+          old duct route was the "something bolted to the back" artifact. */}
       <Vehicle
-        url={M.camaro}
-        size={4.75}
+        url={M.challenger}
+        size={5.0}
         position={[0.9, 0.25, -37.4]}
         yaw={0.02}
         shadow={false}
+        tint="#8f2222"
       />
 
       {/* Gauge board on the wall */}
@@ -786,6 +995,14 @@ export function StationTuningBay() {
         shadow={0.6}
       />
       <Placed url={M.stool} size={0.74} axis="y" position={[-4.0, 0, -34.2]} yaw={-0.4} shadow={0.34} />
+      <Placed
+        url={M.stoolB}
+        size={0.74}
+        axis="y"
+        position={[-5.7, 0, -36.5]}
+        yaw={1.6}
+        shadow={0.34}
+      />
       <Placed url={M.gasCan} size={0.36} axis="y" position={[-6.4, 0, -35.4]} yaw={0.9} shadow={0.24} />
       <Placed url={M.boxes} size={0.95} position={[6.6, 0, -33.0]} yaw={0.35} shadow={0.5} />
       <Placed
@@ -806,6 +1023,33 @@ export function StationTuningBay() {
       />
 
       <DropLight position={[4.4, 3.0, -40.4]} cord={2.4} power={9} delay={1.1} />
+
+      {/* Next in line for the rollers: the gold '50s drop-top parked past the
+          dyno, deep in the station-4 frame. A tuning bay with a QUEUE. */}
+      <Vehicle
+        url={M.convertible}
+        size={4.9}
+        position={[5.7, 0, -38.7]}
+        yaw={0.5}
+        tint="#7c6136"
+      />
+      <Placed
+        url={M.gasTank}
+        size={0.6}
+        axis="y"
+        position={[-6.8, 0, -34.5]}
+        yaw={-0.4}
+        shadow={0.3}
+      />
+      <Placed
+        url={M.wheelMag}
+        size={0.62}
+        orient="disc"
+        position={[3.5, 0, -34.9]}
+        yaw={-0.3}
+        tilt={[0, -0.22]}
+        shadow={0.3}
+      />
 
       <FloorStain radius={2.2} position={[0.9, 0.013, -40.6]} spread={[1, 0.5]} opacity={0.26} />
     </group>
@@ -941,6 +1185,11 @@ export function StationOffice() {
         yaw={0.35}
         shadow={0.62}
       />
+
+      {/* A customer's motor on a stand outside the office — pulled, tagged and
+          waiting on parts. Low enough to sit under the gallery sightline while
+          giving the office shot a foreground. */}
+      <EngineStand position={[-5.3, 0, -41.7]} yaw={1.05} blower={false} />
       <Placed
         url={M.palletJack}
         size={1.45}
@@ -985,12 +1234,13 @@ export function StationOffice() {
 
       <CeilingFan position={[-0.4, CEIL - 0.85, -42.6]} speed={2.6} />
 
-      {/* Roll cab abandoned mid-room, catching the wall wash */}
+      {/* Roll cab abandoned mid-room, catching the wall wash. Nudged off the
+          engine-stand orbit: the old spot sat exactly on the camera's arc. */}
       <Placed
         url={M.toolCart}
         size={0.95}
         axis="y"
-        position={[-3.1, 0, -43.4]}
+        position={[-1.9, 0, -44.3]}
         yaw={-0.7}
         shadow={0.52}
       />
@@ -1032,12 +1282,16 @@ export function StationOffice() {
 export function StationDoor() {
   return (
     <group>
-      {/* Finished, revolving on the showroom turntable — off to one side so
-          the opening still reads as a door with the city framed inside it,
-          and the last thing the reader sees is the product, turning. */}
-      <Turntable position={[-3.3, 0, -52.4]} speed={0.13}>
-        <Vehicle url={M.charger} size={5.0} position={[0, 0, 0]} shadow={false} />
-      </Turntable>
+      {/* Finished and collected, nosed at the night — off to one side so the
+          opening still reads as a door with the city framed inside it. (The
+          turntable moved to the doorway: the showpiece now OPENS the site.) */}
+      <Vehicle
+        url={M.challenger}
+        size={5.1}
+        position={[-3.4, 0, -53.2]}
+        yaw={0.24}
+        tint="#1f4d33"
+      />
 
       <Placed
         url={M.drumsRow}
@@ -1089,8 +1343,14 @@ export function StationDoor() {
              and stock leaning in the near corner is what turns a bright
              rectangle into a doorway. ── */}
 
-      {/* Old flatnose parked out on the wet apron, lit only by the street */}
-      <Vehicle url={M.flatnose} size={5.6} position={[9.6, 0, -66.5]} yaw={1.42} />
+      {/* Classic pickup parked out on the wet apron, lit only by the street */}
+      <Vehicle
+        url={M.pickup}
+        size={5.3}
+        position={[9.6, 0, -66.5]}
+        yaw={1.42}
+        tint="#2e4661"
+      />
 
       {/* Customers' classics on the back lot — clones of cars the reader has
           already paid the download for, repainted so the lot reads as three
@@ -1115,6 +1375,34 @@ export function StationDoor() {
         position={[3.8, 0, -71.5]}
         yaw={1.88}
         tint="#5a2330"
+      />
+      <Vehicle
+        url={M.convertible}
+        size={4.9}
+        position={[12.8, 0, -63.2]}
+        yaw={0.68}
+        tint="#b09a5c"
+      />
+      <Vehicle
+        url={M.pickup}
+        size={5.15}
+        position={[-16.2, 0, -64.8]}
+        yaw={-1.08}
+        tint="#7a2020"
+      />
+      <Vehicle
+        url={M.challenger}
+        size={5.1}
+        position={[18.8, 0, -67.6]}
+        yaw={-1.35}
+        tint="#8a7440"
+      />
+      <Vehicle
+        url={M.charger}
+        size={5.25}
+        position={[-22.6, 0, -66.6]}
+        yaw={-0.85}
+        tint="#44464e"
       />
 
       {/* Ramps and a truck tyre stacked where the last job left them */}
@@ -1161,14 +1449,15 @@ export function StationDoor() {
         yaw={-0.7}
         shadow={0.3}
       />
+      {/* Worn parts rack against the wall — customers' bits staged by the door */}
       <Placed
-        url={M.pipesStock}
-        size={2.6}
+        url={M.rack}
+        size={2.05}
         axis="y"
-        position={[-8.0, 0, -46.4]}
-        yaw={0.2}
-        tilt={[0, 0.16]}
-        shadow={0.42}
+        position={[-8.1, 0, -46.6]}
+        yaw={Math.PI / 2 - 0.06}
+        shadow={0.9}
+        shadowSpread={[0.45, 1]}
       />
       <Placed url={M.pallet} size={1.2} position={[-7.2, 0, -55.0]} yaw={-0.5} shadow={0.62} />
       <Placed url={M.boxes} size={0.9} position={[-7.2, 0.14, -55.0]} yaw={0.8} shadow={false} />

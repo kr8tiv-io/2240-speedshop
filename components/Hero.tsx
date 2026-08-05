@@ -32,14 +32,16 @@ export function Hero() {
         {/* The plate: the still and its grade. Dissolves only when the 3D shop
             behind it is actually running. */}
         <div className="absolute inset-0" style={{ opacity: "var(--hero-reveal, 1)" }}>
+          {/* The plate leads with a FINISHED build — the aspirational after,
+              never a project car. Rust lives deeper in the scroll. */}
           <Image
-            src="/shop/car-d100-truck.jpg"
-            alt="1960s Dodge D100 pickup built by 2240 Speed Shop, the customs and classics garage in Edmonton, Alberta"
+            src="/shop/car-blue-pickup.jpg"
+            alt="Gleaming finished blue pickup restomod built by 2240 Speed Shop, the customs and classics garage in Edmonton, Alberta"
             fill
             priority
             fetchPriority="high"
             sizes="100vw"
-            className="graded object-cover object-[50%_62%]"
+            className="graded object-cover object-[46%_55%]"
           />
 
           {/* Night grade: pull the frame down to bay-black so the copy stays legible. */}
