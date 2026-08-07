@@ -204,6 +204,104 @@ export function primeLoaders(_gl: THREE.WebGLRenderer) {
      decoder that does would be wired in. */
 }
 
+/**
+ * A GLTF loader that will not parse while the reader is moving.
+ *
+ * Everything else in the streaming path is paced — when a bay mounts, when it
+ * compiles, when it is first drawn. The one thing that was not is the moment a
+ * FILE ARRIVES: parsing a GLB is main-thread work, and it happens whenever the
+ * network says so, which on a phone is squarely in the middle of a swipe. A
+ * profile of the live site found exactly that — the longest frames sitting next
+ * to `arrived car-muscle-challenger.glb`.
+ *
+ * Splitting the two halves fixes it for every model at once rather than for the
+ * ones I happened to think of: the bytes are fetched the moment they are asked
+ * for (network costs the main thread nothing), and the parse waits for the
+ * reader to be still. It is the general form of the fix, so a model added next
+ * year gets it for free.
+ */
+/* ── One parse at a time, ever ──────────────────────────────────────────────
+   Waiting for stillness is not enough on its own. Half a dozen files land
+   within a second of each other, every one of their loaders sees the same
+   quiet moment, and they all start parsing in the same tick — six models'
+   worth of main-thread work chained back to back, which a profile caught as a
+   SIX-SECOND frame with the reader's finger on the glass.
+
+   The queue makes it one at a time: each parse waits for stillness of its own,
+   runs alone, and hands the thread back before the next begins. The blocking
+   unit stops being "however many files the network happened to deliver
+   together" and becomes "one model" — which is the most a reader can ever be
+   made to wait for, no matter how the network behaves. */
+
+let parseQueue: Promise<unknown> = Promise.resolve();
+
+function queueParse<T>(run: () => Promise<T>): Promise<T> {
+  const next = parseQueue.then(async () => {
+    await untilIdle(9000);
+    const result = await run();
+    // Hand the frame back before the next model gets its turn.
+    await wait(0);
+    return result;
+  });
+  // A failed parse must not wedge the queue behind it.
+  parseQueue = next.catch(() => undefined);
+  return next as Promise<T>;
+}
+
+class IdleGLTFLoader extends GLTFLoader {
+  load(
+    url: string,
+    onLoad: (gltf: GLTF) => void,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (error: unknown) => void,
+  ) {
+    const file = new THREE.FileLoader(this.manager);
+    file.setResponseType("arraybuffer");
+    file.setRequestHeader(this.requestHeader);
+    file.setPath(this.path);
+    file.setWithCredentials(this.withCredentials);
+
+    file.load(
+      url,
+      async (data) => {
+        try {
+          // Bytes are here. The expensive half waits its turn in the queue —
+          // for stillness, and for every other model to be finished with the
+          // main thread.
+          await queueParse(
+            () =>
+              new Promise<GLTF>((resolve, reject) => {
+                const started = DEBUG ? performance.now() : 0;
+                this.parse(
+                  data as ArrayBuffer,
+                  this.resourcePath || this.path || "",
+                  (gltf) => {
+                    if (DEBUG) {
+                      const ms = Math.round(performance.now() - started);
+                      if (ms > 30) console.log(`[shop] parse ${url.split("/").pop()} ${ms} ms`);
+                    }
+                    onLoad(gltf);
+                    resolve(gltf);
+                  },
+                  (error) => {
+                    (onError as ((e: unknown) => void) | undefined)?.(error);
+                    reject(error);
+                  },
+                );
+              }),
+          );
+        } catch (error) {
+          if (onError) onError(error);
+          else console.error(error);
+          this.manager.itemError(url);
+        }
+      },
+      onProgress,
+      onError as (event: unknown) => void,
+    );
+  }
+}
+
 function extendLoader(loader: GLTFLoader) {
   loader.setMeshoptDecoder(MeshoptDecoder);
 }
@@ -693,15 +791,13 @@ function orientOf(box: THREE.Box3, orient: Orient): THREE.Euler {
 }
 
 function useShopModel(url: string) {
-  const gltf = useLoader(GLTFLoader, url, extendLoader) as unknown as GLTF;
-  if (DEBUG && !GRADED.has(gltf.scene)) {
-    const t0 = performance.now();
-    grade(gltf.scene, finishOf(url));
-    const ms = performance.now() - t0;
-    if (ms > 12) console.log(`[shop] grade ${url.split("/").pop()} ${Math.round(ms)} ms`);
-  } else {
-    grade(gltf.scene, finishOf(url));
-  }
+  const gltf = useLoader(IdleGLTFLoader, url, extendLoader) as unknown as GLTF;
+  // Grading is idempotent and guarded by a WeakSet, so it is safe here — but
+  // nothing else may be: the debug timing that used to wrap this called
+  // `performance.now()` during render, which is exactly the impurity React's
+  // own lint rule is there to catch. The parse timings in `IdleGLTFLoader`
+  // cover the same ground from a place where measuring is legal.
+  grade(gltf.scene, finishOf(url));
   return gltf.scene;
 }
 
@@ -953,12 +1049,21 @@ const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve,
    too long goes ahead regardless — a reader who never stops still has to get
    a shop eventually. */
 
-/** Resolves true if the reader actually stopped, false if patience ran out. */
-async function untilIdle(patience = 15000) {
+/**
+ * Resolves true if the reader actually stopped, false if patience ran out.
+ *
+ * PATIENCE IS SHORT ON PURPOSE. It used to be nine seconds, which assumed the
+ * motion signal was trustworthy. It was not — and because every slice of every
+ * warm-up waited on it, one bad signal turned a thirty-second stream into one
+ * that never finished, with the shop hidden behind it the whole time. Just
+ * under a second is long enough to sit out a flick and short enough that being
+ * wrong costs a frame instead of the entire scene.
+ */
+async function untilIdle(patience = 900) {
   const deadline = performance.now() + patience;
-  while (stillFor() < 220) {
+  while (stillFor() < 200) {
     if (performance.now() > deadline) return false;
-    await wait(90);
+    await wait(60);
   }
   return true;
 }
@@ -1045,19 +1150,55 @@ async function warmUp(
  * same bill in slices small enough that nothing notices — and, crucially, it
  * happens while the bay is still two stations away from the camera.
  */
-async function warmThroughComposer(node: THREE.Object3D, batch = 6) {
+async function warmThroughComposer(node: THREE.Object3D, label = "") {
   const drawables: THREE.Object3D[] = [];
+  const mirrors: THREE.Object3D[] = [];
   node.traverse((child) => {
     const mesh = child as THREE.Mesh;
-    if (mesh.isMesh || (child as THREE.Points).isPoints || (child as THREE.Line).isLine) {
-      drawables.push(child);
-    }
+    if (!(mesh.isMesh || (child as THREE.Points).isPoints || (child as THREE.Line).isLine)) return;
+    /* The wet-concrete floor renders the entire shop a second time into its
+       own buffer, at its own resolution, every frame it is visible. Left in
+       the queue it makes every remaining warm frame expensive; it goes last,
+       so it costs exactly one. */
+    const material = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as
+      | THREE.Material
+      | undefined;
+    const defines = (material as { defines?: Record<string, unknown> } | undefined)?.defines;
+    if (defines && ("USE_BLUR" in defines || "USE_DEPTH" in defines)) mirrors.push(child);
+    else drawables.push(child);
   });
+  drawables.push(...mirrors);
   if (drawables.length === 0) return;
 
   const was = drawables.map((object) => object.visible);
   const wasGroup = node.visible;
-  for (const object of drawables) object.visible = false;
+
+  /* THE DEADLINE IS THE WHOLE SAFETY PROPERTY.
+     This routine hides a subtree and hands it back a few meshes at a time, so
+     the driver's shader work is spread over many small frames instead of one
+     enormous one. That is a fine mechanism and a terrible contract: the scene
+     is INVISIBLE until the loop finishes, so anything that stops the loop
+     finishing is a black screen. Which is exactly what shipped — a motion
+     signal that never went quiet, nine seconds of patience per slice, and a
+     warm-up that would have taken hours, with the shop hidden behind it.
+     Now the pacing is a courtesy with a hard time limit. Past it, everything
+     is restored and whatever is left compiles the ordinary way, costing a
+     frame. A slow frame is a bad moment; an empty shop is a broken site. */
+  const deadline = performance.now() + (phoneTier ? 4000 : 6000);
+  const restore = () => {
+    for (let k = 0; k < drawables.length; k++) {
+      drawables[k].visible = was[k];
+      delete drawables[k].userData.pacedHidden;
+    }
+    node.visible = wasGroup;
+  };
+
+  for (const object of drawables) {
+    object.visible = false;
+    // Marked so the watchdog can tell "the warm-up hid this" from "this is
+    // meant to be hidden", and put back only the former.
+    object.userData.pacedHidden = true;
+  }
   node.visible = true;
 
   const step = () => {
@@ -1068,24 +1209,63 @@ async function warmThroughComposer(node: THREE.Object3D, batch = 6) {
     }
   };
 
+  /* SELF-TUNING BATCH SIZE.
+     A fixed batch is a guess about a machine you have never met. Six meshes is
+     nothing on a desktop and, when those six happen to introduce five new
+     shader programs to a phone's driver, it is a three-and-a-half-second
+     frame — which a profile caught, with a finger on the glass.
+     So the loop watches itself: it aims for a slice that costs about a frame,
+     halves the batch whenever it overshoots, and grows it back slowly when the
+     work turns out to be cheap. It ends up small exactly where the work is
+     expensive and large where it is not, on hardware nobody tested it on. */
+  /* START AT ONE AND EARN THE REST.
+     A controller that starts optimistic pays for its optimism with a real
+     stall before it corrects — the profile caught a 2.6-second slice being
+     followed, too late, by "batch 1". Starting at a single mesh means the
+     first slice cannot hurt, and the loop grows only where the evidence says
+     there is headroom. On a desktop it reaches its ceiling within a second;
+     on a phone in a heavy bay it simply never does, which is the right
+     answer. */
+  const BUDGET = 120;
+  let size = 1;
   let i = 0;
+
   while (i < drawables.length) {
-    /* Wait for the reader to stop. If they never do — a long uninterrupted
-       flick down the page — the bay still has to arrive, so the work goes
-       ahead ONE mesh at a time instead of six, with a frame between each.
-       Thin enough that a forced slice costs a frame, not a stutter. */
-    const idle = await untilIdle();
-    const size = idle ? batch : 1;
-    for (let k = i; k < Math.min(i + size, drawables.length); k++) {
-      drawables[k].visible = was[k];
+    if (performance.now() > deadline) {
+      if (DEBUG) {
+        console.log(
+          `[shop]   ${label || "warm"} hit its deadline with ${drawables.length - i} left — showing everything`,
+        );
+      }
+      break;
     }
-    i += size;
+
+    // Wait for the reader to stop. If they never do — a long uninterrupted
+    // flick down the page — the work still has to happen, so it goes ahead one
+    // mesh at a time: thin enough that a forced slice costs a frame.
+    const idle = await untilIdle();
+    const take = idle ? size : 1;
+    for (let k = i; k < Math.min(i + take, drawables.length); k++) {
+      drawables[k].visible = was[k];
+      delete drawables[k].userData.pacedHidden;
+    }
+    i += take;
+
+    const started = performance.now();
     step();
+    const cost = performance.now() - started;
+
+    if (idle) {
+      if (cost > BUDGET) size = Math.max(1, Math.floor(size / 2));
+      else if (cost < BUDGET / 3) size = Math.min(12, size + 2);
+    }
+    if (DEBUG && cost > 400) {
+      console.log(`[shop]   ${label || "warm"} slice ${Math.round(cost)} ms → batch ${size}`);
+    }
     await wait(idle ? 0 : 16);
   }
 
-  for (let i = 0; i < drawables.length; i++) drawables[i].visible = was[i];
-  node.visible = wasGroup;
+  restore();
 }
 
 
@@ -1454,6 +1634,41 @@ function WarmStation({ station, children }: { station: number; children: ReactNo
    seven bays. Ten, because a bay that gains a lamp costs one recompile of the
    whole building, and a spare costs one dead iteration of the light loop. The
    warning under `?perf` fires if a bay ever pushes past it. */
+/**
+ * THE LAST LINE: nothing may leave the shop invisible.
+ *
+ * Several mechanisms in this file hide objects temporarily and rely on their
+ * own completion to put them back — the warm-up pacing, the bay gate, the
+ * detail cull. Each is individually careful, and together they are a single
+ * point of failure, because every one of them fails the same way: an empty
+ * scene. A black shop is the one outcome worse than any performance problem,
+ * so it gets a watchdog that answers to none of them.
+ *
+ * Ten seconds after the world mounts, anything the warm-up hid and has not put
+ * back is shown. If the pacing is working, this finds nothing to do.
+ */
+export function VisibilityWatchdog({ target }: { target: React.RefObject<THREE.Object3D | null> }) {
+  const scene = useThree((state) => state.scene);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const root = target.current ?? scene;
+      let shown = 0;
+      root.traverse((child) => {
+        if (child.userData.pacedHidden && !child.visible) {
+          child.visible = true;
+          delete child.userData.pacedHidden;
+          shown++;
+        }
+      });
+      if (shown > 0) console.warn(`[shop] watchdog showed ${shown} objects the warm-up left hidden`);
+    }, 10000);
+    return () => window.clearTimeout(timer);
+  }, [scene, target]);
+
+  return null;
+}
+
 export function WarmScene({
   target,
   padLights = 10,
@@ -1504,91 +1719,22 @@ export function WarmScene({
       // most of the driver's translation bill without submitting a frame's
       // worth of work in one go.
       /* No oven pass for the shell: measured, its programs are not the ones
+      /* No oven pass for the shell: measured, its programs are not the ones
          the composer ends up using (a scene rendered straight to a plain
          target is a different configuration to one rendered through an HDR
          post chain), so it was two seconds spent building programs that were
          then built again. The bays still use it — theirs mostly hit programs
          the shell has already paid for. */
 
-      /* AND THE SAME AGAIN, THROUGH THE COMPOSER.
-         Drawing to a plain render target is not the configuration the shop
-         actually ships in: the post chain renders into an HDR buffer through
-         its own passes, and Direct3D treats that as a different program for
-         every material it touches. So the first composed frame was linking
-         thirty-odd programs of its own — fifteen seconds in one command
-         buffer, straight past the watchdog.
-         The answer is the same shape as the oven: the building is hidden, the
-         composer is advanced on an almost-empty scene to build its own passes,
-         and then the meshes are handed back four at a time with a frame
-         between each. Fifteen seconds of work, in fifteen submissions. */
-      const drawables: THREE.Object3D[] = [];
-      const mirrors: THREE.Object3D[] = [];
-      (target.current ?? scene).traverse((child) => {
-        const mesh = child as THREE.Mesh;
-        if (!(mesh.isMesh || (child as THREE.Points).isPoints || (child as THREE.Line).isLine)) return;
-        /* The wet-concrete floor renders the ENTIRE shop a second time, every
-           frame, into its own buffer — at its own resolution, which the warm
-           pass's low DPR does nothing to shrink. Left in the queue it turned a
-           warm-up of forty cheap frames into forty expensive ones. It goes
-           last, so it costs exactly one. Identified by its own defines rather
-           than by class name, which a minified build does not keep. */
-        const material = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as
-          | THREE.Material
-          | undefined;
-        const defines = (material as { defines?: Record<string, unknown> } | undefined)?.defines;
-        if (defines && ("USE_BLUR" in defines || "USE_DEPTH" in defines)) mirrors.push(child);
-        else drawables.push(child);
-      });
-      drawables.push(...mirrors);
-      const wasVisible = drawables.map((object) => object.visible);
-      for (const object of drawables) object.visible = false;
-
-      const step = () => {
-        try {
-          advance(performance.now());
-        } catch {
-          /* the loop is not running; nothing to warm */
-        }
-      };
-
-      step();
-      await wait(0);
-      /* Sixteen at a time, not four: at a fifth of the resolution the frame
-         itself is nothing and the only thing being paced is the handful of
-         programs each batch introduces. Four meshes per frame meant a hundred
-         and fifty frames of overhead for the same work. */
-      /* Six. Small enough that no single submission can carry more than a
-         handful of first-time programs — which is what the Windows display
-         watchdog resets a driver for, taking the WebGL context with it. */
-      const BATCH = 6;
-      let i = 0;
-      while (i < drawables.length) {
-        /* The reader can start scrolling immediately — the plate is a beat
-           over a page that already works, and nothing locks it. Their scroll
-           outranks this warm-up: each slice waits for them to stop, and if
-           they never stop (a long thumb-flick down the whole film) the work
-           still has to happen, so it goes ahead ONE mesh per frame instead of
-           six. A forced slice then costs a frame, not a stutter. */
-        const idle = await untilIdle(9000);
-        const size = idle ? BATCH : 1;
-        for (let k = i; k < Math.min(i + size, drawables.length); k++) {
-          drawables[k].visible = wasVisible[k];
-        }
-        i += size;
-        const batchStart = performance.now();
-        step();
-        if (DEBUG) {
-          const ms = performance.now() - batchStart;
-          if (ms > 250) {
-            console.log(
-              `[shop]     batch ${i / BATCH} ${Math.round(ms)} ms · programs ${gl.info.programs?.length ?? 0}`,
-            );
-          }
-        }
-        await wait(0);
-      }
-      for (let i = 0; i < drawables.length; i++) drawables[i].visible = wasVisible[i];
-      step();
+      /* AND THE SAME AGAIN, THROUGH THE COMPOSER — using the one implementation.
+         Drawing to a plain render target is not the configuration the shop ships
+         in: the post chain renders into an HDR buffer, and Direct3D treats that
+         as a different program for every material it touches, so the first
+         composed frame was linking thirty-odd programs in a single command
+         buffer. This used to be a second, hand-tuned copy of the bay warm-up
+         with its own magic batch number; both are now the same self-tuning
+         loop, so a fix to one can never again miss the other. */
+      await warmThroughComposer(target.current ?? scene, "shell");
       t = mark("composer warm", t);
     };
     const started = performance.now();

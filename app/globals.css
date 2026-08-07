@@ -69,6 +69,67 @@ body {
    floating on it. Nothing here holds layout and nothing here takes a click.
    ──────────────────────────────────────────────────────────────────────────── */
 
+/* ── The plate at the door ───────────────────────────────────────────────────
+   Its entire lifetime is expressed here, in CSS, on purpose.
+
+   The plate used to lift on a `setTimeout` plus a React state change. Both run
+   on the main thread, and the main thread in those seconds is precisely where
+   the shop compiles its shaders — so a screencast of the live site on a phone
+   caught the plate still up at TEN SECONDS, sitting on a black screen counting
+   "88%". A CSS animation runs on the compositor and cannot be delayed by any
+   amount of JavaScript, so the reader's worst case is bounded by the clock
+   rather than by the GPU.
+
+   Two seconds of ritual, half a second of fade, then it is not there. What is
+   behind it is the hero photograph and the whole site. */
+.preloader-plate {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bay-black, #0b0b0d);
+  animation: plate-lift 2.5s ease-out forwards;
+}
+
+@keyframes plate-lift {
+  0%,
+  72% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* The meter fills on the same clock. It was reporting real progress, which on
+   a phone meant it sat at 6% for five seconds and then jumped to 88% — a
+   number that made the site look stuck rather than busy. It is a piece of
+   theatre over a two-second beat; it should behave like one. */
+.preloader-bar {
+  width: 4%;
+  animation: plate-meter 2.2s ease-out forwards;
+}
+
+@keyframes plate-meter {
+  to {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preloader-plate {
+    animation-duration: 0.6s;
+  }
+  .preloader-bar {
+    animation-duration: 0.4s;
+  }
+}
+
 .world-veil {
   position: fixed;
   inset: 0;

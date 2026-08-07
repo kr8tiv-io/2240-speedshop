@@ -41,6 +41,7 @@ import {
 } from "./shop/Effects";
 import {
   DetailCull,
+  VisibilityWatchdog,
   StationBundle,
   WarmScene,
   primeLoaders,
@@ -2125,6 +2126,16 @@ function SceneContents({
 }) {
   const dof = useRef<DofEffect | null>(null);
   const ao = useRef<AoPass | null>(null);
+  const composer = useRef<ComponentRef<typeof EffectComposer> | null>(null);
+
+  // `?perf` reaches the composer itself: a black frame is either a chain that
+  // is not running or one whose last pass never reaches the screen, and there
+  // is no way to tell those apart from the outside.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.location.search.includes("perf")) return;
+    const shop = (window as unknown as { __shop?: Record<string, unknown> }).__shop;
+    if (shop) shop.composer = composer;
+  });
   const shell = useRef<THREE.Group>(null);
   const lite = tier === "lite";
 
@@ -2219,6 +2230,10 @@ function SceneContents({
       {/* No padding lights on a phone: the bays there carry no real lights to
           pad against, so the loop stays exactly as long as the building needs. */}
       <WarmScene target={shell} padLights={lite ? 0 : 10} />
+      {/* Answers to none of the pacing mechanisms: whatever they hide, this
+          puts back if they have not. A slow shop is a problem; an empty one
+          is a broken site. */}
+      <VisibilityWatchdog target={shell} />
       {lite && <DetailCull target={shell} />}
 
       <FocusRig effect={dof} />
@@ -2227,7 +2242,7 @@ function SceneContents({
       {lite ? (
         /* The phone composer: bloom (the neon IS the brand) and the vignette,
            nothing else. AO, rack focus and the lens fringe are desktop money. */
-        <EffectComposer multisampling={0} frameBufferType={THREE.HalfFloatType}>
+        <EffectComposer ref={composer} multisampling={0} frameBufferType={THREE.HalfFloatType}>
           <Bloom
             mipmapBlur
             intensity={0.95}
@@ -2412,7 +2427,7 @@ export function ShopWorld({ tier = "full" }: { tier?: WorldTier }) {
            and cost a fraction of the time. The moment the shop is warm the
            canvas snaps back to full sharpness, and the only thing that first
            real frame has left to do is allocate its buffers. */
-        dpr={warm ? dpr : 0.2}
+        dpr={dpr}
         frameloop={awake && warm ? "always" : "never"}
         gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
         camera={{ fov: 40, near: 0.1, far: 130, position: CAM_START.toArray() }}
