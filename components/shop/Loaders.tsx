@@ -21,7 +21,7 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 import { ContactShadow } from "./materials";
-import { markShellWarm, markWorldReady, reportBootProgress, stillFor } from "./boot";
+import { getBoot, markShellWarm, markWorldReady, reportBootProgress, stillFor, subscribeBoot } from "./boot";
 import { countLights, installLightPad, lightBudget, setStationLights } from "./lights";
 import { stationAt } from "./world";
 
@@ -236,8 +236,13 @@ export function primeLoaders(_gl: THREE.WebGLRenderer) {
 let parseQueue: Promise<unknown> = Promise.resolve();
 
 function queueParse<T>(run: () => Promise<T>): Promise<T> {
+  // Before the door opens the queue is a straight-through pipe: the opening
+  // bay's models parse the moment their bytes land, in parallel, because
+  // nobody is looking at the shop yet to be disturbed by it.
+  if (racing()) return run();
+
   const next = parseQueue.then(async () => {
-    await untilIdle(9000);
+    await untilIdle();
     const result = await run();
     // Hand the frame back before the next model gets its turn.
     await wait(0);
@@ -790,8 +795,24 @@ function orientOf(box: THREE.Box3, orient: Orient): THREE.Euler {
   return thin === "x" ? ROT_Z : thin === "z" ? ROT_X : ROT_NONE;
 }
 
+/* ── One shelf per tier ─────────────────────────────────────────────────────
+   `public/models-mobile/` is the same 71 models at half the texture budget in
+   every slot. A phone draws the whole car about four inches wide and never
+   gets closer to a prop than about a metre, so those texels do not survive the
+   trip to the screen — but they do have to be downloaded, decoded and uploaded
+   first, on the device least able to afford any of it.
+
+   The swap happens here rather than in the `M` map because the tier is not
+   known until the canvas mounts, and `M` is built when the module loads. Keys
+   stay the desktop paths, so the `PAINTED`/`BARE` finish lookups still match. */
+const MOBILE_BASE = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/models-mobile/`;
+
+function shelf(url: string) {
+  return phoneTier ? url.replace(BASE, MOBILE_BASE) : url;
+}
+
 function useShopModel(url: string) {
-  const gltf = useLoader(IdleGLTFLoader, url, extendLoader) as unknown as GLTF;
+  const gltf = useLoader(IdleGLTFLoader, shelf(url), extendLoader) as unknown as GLTF;
   // Grading is idempotent and guarded by a WeakSet, so it is safe here — but
   // nothing else may be: the debug timing that used to wrap this called
   // `performance.now()` during render, which is exactly the impurity React's
@@ -1060,12 +1081,31 @@ const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve,
  * wrong costs a frame instead of the entire scene.
  */
 async function untilIdle(patience = 900) {
+  // Nothing to protect yet — see `racing()`.
+  if (racing()) return true;
   const deadline = performance.now() + patience;
   while (stillFor() < 200) {
     if (performance.now() > deadline) return false;
     await wait(60);
   }
   return true;
+}
+
+/**
+ * NOTHING IS PROTECTED BEFORE THE DOOR OPENS.
+ *
+ * Every pacing mechanism in this file exists to protect a reader who is looking
+ * at the shop. Until the opening bays are up, they are looking at a photograph
+ * — the hero still, with the whole site beneath it — and there is nothing to
+ * protect. Pacing that window does not buy smoothness; it just makes the shop
+ * late, which is the actual complaint. A phone measured the opening bay
+ * finishing at fifteen seconds, most of it spent waiting politely for a reader
+ * who could not yet see anything.
+ *
+ * So the gates stand open until the world reports ready, and close behind it.
+ */
+function racing() {
+  return !getBoot().ready;
 }
 
 function countRenderables(node: THREE.Object3D) {
@@ -1431,14 +1471,15 @@ export function DetailCull({ target }: { target: React.RefObject<THREE.Object3D 
   const tick = useRef(0);
   const ready = useRef(false);
 
-  useEffect(() => {
-    // Late enough that the shell has finished mounting; the warm-up gate has
-    // already waited for exactly that.
-    const timer = window.setTimeout(() => {
-      ready.current = true;
-    }, 2500);
-    return () => window.clearTimeout(timer);
-  }, []);
+  /* WAIT FOR THE WARM-UP TO BE DONE WITH THE SCENE, NOT FOR A GUESS.
+     This armed on a fixed 2.5-second timer while the shell's paced warm-up runs
+     to a 4-second deadline — so for ~1.5 seconds two mechanisms were writing
+     `visible` on the same subtree with opposite intentions, and the cull's
+     bulk-unhide handed the driver exactly the shader storm the pacing exists to
+     prevent. The warm-up already announces when it is finished; use that. */
+  useEffect(() => subscribeBoot((s) => {
+    if (s.warm) ready.current = true;
+  }), []);
 
   useFrame((state) => {
     if (!phoneTier || !ready.current) return;
@@ -1456,6 +1497,8 @@ export function DetailCull({ target }: { target: React.RefObject<THREE.Object3D 
     }
     const eye = state.camera.position;
     for (const item of items.current) {
+      // Anything the warm-up is still holding is not ours to show.
+      if (item.object.userData.pacedHidden) continue;
       const distance = item.centre.distanceTo(eye);
       item.object.visible = item.radius / Math.max(distance, 0.001) > CULL_RATIO;
     }
@@ -1483,8 +1526,20 @@ function WarmStation({ station, children }: { station: number; children: ReactNo
     if (!node || warm.current) return;
     let dead = false;
 
+    /* ONE FINISH, NOT TWO.
+       `finish` is called from the warm-up's completion AND from a failsafe
+       timer, and it awaits before setting `warm.current` — so both could be
+       inside it at once. Two concurrent passes over the same bay is not a
+       harmless duplicate: each snapshots the subtree's visibility on entry, so
+       the second snapshots the first one's HIDDEN state and then faithfully
+       restores it, writing `false` across the whole bay and clearing the marks
+       the watchdog looks for. A permanently invisible bay, produced by two
+       copies of the code that exists to make it visible. */
+    let finishing = false;
+
     const finish = async () => {
-      if (dead) return;
+      if (dead || finishing || warm.current) return;
+      finishing = true;
       await firstUse();
       if (dead) return;
       warm.current = true;
@@ -1652,7 +1707,13 @@ export function VisibilityWatchdog({ target }: { target: React.RefObject<THREE.O
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const root = target.current ?? scene;
+      /* THE SCENE, NOT THE SHELL.
+         This was pointed at the shell group — and every bay is a SIBLING of
+         that group, not a child. `target.current` is never null, so the
+         fallback never fired and the declared last line of defence had never
+         once inspected a bay: the exact objects most likely to be left hidden
+         were the only ones it could not see. */
+      const root = scene;
       let shown = 0;
       root.traverse((child) => {
         if (child.userData.pacedHidden && !child.visible) {

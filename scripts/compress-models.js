@@ -40,9 +40,20 @@ const {
 const { MeshoptEncoder, MeshoptDecoder } = req("meshoptimizer");
 const sharp = req("sharp");
 
+/* ── Two sets, one pipeline ─────────────────────────────────────────────────
+   `--mobile` writes a second, smaller set to `public/models-mobile/`.
+
+   A phone shows the whole car about four inches wide, and the orbit never gets
+   closer to a prop than about a metre — so a 1K albedo on a tyre is texels the
+   screen physically cannot resolve. Halving each budget takes the set from
+   16 MB to roughly a quarter of that with no visible difference at the sizes a
+   phone actually draws, which is the difference between the shop arriving and
+   the shop being waited for. The desktop set is untouched: on a 27-inch panel
+   those texels do land. */
 const ROOT = path.resolve(__dirname, "..");
 const SRC = path.join(ROOT, "public", "models");
-const OUT = path.join(ROOT, "public", "models-opt");
+const MOBILE = process.argv.includes("--mobile");
+const OUT = path.join(ROOT, "public", MOBILE ? "models-mobile" : "models-opt");
 const KTX = "C:\\Users\\lucid\\tools\\ktx\\bin\\ktx.exe";
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "ktx2240-"));
 
@@ -74,9 +85,11 @@ const HERO = new Set([
 
 const budget = (file, slot) => {
   const hero = HERO.has(file);
-  if (slot === "color") return hero ? 1024 : 512;
-  if (slot === "normal") return hero ? 512 : 256;
-  return hero ? 512 : 256; // metallicRoughness / occlusion / everything else
+  const half = MOBILE ? 2 : 1;
+  if (slot === "color") return (hero ? 1024 : 512) / half;
+  if (slot === "normal") return (hero ? 512 : 256) / half;
+  // metallicRoughness / occlusion / everything else
+  return (hero ? 512 : 256) / half;
 };
 
 function slotOf(document, texture) {
@@ -136,6 +149,17 @@ async function convert(file, io) {
      at these sizes and in this light is indistinguishable; baked vertex colours
      on a prop that also carries a base-colour texture are noise. Dropping both
      collapses the prop set onto a single program. */
+  /* THE SKIN HAS TO GO BEFORE ITS ATTRIBUTES DO.
+     Stripping JOINTS_0/WEIGHTS_0 while a node still references a Skin leaves a
+     file that WRITES SUCCESSFULLY and fails to load: three walks the skin, asks
+     an accessor that is no longer there for its `count`, and throws. That is
+     the whole story behind `prop-bench-vice.glb` failing in production while
+     every offline check passed — and because the write threw before the output
+     was replaced, the "optimised" file on disk was byte-identical to the 2.4 MB
+     source, carrying the only three raw 1024² JPEGs in the set. */
+  for (const node of document.getRoot().listNodes()) node.setSkin(null);
+  for (const skin of document.getRoot().listSkins()) skin.dispose();
+
   for (const mesh of document.getRoot().listMeshes()) {
     for (const prim of mesh.listPrimitives()) {
       for (const name of ["TANGENT", "COLOR_0", "COLOR_1", "TEXCOORD_2", "JOINTS_0", "WEIGHTS_0"]) {
