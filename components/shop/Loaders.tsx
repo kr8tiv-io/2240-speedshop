@@ -253,6 +253,22 @@ function queueParse<T>(run: () => Promise<T>): Promise<T> {
   return next as Promise<T>;
 }
 
+/* ── Asking for the compressed twin by name ─────────────────────────────────
+   `scripts/precompress.js` builds a brotli `.glb.br` next to every model — the
+   hero Charger goes 474 KB → 86 KB, the mobile shelf 9.8 MB → ~6 MB — and the
+   host is configured to serve it with `Content-Encoding: br`, which a browser
+   decodes transparently on the way in. The `.htaccess` rewrite that was meant
+   to make that swap invisible does not fire here: the twin is directly
+   fetchable and correctly labelled, but the plain URL still returns the full
+   file. Rather than keep guessing at another host's mod_rewrite, the loader
+   asks for the twin by name.
+
+   Tri-state, resolved once by the first model that tries: a browser that
+   cannot decode brotli fails that request, and every model after it goes
+   straight to the plain file. Not `false` until something actually fails — the
+   fallback is what makes asking safe. */
+let brTwin: boolean | null = null;
+
 class IdleGLTFLoader extends GLTFLoader {
   load(
     url: string,
@@ -266,8 +282,29 @@ class IdleGLTFLoader extends GLTFLoader {
     file.setPath(this.path);
     file.setWithCredentials(this.withCredentials);
 
-    file.load(
-      url,
+    /* One retry, on the plain URL, and only from the twin. A failure of the
+       plain file is a real failure and goes to `onError` as it always did. */
+    const fetchBytes = (
+      hit: (data: string | ArrayBuffer) => void,
+      miss: (error: unknown) => void,
+    ) => {
+      const plain = () => file.load(url, hit, onProgress, miss);
+      if (brTwin === false || !url.endsWith(".glb")) return plain();
+      file.load(
+        `${url}.br`,
+        (data) => {
+          brTwin = true;
+          hit(data);
+        },
+        onProgress,
+        () => {
+          brTwin = false;
+          plain();
+        },
+      );
+    };
+
+    fetchBytes(
       async (data) => {
         try {
           // Bytes are here. The expensive half waits its turn in the queue —
@@ -301,8 +338,7 @@ class IdleGLTFLoader extends GLTFLoader {
           this.manager.itemError(url);
         }
       },
-      onProgress,
-      onError as (event: unknown) => void,
+      onError as (error: unknown) => void,
     );
   }
 }
