@@ -15,9 +15,36 @@
   AddType image/avif                 .avif
 </IfModule>
 
+# ── Pre-compressed models ───────────────────────────────────────────────────
+# The claim below — that .glb is "already compressed" — is true of the props,
+# whose bytes are nearly all WebP, and false of the CARS, which are raw float32
+# geometry with no textures. Brotli takes the set from 16.2 MB to 11.3 MB and
+# the hero Charger from 474 KB to 86 KB. `scripts/precompress.js` does the work
+# at build time, so this costs the server nothing per request: if the browser
+# takes brotli and a .br twin exists, serve it with the right headers.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Accept-Encoding} br
+  RewriteCond %{REQUEST_FILENAME}.br -f
+  RewriteRule \.glb$ %{REQUEST_URI}.br [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.glb\.br$">
+    Header set Content-Encoding br
+    Header append Vary Accept-Encoding
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  # Without this the .br twin is served as its own type and the browser saves it.
+  AddType model/gltf-binary .br
+</IfModule>
+
 # ── Compression ─────────────────────────────────────────────────────────────
-# GLB, KTX2 and WOFF2 are already compressed — running deflate over them burns
-# CPU on both ends for nothing, so they are deliberately absent from this list.
+# KTX2 and WOFF2 are already compressed — running deflate over them burns CPU on
+# both ends for nothing, so they are deliberately absent from this list. GLB is
+# handled above, at build time, rather than per request.
 <IfModule mod_brotli.c>
   AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/css text/xml
   AddOutputFilterByType BROTLI_COMPRESS application/javascript application/x-javascript
