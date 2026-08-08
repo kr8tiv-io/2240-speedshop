@@ -22,11 +22,17 @@
 # the hero Charger from 474 KB to 86 KB. `scripts/precompress.js` does the work
 # at build time, so this costs the server nothing per request: if the browser
 # takes brotli and a .br twin exists, serve it with the right headers.
+# The rule is written against DOCUMENT_ROOT and substitutes an absolute URL
+# path. The obvious form — matching `%{REQUEST_FILENAME}.br` and substituting
+# `%{REQUEST_URI}.br` — silently did not match on this host: the twins were
+# deployed and directly fetchable at 86 KB with `content-encoding: br`, while
+# the plain URL still served 474 KB. It failed safe, which is why it took a
+# request to notice rather than an outage.
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteCond %{HTTP:Accept-Encoding} br
-  RewriteCond %{REQUEST_FILENAME}.br -f
-  RewriteRule \.glb$ %{REQUEST_URI}.br [L]
+  RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}\.br -f
+  RewriteRule ^(.+)\.glb$ /$1.glb.br [L]
 </IfModule>
 
 <IfModule mod_headers.c>
