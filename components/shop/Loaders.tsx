@@ -724,12 +724,21 @@ function grade(scene: THREE.Object3D, finish: Finish) {
         continue;
       }
 
-      // Bright, near-neutral surfaces are trim: bumpers, grilles, mirrors,
-      // exhaust tips. Those are chrome, not paint.
+      /* Bright, near-neutral surfaces are trim: bumpers, grilles, mirrors,
+         exhaust tips. Those are chrome, not paint.
+
+         Brightness alone misses the ones that say so in their name. The
+         Charger's trim slot is called `Metalic` and sits at 0.43 luma — well
+         under the 0.62 threshold — so a chrome bumper was being coloured,
+         clear-coated and lit like a wing. The name test catches those; the luma
+         test still catches the many slots whose names say nothing at all
+         (`Details 2`, `back_plate`, `mat15`). Both are gated on low saturation,
+         because a strongly coloured surface is paint whatever it is called. */
+      const CHROME_NAME = /chrome|metal|steel|alum|bumper|grille|grill|exhaust|mirror|trim/;
+      const hsl = material.color.getHSL({ h: 0, s: 0, l: 0 });
       const chromeish =
         finish === "paint" &&
-        luma > 0.62 &&
-        material.color.getHSL({ h: 0, s: 0, l: 0 }).s < 0.14;
+        ((luma > 0.62 && hsl.s < 0.14) || (CHROME_NAME.test(name) && hsl.s < 0.25));
       const bare = finish === "matte";
 
       const paint = new THREE.MeshPhysicalMaterial({
