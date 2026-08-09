@@ -1,0 +1,3277 @@
+{
+ "shelf": "models-mobile",
+ "at": "2026-08-09T20:00:06.679Z",
+ "bytes": 10312816,
+ "brBytes": 5290289,
+ "files": 71,
+ "missing": [],
+ "orphan": [],
+ "stale": [],
+ "pageErrors": [],
+ "rows": [
+  {
+   "name": "car-camaro-primer-shell.glb",
+   "finish": "matte",
+   "ok": true,
+   "bytes": 161412,
+   "fetchMs": 20,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    10
+   ],
+   "bbox": [
+    2.7435,
+    1.8812,
+    6.4973
+   ],
+   "meshes": 4,
+   "verts": 5790,
+   "tris": 3220,
+   "drawCalls": 4,
+   "materials": 1,
+   "willCrease": 4,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 9660,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 1,
+    "CHROME": 0,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "car-camaro.glb",
+   "finish": "paint",
+   "ok": true,
+   "bytes": 177536,
+   "fetchMs": 10,
+   "parseMs": 4,
+   "parseSpread": [
+    3,
+    7
+   ],
+   "bbox": [
+    1.989,
+    1.2549,
+    4.0657
+   ],
+   "meshes": 29,
+   "verts": 9072,
+   "tris": 4548,
+   "drawCalls": 29,
+   "materials": 15,
+   "willCrease": 29,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 13644,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 9,
+    "BARE-PAINT": 0,
+    "GLASS": 1,
+    "RUBBER": 5,
+    "CHROME": 0,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "car-convertible-50s.glb",
+   "finish": "paint",
+   "ok": true,
+   "bytes": 138580,
+   "fetchMs": 11,
+   "parseMs": 8,
+   "parseSpread": [
+    7,
+    19
+   ],
+   "bbox": [
+    4.3163,
+    3.0555,
+    10.1416
+   ],
+   "meshes": 1,
+   "verts": 3437,
+   "tris": 1671,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 5013,
+   "flatRatios": [
+    0.995
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 1,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": [
+    "TEXTURED MATERIAL CLASSIFIED CHROME: \"Convertible_mat1\" (white baseColorFactor + a texture) — metalness 1, clearcoat 0"
+   ]
+  },
+  {
+   "name": "car-covered-project.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 452704,
+   "fetchMs": 21,
+   "parseMs": 13,
+   "parseSpread": [
+    12,
+    15
+   ],
+   "bbox": [
+    1.789,
+    1.4111,
+    4.3803
+   ],
+   "meshes": 5,
+   "verts": 10722,
+   "tris": 12592,
+   "drawCalls": 5,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 5,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 10722,
+   "flatRatios": [
+    0,
+    0.035,
+    0.035,
+    0,
+    0.15
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "car-dodge-charger.glb",
+   "finish": "paint",
+   "ok": true,
+   "bytes": 485188,
+   "fetchMs": 11,
+   "parseMs": 3,
+   "parseSpread": [
+    2,
+    4
+   ],
+   "bbox": [
+    2.5584,
+    1.7681,
+    6.485
+   ],
+   "meshes": 18,
+   "verts": 18184,
+   "tris": 9648,
+   "drawCalls": 18,
+   "materials": 9,
+   "willCrease": 18,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 28944,
+   "flatRatios": [
+    0.926,
+    0.887,
+    0.805,
+    0.805,
+    0.926,
+    0.887,
+    0.805,
+    0.926,
+    0.887,
+    0.805,
+    0.926,
+    0.887,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 5,
+    "BARE-PAINT": 0,
+    "GLASS": 1,
+    "RUBBER": 3,
+    "CHROME": 0,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "car-muscle-challenger.glb",
+   "finish": "paint",
+   "ok": true,
+   "bytes": 511952,
+   "fetchMs": 12,
+   "parseMs": 5,
+   "parseSpread": [
+    4,
+    6
+   ],
+   "bbox": [
+    4.9876,
+    3.3656,
+    11.3625
+   ],
+   "meshes": 49,
+   "verts": 21880,
+   "tris": 11129,
+   "drawCalls": 49,
+   "materials": 13,
+   "willCrease": 49,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 33387,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 4,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 7,
+    "CHROME": 2,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": [
+    "BODY MATERIAL CLASSIFIED RUBBER: \"Body\" luma 0.0235 < 0.045 — no clearcoat, and tint cannot reach it"
+   ]
+  },
+  {
+   "name": "car-muscle-coupe-hoodup.glb",
+   "finish": "paint",
+   "ok": true,
+   "bytes": 588268,
+   "fetchMs": 11,
+   "parseMs": 5,
+   "parseSpread": [
+    2,
+    8
+   ],
+   "bbox": [
+    2.0551,
+    1.7157,
+    4.8554
+   ],
+   "meshes": 50,
+   "verts": 22252,
+   "tris": 11217,
+   "drawCalls": 50,
+   "materials": 12,
+   "willCrease": 50,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 33651,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 8,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 2,
+    "CHROME": 2,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "car-prewar-hotrod-donor.glb",
+   "finish": "matte",
+   "ok": true,
+   "bytes": 1303664,
+   "fetchMs": 22,
+   "parseMs": 3,
+   "parseSpread": [
+    3,
+    3
+   ],
+   "bbox": [
+    4.5999,
+    2.3719,
+    3.1026
+   ],
+   "meshes": 12,
+   "verts": 47608,
+   "tris": 25299,
+   "drawCalls": 12,
+   "materials": 11,
+   "willCrease": 12,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 75897,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 9,
+    "GLASS": 1,
+    "RUBBER": 1,
+    "CHROME": 0,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "car-project-shell-rusted.glb",
+   "finish": "matte",
+   "ok": true,
+   "bytes": 209936,
+   "fetchMs": 12,
+   "parseMs": 2,
+   "parseSpread": [
+    1,
+    7
+   ],
+   "bbox": [
+    2.6413,
+    1.7603,
+    5.4938
+   ],
+   "meshes": 4,
+   "verts": 7230,
+   "tris": 5432,
+   "drawCalls": 4,
+   "materials": 4,
+   "willCrease": 0,
+   "alreadySmooth": 4,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 7230,
+   "flatRatios": [
+    0.034,
+    0.043,
+    0.546,
+    0.327
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 3,
+    "GLASS": 0,
+    "RUBBER": 1,
+    "CHROME": 0,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-ammo-box.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 71492,
+   "fetchMs": 11,
+   "parseMs": 8,
+   "parseSpread": [
+    7,
+    15
+   ],
+   "bbox": [
+    0.0866,
+    0.1775,
+    0.2579
+   ],
+   "meshes": 5,
+   "verts": 3978,
+   "tris": 4382,
+   "drawCalls": 5,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 5,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 3978,
+   "flatRatios": [
+    0,
+    0.169,
+    0,
+    0,
+    0.608
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-barrel-rusted-a.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 55372,
+   "fetchMs": 7,
+   "parseMs": 8,
+   "parseSpread": [
+    8,
+    11
+   ],
+   "bbox": [
+    0.5631,
+    0.88,
+    0.5631
+   ],
+   "meshes": 1,
+   "verts": 2052,
+   "tris": 2682,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2052,
+   "flatRatios": [
+    0.072
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-barrel-rusted-b.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 84112,
+   "fetchMs": 8,
+   "parseMs": 11,
+   "parseSpread": [
+    10,
+    12
+   ],
+   "bbox": [
+    0.4882,
+    0.88,
+    0.4846
+   ],
+   "meshes": 1,
+   "verts": 1916,
+   "tris": 2688,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1916,
+   "flatRatios": [
+    0.053
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-barrel-rusted-c.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 35768,
+   "fetchMs": 8,
+   "parseMs": 8,
+   "parseSpread": [
+    8,
+    10
+   ],
+   "bbox": [
+    0.634,
+    0.9305,
+    0.6386
+   ],
+   "meshes": 1,
+   "verts": 1126,
+   "tris": 1473,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1126,
+   "flatRatios": [
+    0.071
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-bench-vice.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 162468,
+   "fetchMs": 7,
+   "parseMs": 18,
+   "parseSpread": [
+    17,
+    18
+   ],
+   "bbox": [
+    0.2005,
+    0.2851,
+    0.3957
+   ],
+   "meshes": 4,
+   "verts": 2183,
+   "tris": 2864,
+   "drawCalls": 4,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 4,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2183,
+   "flatRatios": [
+    0.005,
+    0.005,
+    0,
+    0
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-car-battery.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 11512,
+   "fetchMs": 7,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    1
+   ],
+   "bbox": [
+    0.9807,
+    0.8269,
+    0.7491
+   ],
+   "meshes": 3,
+   "verts": 902,
+   "tris": 478,
+   "drawCalls": 3,
+   "materials": 3,
+   "willCrease": 3,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1434,
+   "flatRatios": [
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-cardboard-boxes.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 10120,
+   "fetchMs": 5,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    2
+   ],
+   "bbox": [
+    1.4152,
+    1.747,
+    0.9863
+   ],
+   "meshes": 2,
+   "verts": 828,
+   "tris": 432,
+   "drawCalls": 2,
+   "materials": 2,
+   "willCrease": 2,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1296,
+   "flatRatios": [
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 2
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-crate-wooden.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 175616,
+   "fetchMs": 7,
+   "parseMs": 17,
+   "parseSpread": [
+    15,
+    20
+   ],
+   "bbox": [
+    0.8253,
+    0.3496,
+    0.409
+   ],
+   "meshes": 3,
+   "verts": 4686,
+   "tris": 6576,
+   "drawCalls": 3,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 3,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 4686,
+   "flatRatios": [
+    0.039,
+    0.005,
+    0
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-desk-metal-office.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 134076,
+   "fetchMs": 8,
+   "parseMs": 13,
+   "parseSpread": [
+    12,
+    16
+   ],
+   "bbox": [
+    2,
+    0.7874,
+    0.9472
+   ],
+   "meshes": 9,
+   "verts": 6070,
+   "tris": 6898,
+   "drawCalls": 9,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 9,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 6070,
+   "flatRatios": [
+    0.598,
+    0.683,
+    0.114,
+    0.598,
+    0.598,
+    0.598,
+    0.598,
+    0.598,
+    0.683
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-drill.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 15836,
+   "fetchMs": 6,
+   "parseMs": 1,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    11.0256,
+    10.0121,
+    3.4823
+   ],
+   "meshes": 3,
+   "verts": 1395,
+   "tris": 856,
+   "drawCalls": 3,
+   "materials": 3,
+   "willCrease": 3,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2568,
+   "flatRatios": [
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-droplight-pendant.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 235228,
+   "fetchMs": 10,
+   "parseMs": 5,
+   "parseSpread": [
+    4,
+    7
+   ],
+   "bbox": [
+    1.7746,
+    6.8466,
+    1.8011
+   ],
+   "meshes": 56,
+   "verts": 18338,
+   "tris": 9642,
+   "drawCalls": 56,
+   "materials": 7,
+   "willCrease": 56,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 28926,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 7
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-fire-extinguisher.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 23484,
+   "fetchMs": 6,
+   "parseMs": 7,
+   "parseSpread": [
+    6,
+    7
+   ],
+   "bbox": [
+    2.1674,
+    5.6682,
+    3.2129
+   ],
+   "meshes": 3,
+   "verts": 1069,
+   "tris": 692,
+   "drawCalls": 3,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 2,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1203,
+   "flatRatios": [
+    0.93,
+    0.643,
+    0.66
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-funnel.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 2848,
+   "fetchMs": 7,
+   "parseMs": 0,
+   "parseSpread": [
+    0,
+    2
+   ],
+   "bbox": [
+    2.411,
+    2.4523,
+    1.9841
+   ],
+   "meshes": 1,
+   "verts": 171,
+   "tris": 236,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 708,
+   "flatRatios": [
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 1,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-gas-bottle-propane.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 14116,
+   "fetchMs": 7,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    1
+   ],
+   "bbox": [
+    2.1551,
+    2.891,
+    2.0495
+   ],
+   "meshes": 4,
+   "verts": 1000,
+   "tris": 516,
+   "drawCalls": 4,
+   "materials": 4,
+   "willCrease": 4,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1548,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 4
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-gas-bottle-tall.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 8088,
+   "fetchMs": 7,
+   "parseMs": 0,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    0.27,
+    0.9113,
+    0.27
+   ],
+   "meshes": 3,
+   "verts": 504,
+   "tris": 292,
+   "drawCalls": 3,
+   "materials": 3,
+   "willCrease": 3,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 876,
+   "flatRatios": [
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-gas-can-red.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 20160,
+   "fetchMs": 8,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    1
+   ],
+   "bbox": [
+    395360.0009,
+    607181.5119,
+    588426.5366
+   ],
+   "meshes": 6,
+   "verts": 1417,
+   "tris": 844,
+   "drawCalls": 6,
+   "materials": 4,
+   "willCrease": 6,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2532,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 4
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-gas-tank-yellow.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 14208,
+   "fetchMs": 8,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    2
+   ],
+   "bbox": [
+    1.0063,
+    1.3872,
+    1.0063
+   ],
+   "meshes": 3,
+   "verts": 978,
+   "tris": 1004,
+   "drawCalls": 3,
+   "materials": 3,
+   "willCrease": 0,
+   "alreadySmooth": 3,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 978,
+   "flatRatios": [
+    0.175,
+    0,
+    0.556
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-hammer.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 7300,
+   "fetchMs": 7,
+   "parseMs": 0,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    1.1504,
+    10.1656,
+    4.8313
+   ],
+   "meshes": 2,
+   "verts": 460,
+   "tris": 246,
+   "drawCalls": 2,
+   "materials": 2,
+   "willCrease": 2,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 738,
+   "flatRatios": [
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 2
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-hoist-hook-chain.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 62360,
+   "fetchMs": 6,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    1
+   ],
+   "bbox": [
+    0.185,
+    0.7498,
+    0.0557
+   ],
+   "meshes": 4,
+   "verts": 6800,
+   "tris": 3824,
+   "drawCalls": 4,
+   "materials": 1,
+   "willCrease": 4,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 11472,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-jerry-can.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 13024,
+   "fetchMs": 7,
+   "parseMs": 1,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    0.7967,
+    1.0493,
+    0.3414
+   ],
+   "meshes": 3,
+   "verts": 850,
+   "tris": 788,
+   "drawCalls": 3,
+   "materials": 3,
+   "willCrease": 0,
+   "alreadySmooth": 3,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 850,
+   "flatRatios": [
+    0.337,
+    0.304,
+    0.487
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-jerrycan-green.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 129900,
+   "fetchMs": 8,
+   "parseMs": 9,
+   "parseSpread": [
+    9,
+    10
+   ],
+   "bbox": [
+    0.3739,
+    0.5009,
+    0.1709
+   ],
+   "meshes": 5,
+   "verts": 6736,
+   "tris": 9636,
+   "drawCalls": 5,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 5,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 6736,
+   "flatRatios": [
+    0.046,
+    0.024,
+    0.111,
+    0,
+    0
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-jumper-cables.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 41532,
+   "fetchMs": 8,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    1
+   ],
+   "bbox": [
+    1.0472,
+    0.1606,
+    1.5592
+   ],
+   "meshes": 3,
+   "verts": 4156,
+   "tris": 1836,
+   "drawCalls": 3,
+   "materials": 3,
+   "willCrease": 3,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 5508,
+   "flatRatios": [
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-ladder.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 6920,
+   "fetchMs": 6,
+   "parseMs": 0,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    0.6328,
+    4.4962,
+    0.18
+   ],
+   "meshes": 1,
+   "verts": 698,
+   "tris": 356,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1068,
+   "flatRatios": [
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-lamp-caged-hanging.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 346480,
+   "fetchMs": 9,
+   "parseMs": 18,
+   "parseSpread": [
+    17,
+    42
+   ],
+   "bbox": [
+    1.1618,
+    0.7501,
+    0.3149
+   ],
+   "meshes": 1,
+   "verts": 17928,
+   "tris": 22893,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 17928,
+   "flatRatios": [
+    0.184
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-lubricant-spray.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 80092,
+   "fetchMs": 14,
+   "parseMs": 9,
+   "parseSpread": [
+    8,
+    10
+   ],
+   "bbox": [
+    0.067,
+    0.1649,
+    0.0646
+   ],
+   "meshes": 3,
+   "verts": 3712,
+   "tris": 5476,
+   "drawCalls": 3,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 3,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 3712,
+   "flatRatios": [
+    0.176,
+    0.009,
+    0.05
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-metal-door.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 37296,
+   "fetchMs": 8,
+   "parseMs": 5,
+   "parseSpread": [
+    4,
+    5
+   ],
+   "bbox": [
+    0.1853,
+    2.8019,
+    3.8846
+   ],
+   "meshes": 10,
+   "verts": 1428,
+   "tris": 1301,
+   "drawCalls": 10,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 9,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1496,
+   "flatRatios": [
+    0.087,
+    0.62,
+    0.156,
+    0.621,
+    0.386,
+    0.172,
+    0.38,
+    0.852,
+    0.659,
+    0.583
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-metal-jug.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 110340,
+   "fetchMs": 8,
+   "parseMs": 14,
+   "parseSpread": [
+    12,
+    16
+   ],
+   "bbox": [
+    0.1968,
+    0.2875,
+    0.1955
+   ],
+   "meshes": 1,
+   "verts": 3383,
+   "tris": 6040,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 3383,
+   "flatRatios": [
+    0.01
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-oil-can-small.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 210316,
+   "fetchMs": 18,
+   "parseMs": 9,
+   "parseSpread": [
+    8,
+    9
+   ],
+   "bbox": [
+    0.2661,
+    0.2368,
+    0.1039
+   ],
+   "meshes": 1,
+   "verts": 11488,
+   "tris": 16746,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 11488,
+   "flatRatios": [
+    0.015
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-oil-drum.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 14196,
+   "fetchMs": 17,
+   "parseMs": 5,
+   "parseSpread": [
+    4,
+    7
+   ],
+   "bbox": [
+    0.7041,
+    1.1449,
+    0.7041
+   ],
+   "meshes": 1,
+   "verts": 969,
+   "tris": 882,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 969,
+   "flatRatios": [
+    0.095
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-oil-drums-row.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 41872,
+   "fetchMs": 18,
+   "parseMs": 2,
+   "parseSpread": [
+    2,
+    4
+   ],
+   "bbox": [
+    0.1186,
+    0.089,
+    0.1012
+   ],
+   "meshes": 24,
+   "verts": 5616,
+   "tris": 3576,
+   "drawCalls": 24,
+   "materials": 7,
+   "willCrease": 24,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 10728,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 7
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-pallet-jack.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 15664,
+   "fetchMs": 6,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    1
+   ],
+   "bbox": [
+    0.8377,
+    1.6753,
+    2.4076
+   ],
+   "meshes": 4,
+   "verts": 1417,
+   "tris": 788,
+   "drawCalls": 4,
+   "materials": 4,
+   "willCrease": 4,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2364,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 4
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-pallet.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 5260,
+   "fetchMs": 6,
+   "parseMs": 5,
+   "parseSpread": [
+    5,
+    6
+   ],
+   "bbox": [
+    0.4229,
+    0.134,
+    0.4229
+   ],
+   "meshes": 1,
+   "verts": 190,
+   "tris": 108,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 324,
+   "flatRatios": [
+    0.722
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-parts-cabinet.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 15924,
+   "fetchMs": 14,
+   "parseMs": 6,
+   "parseSpread": [
+    6,
+    7
+   ],
+   "bbox": [
+    51.6449,
+    75.6211,
+    26.2793
+   ],
+   "meshes": 7,
+   "verts": 644,
+   "tris": 416,
+   "drawCalls": 7,
+   "materials": 2,
+   "willCrease": 7,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1248,
+   "flatRatios": [
+    0.792,
+    0.792,
+    0.792,
+    0.792,
+    0.792,
+    0.792,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 2
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-pipes-industrial.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 375960,
+   "fetchMs": 13,
+   "parseMs": 22,
+   "parseSpread": [
+    21,
+    25
+   ],
+   "bbox": [
+    1.4028,
+    1.9546,
+    0.3076
+   ],
+   "meshes": 8,
+   "verts": 13785,
+   "tris": 12340,
+   "drawCalls": 8,
+   "materials": 2,
+   "willCrease": 0,
+   "alreadySmooth": 8,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 13785,
+   "flatRatios": [
+    0.52,
+    0.481,
+    0.366,
+    0.366,
+    0.495,
+    0.495,
+    0.126,
+    0.429
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 2
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-pliers.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 6220,
+   "fetchMs": 6,
+   "parseMs": 0,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    0.4312,
+    11.2138,
+    4.1262
+   ],
+   "meshes": 2,
+   "verts": 350,
+   "tris": 208,
+   "drawCalls": 2,
+   "materials": 2,
+   "willCrease": 2,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 624,
+   "flatRatios": [
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 2
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-power-box.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 311684,
+   "fetchMs": 9,
+   "parseMs": 13,
+   "parseSpread": [
+    13,
+    14
+   ],
+   "bbox": [
+    0.4626,
+    0.5031,
+    0.402
+   ],
+   "meshes": 2,
+   "verts": 20452,
+   "tris": 21272,
+   "drawCalls": 2,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 2,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 20452,
+   "flatRatios": [
+    0.246,
+    0.214
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-rack-metal-worn.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 156140,
+   "fetchMs": 6,
+   "parseMs": 14,
+   "parseSpread": [
+    13,
+    38
+   ],
+   "bbox": [
+    0.9153,
+    1.9,
+    0.6001
+   ],
+   "meshes": 1,
+   "verts": 7224,
+   "tris": 6372,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 7224,
+   "flatRatios": [
+    0.621
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-service-ramp.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 6660,
+   "fetchMs": 6,
+   "parseMs": 4,
+   "parseSpread": [
+    3,
+    4
+   ],
+   "bbox": [
+    1.8746,
+    1.3916,
+    3.1145
+   ],
+   "meshes": 1,
+   "verts": 324,
+   "tris": 192,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 576,
+   "flatRatios": [
+    0.854
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-shelf-wooden.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 23072,
+   "fetchMs": 4,
+   "parseMs": 8,
+   "parseSpread": [
+    8,
+    8
+   ],
+   "bbox": [
+    1.0034,
+    2.0803,
+    0.257
+   ],
+   "meshes": 1,
+   "verts": 362,
+   "tris": 182,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 546,
+   "flatRatios": [
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-shelving-tall.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 11344,
+   "fetchMs": 6,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    1
+   ],
+   "bbox": [
+    2.0568,
+    3.1067,
+    0.8109
+   ],
+   "meshes": 3,
+   "verts": 928,
+   "tris": 536,
+   "drawCalls": 3,
+   "materials": 3,
+   "willCrease": 3,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1608,
+   "flatRatios": [
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-shop-machine.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 14692,
+   "fetchMs": 5,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    2
+   ],
+   "bbox": [
+    2.091,
+    1.3127,
+    1.0138
+   ],
+   "meshes": 6,
+   "verts": 854,
+   "tris": 478,
+   "drawCalls": 6,
+   "materials": 6,
+   "willCrease": 6,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 1434,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 6
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-spark-plug.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 74944,
+   "fetchMs": 9,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    2
+   ],
+   "bbox": [
+    382928.7226,
+    440460.8096,
+    120694.1268
+   ],
+   "meshes": 5,
+   "verts": 9162,
+   "tris": 4796,
+   "drawCalls": 5,
+   "materials": 3,
+   "willCrease": 4,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 14270,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    0.118,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-stool-metal-a.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 175620,
+   "fetchMs": 7,
+   "parseMs": 14,
+   "parseSpread": [
+    13,
+    16
+   ],
+   "bbox": [
+    0.352,
+    0.8828,
+    0.3546
+   ],
+   "meshes": 1,
+   "verts": 5198,
+   "tris": 8334,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 5198,
+   "flatRatios": [
+    0.029
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-stool-metal-b.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 90664,
+   "fetchMs": 9,
+   "parseMs": 8,
+   "parseSpread": [
+    8,
+    10
+   ],
+   "bbox": [
+    0.4481,
+    0.4581,
+    0.4731
+   ],
+   "meshes": 1,
+   "verts": 4490,
+   "tris": 6532,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 4490,
+   "flatRatios": [
+    0.054
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-storage-cart-industrial.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 314700,
+   "fetchMs": 12,
+   "parseMs": 14,
+   "parseSpread": [
+    13,
+    14
+   ],
+   "bbox": [
+    1.6033,
+    1.3775,
+    1.1028
+   ],
+   "meshes": 1,
+   "verts": 17224,
+   "tris": 18902,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 17224,
+   "flatRatios": [
+    0.168
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-tire-pump.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 86996,
+   "fetchMs": 15,
+   "parseMs": 9,
+   "parseSpread": [
+    8,
+    11
+   ],
+   "bbox": [
+    0.2549,
+    0.5795,
+    0.101
+   ],
+   "meshes": 1,
+   "verts": 4827,
+   "tris": 6572,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 4827,
+   "flatRatios": [
+    0.005
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-tool-cart-rolling.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 390036,
+   "fetchMs": 13,
+   "parseMs": 17,
+   "parseSpread": [
+    16,
+    18
+   ],
+   "bbox": [
+    1.2734,
+    0.9647,
+    0.7537
+   ],
+   "meshes": 1,
+   "verts": 22478,
+   "tris": 29394,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 22478,
+   "flatRatios": [
+    0.104
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-tool-chest-metal.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 221060,
+   "fetchMs": 14,
+   "parseMs": 14,
+   "parseSpread": [
+    14,
+    17
+   ],
+   "bbox": [
+    0.6854,
+    0.6518,
+    0.4072
+   ],
+   "meshes": 7,
+   "verts": 11073,
+   "tris": 13360,
+   "drawCalls": 7,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 7,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 11073,
+   "flatRatios": [
+    0.304,
+    0.246,
+    0.155,
+    0,
+    0.471,
+    0.436,
+    0
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-toolbox-metal.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 245824,
+   "fetchMs": 9,
+   "parseMs": 15,
+   "parseSpread": [
+    13,
+    15
+   ],
+   "bbox": [
+    0.4,
+    0.3471,
+    0.2923
+   ],
+   "meshes": 6,
+   "verts": 11985,
+   "tris": 14228,
+   "drawCalls": 6,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 5,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 12223,
+   "flatRatios": [
+    0.195,
+    0.735,
+    0.029,
+    0.495,
+    0.495,
+    0.119
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-tyre-bare.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 33652,
+   "fetchMs": 8,
+   "parseMs": 6,
+   "parseSpread": [
+    5,
+    6
+   ],
+   "bbox": [
+    183.0164,
+    183.0164,
+    51.4135
+   ],
+   "meshes": 1,
+   "verts": 2784,
+   "tris": 1392,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 4176,
+   "flatRatios": [
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 1,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-tyre-old.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 139516,
+   "fetchMs": 7,
+   "parseMs": 17,
+   "parseSpread": [
+    14,
+    31
+   ],
+   "bbox": [
+    0.6,
+    0.6,
+    0.165
+   ],
+   "meshes": 1,
+   "verts": 2090,
+   "tris": 2880,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2090,
+   "flatRatios": [
+    0
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-tyre-stack.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 30380,
+   "fetchMs": 6,
+   "parseMs": 0,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    1.7556,
+    1.0875,
+    1.1445
+   ],
+   "meshes": 1,
+   "verts": 2816,
+   "tris": 1776,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2816,
+   "flatRatios": [
+    0.676
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-tyre-truck.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 15456,
+   "fetchMs": 6,
+   "parseMs": 1,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    0.4468,
+    1.12,
+    1.1119
+   ],
+   "meshes": 2,
+   "verts": 1452,
+   "tris": 688,
+   "drawCalls": 2,
+   "materials": 2,
+   "willCrease": 2,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2064,
+   "flatRatios": [
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 2
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-welding-cart.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 380772,
+   "fetchMs": 9,
+   "parseMs": 17,
+   "parseSpread": [
+    15,
+    18
+   ],
+   "bbox": [
+    0.8384,
+    1.5632,
+    0.655
+   ],
+   "meshes": 2,
+   "verts": 21495,
+   "tris": 29418,
+   "drawCalls": 2,
+   "materials": 2,
+   "willCrease": 0,
+   "alreadySmooth": 2,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 21495,
+   "flatRatios": [
+    0.1,
+    0
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 2
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-wheel-mag.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 6228,
+   "fetchMs": 6,
+   "parseMs": 5,
+   "parseSpread": [
+    4,
+    9
+   ],
+   "bbox": [
+    7.3038,
+    18.3404,
+    18.3404
+   ],
+   "meshes": 1,
+   "verts": 344,
+   "tris": 684,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 1,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 2052,
+   "flatRatios": [
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 1,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-wheel-rim-rusted-a.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 257124,
+   "fetchMs": 10,
+   "parseMs": 15,
+   "parseSpread": [
+    14,
+    18
+   ],
+   "bbox": [
+    0.4307,
+    0.4416,
+    0.1547
+   ],
+   "meshes": 1,
+   "verts": 9918,
+   "tris": 16440,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 0,
+   "flatRatios": [],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-wheel-stack-bare.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 10312,
+   "fetchMs": 5,
+   "parseMs": 5,
+   "parseSpread": [
+    4,
+    5
+   ],
+   "bbox": [
+    0.573,
+    0.2041,
+    0.573
+   ],
+   "meshes": 1,
+   "verts": 459,
+   "tris": 608,
+   "drawCalls": 1,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 459,
+   "flatRatios": [
+    0
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-workbench-anvil.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 10028,
+   "fetchMs": 4,
+   "parseMs": 1,
+   "parseSpread": [
+    1,
+    1
+   ],
+   "bbox": [
+    0.3092,
+    0.2745,
+    0.2688
+   ],
+   "meshes": 5,
+   "verts": 418,
+   "tris": 258,
+   "drawCalls": 5,
+   "materials": 3,
+   "willCrease": 5,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 774,
+   "flatRatios": [
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-workbench-cluttered.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 206884,
+   "fetchMs": 8,
+   "parseMs": 6,
+   "parseSpread": [
+    5,
+    8
+   ],
+   "bbox": [
+    1.0696,
+    2.7234,
+    1.6179
+   ],
+   "meshes": 66,
+   "verts": 16185,
+   "tris": 8414,
+   "drawCalls": 66,
+   "materials": 16,
+   "willCrease": 66,
+   "alreadySmooth": 0,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 25242,
+   "flatRatios": [
+    1,
+    1,
+    0.947,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.959,
+    0.75,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.786,
+    1,
+    1,
+    1,
+    0.938,
+    1,
+    0.913,
+    1,
+    0.989,
+    0.826,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 16
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-workbench-grinder.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 11060,
+   "fetchMs": 6,
+   "parseMs": 1,
+   "parseSpread": [
+    0,
+    1
+   ],
+   "bbox": [
+    0.2604,
+    0.2801,
+    0.3125
+   ],
+   "meshes": 3,
+   "verts": 744,
+   "tris": 460,
+   "drawCalls": 3,
+   "materials": 3,
+   "willCrease": 2,
+   "alreadySmooth": 1,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 996,
+   "flatRatios": [
+    1,
+    1,
+    0.333
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 3
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "prop-wrench-adjustable.glb",
+   "finish": "prop",
+   "ok": true,
+   "bytes": 196776,
+   "fetchMs": 11,
+   "parseMs": 19,
+   "parseSpread": [
+    17,
+    20
+   ],
+   "bbox": [
+    0.0683,
+    0.2541,
+    0.0306
+   ],
+   "meshes": 3,
+   "verts": 4913,
+   "tris": 5390,
+   "drawCalls": 3,
+   "materials": 1,
+   "willCrease": 0,
+   "alreadySmooth": 3,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 4913,
+   "flatRatios": [
+    0.481,
+    0,
+    0.217
+   ],
+   "classes": {
+    "PAINT": 0,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 0,
+    "PROP": 1
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": []
+  },
+  {
+   "name": "truck-pickup-classic.glb",
+   "finish": "paint",
+   "ok": true,
+   "bytes": 266792,
+   "fetchMs": 18,
+   "parseMs": 7,
+   "parseSpread": [
+    7,
+    10
+   ],
+   "bbox": [
+    2.3122,
+    1.8484,
+    5.1804
+   ],
+   "meshes": 6,
+   "verts": 6964,
+   "tris": 6432,
+   "drawCalls": 6,
+   "materials": 3,
+   "willCrease": 0,
+   "alreadySmooth": 6,
+   "overCreaseBudget": 0,
+   "gpuVertsAfterCrease": 6964,
+   "flatRatios": [
+    0.277,
+    0.255,
+    0.255,
+    0.312,
+    0,
+    0
+   ],
+   "classes": {
+    "PAINT": 1,
+    "BARE-PAINT": 0,
+    "GLASS": 0,
+    "RUBBER": 0,
+    "CHROME": 2,
+    "PROP": 0
+   },
+   "noNormals": 0,
+   "nonIndexed": 0,
+   "warn": [
+    "TEXTURED MATERIAL CLASSIFIED CHROME: \"Atlas\" (white baseColorFactor + a texture) — metalness 1, clearcoat 0"
+   ]
+  }
+ ]
+}

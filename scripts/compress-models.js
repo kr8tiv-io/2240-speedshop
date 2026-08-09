@@ -25,8 +25,29 @@ const path = require("path");
 const os = require("os");
 const { execFileSync } = require("child_process");
 
-const SCRATCH = "C:\\Users\\lucid\\AppData\\Local\\Temp\\claude\\C--Users-lucid-Desktop\\e5405e16-e9ad-425a-94e8-51f957461ea3\\scratchpad";
-const req = (name) => require(path.join(SCRATCH, "node_modules", name));
+/* Build-only dependencies, resolved from the first place that has them.
+   They live outside the app's dependency tree on purpose: nothing the site
+   SHIPS imports gltf-transform or sharp, and this repo's lockfile currently
+   makes `npm install` fail outright.
+   The first entry used to be the only entry — a session-scoped temp directory
+   that gets swept between sessions, which is exactly what happened: the whole
+   model pipeline stopped resolving its own toolchain. A build script may not
+   depend on scratch space. */
+const TOOL_PATHS = [
+  path.resolve(__dirname, "..", "node_modules"),
+  "C:\\tmp\\gltf-tools\\node_modules",
+  "C:\\Users\\lucid\\AppData\\Local\\Temp\\claude\\C--Users-lucid-Desktop\\e5405e16-e9ad-425a-94e8-51f957461ea3\\scratchpad\\node_modules",
+];
+const req = (name) => {
+  for (const root of TOOL_PATHS) {
+    const candidate = path.join(root, name);
+    if (fs.existsSync(candidate)) return require(candidate);
+  }
+  throw new Error(
+    `${name} not found. Install the build toolchain:\n` +
+      `  cd C:\\tmp\\gltf-tools && npm install @gltf-transform/core@4 @gltf-transform/extensions@4 @gltf-transform/functions@4 sharp`,
+  );
+};
 
 const { NodeIO } = req("@gltf-transform/core");
 const { ALL_EXTENSIONS, EXTTextureWebP } = req("@gltf-transform/extensions");
@@ -52,6 +73,16 @@ const sharp = req("sharp");
    those texels do land. */
 const ROOT = path.resolve(__dirname, "..");
 const SRC = path.join(ROOT, "public", "models");
+/* Geometry refined by `scripts/refine-models.py` (Blender, headless) lands here
+   and takes precedence per file. Originals in `public/models/` stay pristine and
+   remain the fallback, so deleting this directory returns the pipeline to
+   exactly what it did before — and a model the refiner REFUSED simply is not
+   here, and is read from the original without anything special happening. */
+const REFINED = path.join(ROOT, "public", "models-refined");
+const sourceOf = (file) => {
+  const refined = path.join(REFINED, file);
+  return fs.existsSync(refined) ? refined : path.join(SRC, file);
+};
 const MOBILE = process.argv.includes("--mobile");
 const OUT = path.join(ROOT, "public", MOBILE ? "models-mobile" : "models-opt");
 const KTX = "C:\\Users\\lucid\\tools\\ktx\\bin\\ktx.exe";
@@ -126,7 +157,7 @@ async function encodeTexture(pixels, slot, hero) {
 /* ── One file ───────────────────────────────────────────────────────────── */
 
 async function convert(file, io) {
-  const src = path.join(SRC, file);
+  const src = sourceOf(file);
   const dst = path.join(OUT, file);
   const before = fs.statSync(src).size;
 
@@ -197,12 +228,24 @@ async function convert(file, io) {
     vramAfter += target * target * 4 * 1.33;
   }
 
-  // Vehicles keep float32 geometry. `Loaders.tsx` re-creases the normals of
-  // the flat-shaded bodies at load time, and that maths reads the position
-  // buffer directly — quantised positions would hand it a different space and
-  // the roof of every car is exactly where a wrong normal shows. The bodies
-  // are a rounding error in bytes once their textures are KTX2 anyway.
-  if (!/^(car|truck)-/.test(file) && !process.argv.includes("--nomeshopt")) {
+  // Vehicles USED to keep float32 geometry, because `smooth()` in Loaders.tsx
+  // re-creased their flat-shaded bodies at load time and that maths reads the
+  // position buffer directly — quantised positions would hand it a different
+  // space, and the roof of a car is exactly where a wrong normal shows.
+  //
+  // The Blender pass now does that creasing offline and better (it can hold a
+  // material boundary sharp, which `toCreasedNormals` cannot), so a refined
+  // vehicle arrives already smooth, `isFlatShaded` returns false, and `smooth()`
+  // declines to touch it. Nothing reads those positions any more, so the reason
+  // for the exemption is gone with it.
+  //
+  // The exemption still stands for a vehicle the refiner REFUSED: that one is
+  // read from the untouched original, is still flat-shaded, and still gets
+  // creased at runtime off its positions. `smooth()` is not dead code — it is
+  // the fallback, and it is what makes this conditional safe.
+  const refined = fs.existsSync(path.join(REFINED, file));
+  const needsRuntimeCrease = /^(car|truck)-/.test(file) && !refined;
+  if (!needsRuntimeCrease && !process.argv.includes("--nomeshopt")) {
     await document.transform(meshopt({ encoder: MeshoptEncoder, level: "medium" }));
   }
 
@@ -238,8 +281,11 @@ async function convert(file, io) {
 
   for (const [i, file] of list.entries()) {
     const dst = path.join(OUT, file);
-    if (!force && fs.existsSync(dst) && fs.statSync(dst).mtimeMs > fs.statSync(path.join(SRC, file)).mtimeMs) {
-      const b = fs.statSync(path.join(SRC, file)).size;
+    // Freshness is judged against whichever file will actually be READ, so a
+    // newly refined model invalidates its cached output the same way an edited
+    // original does.
+    if (!force && fs.existsSync(dst) && fs.statSync(dst).mtimeMs > fs.statSync(sourceOf(file)).mtimeMs) {
+      const b = fs.statSync(sourceOf(file)).size;
       const a = fs.statSync(dst).size;
       before += b;
       after += a;

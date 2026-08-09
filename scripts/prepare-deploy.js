@@ -5,14 +5,26 @@
  *
  * `public/models/` is the 140 MB authoring library — 105 raw .glb files kept in
  * the repo so the compression pipeline can be re-run against the originals.
- * Nothing on the site ever requests one: every fetch goes to `models-opt/`.
- * Next copies all of `public/` into `out/` regardless, so it comes out here.
+ * `public/models-refined/` is the Blender pass over that library, and is an
+ * INTERMEDIATE: `compress-models.js` reads it, the site never does.
+ * Nothing on the site ever requests either one: every fetch goes to `models-opt/`
+ * or `models-mobile/`. Next copies all of `public/` into `out/` regardless, so
+ * both come out here.
+ *
+ * This list is the only thing standing between an authoring directory and the
+ * host. Adding `models-refined/` without adding it here took one export from
+ * 62 MB to 211 MB — nothing visibly broke, which is exactly why it needs to be
+ * checked rather than noticed.
  */
 const fs = require("fs");
 const path = require("path");
 
 const OUT = path.resolve(__dirname, "..", "out");
-const DROP = ["models"];
+const DROP = ["models", "models-refined"];
+/* What the site is actually allowed to fetch. Anything else under out/ that
+   looks like a model shelf is an authoring or intermediate directory that
+   should have been dropped — say so loudly rather than shipping it. */
+const SHIPPED = new Set(["models-opt", "models-mobile"]);
 
 const mb = (dir) => {
   let total = 0;
@@ -42,6 +54,14 @@ for (const name of DROP) {
 
 if (!fs.existsSync(path.join(OUT, ".htaccess"))) {
   console.warn("WARNING: out/.htaccess missing — compression and cache headers will not ship");
+}
+
+for (const entry of fs.readdirSync(OUT, { withFileTypes: true })) {
+  if (!entry.isDirectory() || !/^models/.test(entry.name) || SHIPPED.has(entry.name)) continue;
+  console.warn(
+    `WARNING: out/${entry.name} is ${mb(path.join(OUT, entry.name)).toFixed(1)} MB and is not a shipped ` +
+      `shelf — add it to DROP in this script.`,
+  );
 }
 
 console.log(`export is ${mb(OUT).toFixed(1)} MB`);
