@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
+import modelVersion from "./scripts/model-version.js";
+
+/* The model shelves are content-addressed by directory: `/models-opt-a1b2c3d4/`.
+   Computed here so the build and `scripts/prepare-deploy.js` cannot disagree —
+   the loader's URLs and the directory names on the host come from one hash of
+   the same bytes. See scripts/model-version.js for what went wrong without it. */
+const MODELS_VERSION = modelVersion();
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_MODELS_VERSION: MODELS_VERSION },
   // `EXPORT=1 next build` produces a fully static `out/` for dumb hosts
   // (Hostinger shared, any Apache/nginx). Unset, the build stays a normal
   // Node target for the VPS. The site is 100% SSG either way; export only

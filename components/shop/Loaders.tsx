@@ -51,7 +51,16 @@ import { stationAt } from "./world";
 /* Raw fetch strings bypass Next's basePath handling, so the subfolder-preview
    builds (BASEPATH=/2240) inject the prefix here at build time. Empty in every
    root-hosted build. */
-const BASE = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/models-opt/`;
+/* The shelf directories carry a content hash — `/models-opt-a1b2c3d4/` — so a
+   model URL changes whenever its bytes do. Without it the host served the
+   PREVIOUS build's geometry for up to a month: measured live right after a
+   deploy, `car-dodge-charger.glb.br` came back at 94 kB with `age: 2551` while
+   the file on disk was 43 kB. Since the twin is requested by name, that is not a
+   missed optimisation, it is the old faceted car with a 200 and no error.
+   Empty in a source checkout with no built shelves, which keeps the plain paths
+   working. */
+const VERSION = process.env.NEXT_PUBLIC_MODELS_VERSION ? `-${process.env.NEXT_PUBLIC_MODELS_VERSION}` : "";
+const BASE = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/models-opt${VERSION}/`;
 
 export const M = {
   /* ── vehicles ── */
@@ -841,7 +850,7 @@ function orientOf(box: THREE.Box3, orient: Orient): THREE.Euler {
    The swap happens here rather than in the `M` map because the tier is not
    known until the canvas mounts, and `M` is built when the module loads. Keys
    stay the desktop paths, so the `PAINTED`/`BARE` finish lookups still match. */
-const MOBILE_BASE = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/models-mobile/`;
+const MOBILE_BASE = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/models-mobile${VERSION}/`;
 
 function shelf(url: string) {
   return phoneTier ? url.replace(BASE, MOBILE_BASE) : url;

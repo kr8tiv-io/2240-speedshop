@@ -19,12 +19,17 @@
 const fs = require("fs");
 const path = require("path");
 
+const modelVersion = require("./model-version.js");
+
 const OUT = path.resolve(__dirname, "..", "out");
+const VERSION = modelVersion();
 const DROP = ["models", "models-refined"];
 /* What the site is actually allowed to fetch. Anything else under out/ that
    looks like a model shelf is an authoring or intermediate directory that
    should have been dropped — say so loudly rather than shipping it. */
-const SHIPPED = new Set(["models-opt", "models-mobile"]);
+const SHIPPED = new Set(
+  VERSION ? [`models-opt-${VERSION}`, `models-mobile-${VERSION}`] : ["models-opt", "models-mobile"],
+);
 
 const mb = (dir) => {
   let total = 0;
@@ -50,6 +55,20 @@ for (const name of DROP) {
   const size = mb(dir);
   fs.rmSync(dir, { recursive: true, force: true });
   console.log(`dropped out/${name}  (${size.toFixed(1)} MB)`);
+}
+
+/* Stamp the shelves with the same hash the build compiled into the loader's
+   URLs, so a model's URL changes exactly when its bytes do. Both names come from
+   `model-version.js` reading the same files — they cannot drift apart. */
+if (VERSION) {
+  for (const shelf of modelVersion.SHELVES) {
+    const from = path.join(OUT, shelf);
+    const to = path.join(OUT, `${shelf}-${VERSION}`);
+    if (!fs.existsSync(from)) continue;
+    fs.rmSync(to, { recursive: true, force: true });
+    fs.renameSync(from, to);
+    console.log(`stamped out/${shelf} → ${shelf}-${VERSION}`);
+  }
 }
 
 if (!fs.existsSync(path.join(OUT, ".htaccess"))) {

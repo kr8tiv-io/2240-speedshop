@@ -71,10 +71,19 @@
   <FilesMatch "\.(js|css|woff2)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  # The shop itself: models, transcoder, photographs. Content-addressed by
-  # deploy rather than by name, so a month with revalidation, not a year.
-  <FilesMatch "\.(glb|ktx2|wasm|jpg|jpeg|png|webp|avif|svg|ico)$">
+  # The shop itself: transcoder, photographs. A month, not a year.
+  <FilesMatch "\.(ktx2|wasm|jpg|jpeg|png|webp|avif|svg|ico)$">
     Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+  # Models live under a content-hashed directory (`/models-opt-a1b2c3d4/`), so a
+  # model URL changes whenever its bytes do and `immutable` is simply true.
+  # This rule must also cover the `.glb.br` twin, which is what the loader
+  # actually requests: the twins were inheriting a one-month expiry from our own
+  # `AddType model/gltf-binary .br`, and the edge served a stale one — 94 kB with
+  # `age: 2551` against a 43 kB file on disk, i.e. last build's faceted car,
+  # returned with a 200 and no error.
+  <FilesMatch "\.glb(\.br)?$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
   # HTML must never be sticky: the whole site is one deploy behind otherwise.
   <FilesMatch "\.(html|txt|xml|json)$">
