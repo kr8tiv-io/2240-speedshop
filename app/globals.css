@@ -1,0 +1,1285 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AFTER HOURS — tungsten on textured black.
+
+   One accent: halogen tungsten (#ffb066) with a hot core (#ffd9ad). Every glow
+   has a source — the work lamp, the headlights, the sign. Speed-red (#a02d2d)
+   exists ONLY as the car's paint and the primary CTA's pressed state. Large
+   areas stay genuinely dark; separation comes from pools of light, not borders.
+
+   Legacy token names (neon-bloom, rust) are kept so long-form pages resolve —
+   but they now point INTO this system: neon-bloom IS tungsten, rust is a dark
+   steel hairline. Nothing on this site glows red.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@theme {
+  --color-bay-black: #0a0a0b;
+  --color-panel: #101012;
+  --color-speed-red: #a02d2d; /* car paint + one CTA pressed state. Never a UI glow. */
+  --color-neon-bloom: #ffb066; /* legacy accent name → tungsten */
+  --color-rust: #33343a; /* legacy border name → steel hairline */
+  --color-steel: #9a9ca0;
+  --color-tungsten: #ffb066;
+  --color-ember: #ffd9ad; /* the hot core */
+  --color-bone: #f2f0ec;
+
+  --font-display: var(--font-anton), "Arial Narrow", sans-serif;
+  --font-sub: var(--font-archivo), system-ui, sans-serif;
+  --font-body: var(--font-archivo), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-serif: var(--font-bodoni), Didot, "Bodoni MT", Georgia, serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #0a0a0b;
+  /* Lenis owns the wheel; native smoothing would fight it. */
+  scroll-behavior: auto;
+}
+
+body {
+  /* Section tone handoffs: GSAP tweens --tone per section (pools of light
+     follow the scroll); the GL hero tracks the same value via window.__tone. */
+  background: var(--tone, #0a0a0b);
+  color: #f2f0ec;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  /* `clip`, NOT `hidden`: on iOS Safari `overflow-x: hidden` turns <body> into
+     the scroll container and window.scrollY pins at 0. `clip` cuts overflow
+     without creating a scroll container. Plain `hidden` first as fallback. */
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FILM GRAIN + VIGNETTE — the stage is never flat black.
+   One fixed SVG turbulence layer over everything (DOM and canvas alike) plus a
+   soft iris. Pure CSS, no JS, ~zero cost.
+   ──────────────────────────────────────────────────────────────────────────── */
+.grain {
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  z-index: 60;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  opacity: 0.055;
+  mix-blend-mode: overlay;
+  animation: grain-shift 0.9s steps(4) infinite;
+}
+
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-1.2%, 0.8%); }
+  50% { transform: translate(0.9%, -1.1%); }
+  75% { transform: translate(-0.6%, -0.5%); }
+  100% { transform: translate(0, 0); }
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  pointer-events: none;
+  background: radial-gradient(
+    128% 100% at 50% 44%,
+    transparent 0%,
+    transparent 58%,
+    rgba(5, 5, 6, 0.34) 100%
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   THE HOVER LANGUAGE — backlit panels.
+   No bordered cards. An element lifts 2px and a warm pool of light blooms
+   BEHIND it, like a lamp switched on at its back. Used by .plate (legacy card
+   class, redefined) and .backlit (new elements).
+   ──────────────────────────────────────────────────────────────────────────── */
+.plate,
+.backlit {
+  position: relative;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(242, 240, 236, 0.025), transparent 55%),
+    #0e0e10;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.plate::before,
+.backlit::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  z-index: -1;
+  background: radial-gradient(
+    62% 78% at 50% 12%,
+    rgba(255, 176, 102, 0.14),
+    rgba(255, 176, 102, 0.04) 52%,
+    transparent 74%
+  );
+  opacity: 0;
+  transform: scale(0.88);
+  transition: opacity 380ms ease, transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.plate:hover,
+.backlit:hover {
+  transform: translateY(-2px);
+}
+
+.plate:hover::before,
+.backlit:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Content plates on long-form pages. */
+.scrim {
+  background-color: rgb(12 12 14 / 0.86);
+}
+.scrim-strong {
+  background-color: rgb(10 10 11 / 0.95);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ACCENT HARDWARE
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Filament hairline — replaces the old weld seam. */
+.weld {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 176, 102, 0.34) 18%,
+    rgba(255, 217, 173, 0.55) 50%,
+    rgba(255, 176, 102, 0.34) 82%,
+    transparent
+  );
+  opacity: 0.5;
+}
+
+/* Tungsten text glow — punctuation, never body text. Legacy names kept. */
+.neon,
+.neon-red,
+.tungsten-glow {
+  color: #ffd9ad;
+  text-shadow:
+    0 0 6px rgba(255, 176, 102, 0.7),
+    0 0 22px rgba(255, 176, 102, 0.35),
+    0 0 56px rgba(255, 150, 60, 0.18);
+}
+
+/* Flicker is punctuation, never continuous. */
+@keyframes buzz {
+  0%, 42%, 46%, 58%, 100% { opacity: 1; }
+  44%, 56% { opacity: 0.55; }
+}
+.flicker:hover {
+  animation: buzz 320ms steps(1, end);
+}
+
+/* Neon tube switching ON — the preloader badge and the hero sign. */
+@keyframes tube-on {
+  0% { opacity: 0.04; filter: none; }
+  8% { opacity: 0.85; }
+  10% { opacity: 0.08; }
+  22% { opacity: 0.06; }
+  26% { opacity: 0.9; }
+  30% { opacity: 0.1; }
+  44% { opacity: 0.12; }
+  48%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 14px rgba(255, 176, 102, 0.45))
+      drop-shadow(0 0 42px rgba(255, 150, 60, 0.22));
+  }
+}
+.tube-on {
+  animation: tube-on 1.05s steps(1, end) forwards;
+}
+
+/* One photographic grade over every source photo: shadows crushed, contrast
+   up, a warm cast — iPhone shots and pro shots share one night. */
+.graded {
+  filter: brightness(0.84) contrast(1.14) saturate(0.82) sepia(0.09);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CTA LANGUAGE — square, tracked, backlit on hover. The pressed state is the
+   ONE place speed-red appears in the UI.
+   ──────────────────────────────────────────────────────────────────────────── */
+.cta {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(255, 176, 102, 0.42);
+  color: #f2f0ec;
+  font-family: var(--font-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 12px;
+  padding: 1rem 2rem;
+  overflow: hidden;
+  /* Fill sweep lives on the element's own background: a tungsten layer scales
+     in from the left under the label. No extra nodes, no layout. */
+  background-image: linear-gradient(#ffb066, #ffb066);
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  background-position: left center;
+  transition:
+    border-color 300ms ease,
+    color 260ms ease,
+    background-size 420ms cubic-bezier(0.76, 0, 0.24, 1),
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cta::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  z-index: -1;
+  background: radial-gradient(
+    64% 90% at 50% 50%,
+    rgba(255, 176, 102, 0.16),
+    transparent 72%
+  );
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 340ms ease, transform 340ms ease;
+  pointer-events: none;
+}
+/* The arrow slides in from the seam as the fill arrives. */
+.cta::after {
+  content: "→";
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  transform: translateX(-8px);
+  opacity: 0;
+  transition:
+    width 420ms cubic-bezier(0.76, 0, 0.24, 1),
+    transform 420ms cubic-bezier(0.76, 0, 0.24, 1),
+    opacity 260ms ease;
+}
+@media (hover: hover) {
+  .cta:hover {
+    border-color: rgba(255, 217, 173, 0.85);
+    color: #0a0a0b;
+    background-size: 100% 100%;
+    transform: translateY(-2px);
+  }
+  .cta:hover::before {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .cta:hover::after {
+    width: 1.05em;
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.cta:active {
+  background-color: rgba(160, 45, 45, 0.28);
+  border-color: #a02d2d;
+  transform: translateY(0) scale(0.98);
+}
+/* Two of these stacked ate 190px of a 568px-tall SE. Same button, less air —
+   phones only; from sm up the full 1rem/2rem padding returns. */
+.cta-compact {
+  padding: 0.8rem 1.35rem;
+  letter-spacing: 0.18em;
+}
+@media (min-width: 640px) {
+  .cta-compact {
+    padding: 1rem 2rem;
+    letter-spacing: 0.22em;
+  }
+}
+.cta-ghost {
+  border-color: rgba(154, 156, 160, 0.28);
+}
+.cta-ghost:hover {
+  border-color: rgba(255, 176, 102, 0.5);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   INSTRUMENTS — outlined numerals, mono annotations, the marquee.
+   ──────────────────────────────────────────────────────────────────────────── */
+.outline-num {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(154, 156, 160, 0.38);
+  font-family: var(--font-display);
+  line-height: 0.8;
+}
+
+.corner-note {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(154, 156, 160, 0.55);
+}
+
+@keyframes marquee-run {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-run 36s linear infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FLASHLIGHT IMAGE HOVER — images sit dim; a warm cone follows the cursor and
+   lifts them. --fx / --fy are set by components/fx/Flashlight.tsx.
+   ──────────────────────────────────────────────────────────────────────────── */
+.flashlight {
+  position: relative;
+  overflow: hidden;
+}
+.flashlight img {
+  filter: brightness(0.55) contrast(1.12) saturate(0.78) sepia(0.1);
+  transition: filter 500ms ease;
+}
+.flashlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    240px circle at var(--fx, 50%) var(--fy, 40%),
+    rgba(255, 217, 173, 0.3),
+    rgba(255, 176, 102, 0.1) 45%,
+    transparent 72%
+  );
+  opacity: 0;
+  transition: opacity 400ms ease;
+  mix-blend-mode: screen;
+}
+.flashlight:hover img {
+  filter: brightness(0.82) contrast(1.1) saturate(0.86) sepia(0.08);
+}
+.flashlight:hover::after {
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CUSTOM CURSOR — a small dot that inverts over interactive targets.
+   Fine pointers only; touch never sees any of this.
+   ──────────────────────────────────────────────────────────────────────────── */
+@media (pointer: fine) {
+  .cursor-dot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 90;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border-radius: 999px;
+    background: #f2f0ec;
+    mix-blend-mode: difference;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: width 220ms ease, height 220ms ease, margin 220ms ease,
+      opacity 220ms ease, background-color 220ms ease;
+  }
+  .cursor-dot.is-hover {
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+  }
+  /* Context morph: over VIEW/DRAG targets the dot becomes a labelled plate —
+     out of difference-blend, into tungsten on black. */
+  .cursor-dot.has-label {
+    width: 64px;
+    height: 64px;
+    margin: -32px 0 0 -32px;
+    mix-blend-mode: normal;
+    background: rgba(10, 10, 11, 0.85);
+    backdrop-filter: blur(2px);
+  }
+  .cursor-dot.is-hidden,
+  .cursor-dot.is-caret {
+    opacity: 0;
+  }
+  .cursor-label {
+    font-family: var(--font-plex-mono), ui-monospace, monospace;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #ffb066;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: opacity 200ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .cursor-dot.has-label .cursor-label {
+    opacity: 1;
+    transform: none;
+  }
+  /* The trailing ring: tungsten hairline, elastic lag handled in JS. */
+  .cursor-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 89;
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 176, 102, 0.35);
+    pointer-events: none;
+    transition: opacity 220ms ease, border-color 260ms ease;
+  }
+  .cursor-ring.is-hover {
+    border-color: rgba(255, 176, 102, 0.85);
+  }
+  .cursor-ring.is-hidden,
+  .cursor-ring.is-caret,
+  .cursor-ring.has-label {
+    opacity: 0;
+  }
+}
+@media (pointer: coarse) {
+  .cursor-dot,
+  .cursor-ring {
+    display: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   KINETIC TYPE — char containers for the manual splitter.
+   ──────────────────────────────────────────────────────────────────────────── */
+.k-line {
+  display: block;
+  overflow: hidden;
+}
+.k-char {
+  display: inline-block;
+  transform: translateY(110%);
+  will-change: transform;
+}
+.k-ready .k-char {
+  transform: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   COUTURE PASS — layered display type, the serif signature, char-roll links,
+   annotation plates, the chapter HUD. One accent, real light logic.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* The signature: ONE italic Fraunces word inside an Anton headline, tungsten.
+   Lowercase against the uppercase wall — the couture tell. */
+/* ─────────────────────────────────────────────────────────────────────────────
+   THE ACCENT WORD.
+
+   Anton is a heavy condensed grotesque with a very tall cap height; a serif
+   italic set at the SAME font-size renders visually ~20% smaller and lands in
+   the line like a typo. That is the whole reason the old Fraunces treatment
+   read as "a weird little word" — it was an optical-sizing bug, not a taste
+   problem, and no amount of swapping faces fixes it on its own.
+
+   So: a high-contrast Didone (Bodoni Moda) — the classic editorial partner
+   for a heavy condensed sans, and the register this shop wants — optically
+   up-sized until its lowercase ascenders meet Anton's caps, with its own
+   line-height pinned so a taller face cannot open up the headline's leading.
+   0.86 / 1.14 = 0.754: the accent occupies exactly the same line box as the
+   type around it.
+   ──────────────────────────────────────────────────────────────────────────── */
+.accent-serif {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  text-transform: none;
+  font-size: 1.14em;
+  line-height: 0.754;
+  letter-spacing: -0.005em;
+  color: #ffb066;
+  padding-inline: 0.06em 0.1em;
+  /* Sit the italic on the cap line rather than the baseline of a face that
+     has no descenders in play. */
+  vertical-align: -0.012em;
+}
+
+/* Display interplay: a 1px-stroke outline echo sits offset behind the bone
+   face and parallax-drifts on scroll (GSAP moves it via transform). */
+.echo-outline {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(242, 240, 236, 0.16);
+  transform: translate(0.045em, 0.07em);
+  pointer-events: none;
+  user-select: none;
+  will-change: transform;
+}
+.echo-outline .accent-serif {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 176, 102, 0.22);
+}
+
+/* Char-roll hover: stacked duplicate label, letters roll up with a 0.02s
+   stagger. Trigger is the nearest link/button (or .roll-trigger) so a whole
+   card can drive the roll of its caption. */
+.roll {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: baseline;
+}
+.roll-c {
+  display: inline-block;
+  position: relative;
+  transform: translateY(0);
+  transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+  transition-delay: calc(var(--i) * 0.02s);
+}
+.roll-c > span:last-child {
+  position: absolute;
+  left: 0;
+  top: 100%;
+}
+@media (hover: hover) {
+  a:hover .roll-c,
+  button:hover .roll-c,
+  .roll-trigger:hover .roll-c {
+    transform: translateY(-100%);
+  }
+}
+
+/* Nav active underline: draws itself in from the left. */
+.nav-underline {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0.35rem;
+  height: 1px;
+  background: rgba(255, 176, 102, 0.75);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+}
+.is-active .nav-underline {
+  transform: scaleX(1);
+}
+
+/* FIG. plates: mono caption hardware on images. Slide up on hover with a
+   fine pointer; always resting visible on touch (no hover exists there). */
+.fig-plate {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  max-width: 88%;
+  padding: 0.5rem 0.85rem;
+  background: rgba(8, 8, 9, 0.82);
+  border-top: 1px solid rgba(255, 176, 102, 0.28);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(154, 156, 160, 0.9);
+  pointer-events: none;
+}
+.fig-plate .fig-n {
+  color: #ffb066;
+}
+@media (hover: hover) and (pointer: fine) {
+  .fig-plate {
+    transform: translateY(101%);
+    transition: transform 0.55s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  a:hover .fig-plate,
+  .flashlight:hover .fig-plate,
+  .roll-trigger:hover .fig-plate {
+    transform: translateY(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SECTION BLENDING — nothing on this page has a hard edge.
+
+   Sections used to butt up against each other and against the film, which is
+   what makes a long page read as a stack of boxes. Three tools, all pure CSS:
+
+   .melt        feathers a section's own top and bottom into the page tone with
+                a mask, so where one ends and the next begins is a gradient and
+                not a line.
+   .melt-into   a fixed-height bleed element placed BETWEEN two sections that
+                carries one tone into the other.
+   .ig-wall     the photo wall's outer edge dissolves rather than stopping at a
+                rectangle — the fix for "weird square frames" at the block
+                level, after the per-image letterbox trim.
+   ──────────────────────────────────────────────────────────────────────────── */
+.melt {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 5rem,
+    #000 calc(100% - 5rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 5rem,
+    #000 calc(100% - 5rem),
+    transparent 100%
+  );
+}
+
+.melt-into {
+  position: relative;
+  height: clamp(4rem, 9vw, 9rem);
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--melt-to, #0d0b09));
+}
+
+.ig-wall {
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 50%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(120% 100% at 50% 50%, #000 62%, transparent 100%);
+}
+
+/* The film hands off to the page rather than ending: a tall feather under the
+   sticky stage so the last frame dissolves into the first section. */
+.film-handoff {
+  position: relative;
+  margin-top: -18vh;
+  height: 18vh;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--tone, #0a0a0b) 78%);
+  z-index: 2;
+}
+
+/* Chapter HUD: fixed mono readout with a 1px progress rule. */
+.hud-rule {
+  height: 1px;
+  width: 6rem;
+  background: rgba(154, 156, 160, 0.22);
+  overflow: hidden;
+}
+/* On a 320 the readout and the coordinates are fighting for one line. */
+@media (max-width: 379px) {
+  .hud-rule {
+    width: 3.25rem;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PHONE READABILITY PLATE.
+   On a 320–390 screen the chapter copy lands ON the car — there is nowhere
+   else for it to go, and the six-trade list on a lit orange coupe is simply
+   unreadable. A soft wash keyed to the copy block buys the contrast back
+   without putting a box on the design. Desktop, where the copy sits clear of
+   the subject, never renders it.
+   ──────────────────────────────────────────────────────────────────────────── */
+.copy-plate {
+  position: relative;
+}
+
+/* DESKTOP TIER. The phone scrim was always there; desktop had none, and once
+   the cars stopped being fogged into the background the bone copy started
+   losing against lit bodywork. A directional wash from the copy's own edge
+   gives the type a ground without putting a panel on the design. */
+/* DESKTOP TIER — a halo on the TYPE, not a veil over the car.
+   First attempt put a gradient panel behind the copy block; because that block
+   spans the full 92rem container it laid a sheet across the whole frame and
+   dimmed the very car it was meant to sit on top of. Haloing the glyphs
+   themselves buys the same separation and leaves the bodywork alone. */
+/* RADII CUT ~4x. Haloing the glyphs instead of panelling the block was right,
+   but at 32px and 64px over display type this size the glows merge into one
+   continuous sheet and the veil has simply moved from a CSS panel onto the
+   type — here it swallows the lamp glow and the grid the headline crosses.
+   Legibility lives at the glyph EDGE, so the near halo is the one that earns
+   its keep; the wide layers bought nothing but murk. */
+.copy-plate h1,
+.copy-plate h2 {
+  text-shadow:
+    0 0 6px rgba(10, 10, 11, 0.95),
+    0 0 14px rgba(10, 10, 11, 0.7);
+}
+.copy-plate p,
+.copy-plate li,
+.copy-plate a {
+  text-shadow:
+    0 0 7px rgba(10, 10, 11, 0.95),
+    0 0 17px rgba(10, 10, 11, 0.78);
+}
+
+@media (max-width: 639px) {
+  /* BOTTOM-ANCHORED, not centred. The radial version faded outward in every
+     direction — including UP, over the car. At 320px the copy block is most of
+     the viewport, so the wash crossed the whole body. Less punishing here than
+     on the daylight build (black over a night shot mostly reads as mood) but
+     it still eats the lamp glow, and the two builds should behave the same. */
+  .copy-plate::before {
+    content: "";
+    position: absolute;
+    inset: -1.5rem -1.25rem -1.75rem;
+    background: linear-gradient(
+      to top,
+      rgba(10, 10, 11, 0.92) 0%,
+      rgba(10, 10, 11, 0.74) 34%,
+      rgba(10, 10, 11, 0.36) 66%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+  /* Children paint above the plate without needing a z-index war. */
+  .copy-plate > * {
+    position: relative;
+  }
+}
+.hud-rule > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: rgba(255, 176, 102, 0.8);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+/* Services index rows: the drawn rule under each row. Ships visible (no-JS
+   keeps its separators); HomeFx zeroes it at init and draws it back in-view. */
+.row-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgba(51, 52, 58, 0.6);
+  transform-origin: left center;
+}
+/* The pool warming as a row arrives — GSAP toggles .row-warm briefly. */
+.services-row.row-warm::before {
+  opacity: 0.5;
+  transform: scale(1);
+}
+
+/* The footer's one slow tungsten pool, drifting like a lamp on a long cord. */
+@keyframes pool-drift {
+  0% { transform: translateX(-9%) scale(1); opacity: 0.8; }
+  50% { transform: translateX(9%) scale(1.12); opacity: 1; }
+  100% { transform: translateX(-9%) scale(1); opacity: 0.8; }
+}
+.pool-drift {
+  animation: pool-drift 26s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Footer wordmark chars: lifted/glowed by pointer proximity (JS sets vars). */
+.wordmark-char {
+  display: inline-block;
+  transform: translateY(calc(var(--lift, 0) * -0.06em));
+  color: rgba(242, 240, 236, calc(0.74 + var(--lift, 0) * 0.26));
+  text-shadow:
+    0 0 calc(var(--lift, 0) * 26px) rgba(255, 176, 102, calc(var(--lift, 0) * 0.5)),
+    0 0 calc(var(--lift, 0) * 70px) rgba(255, 150, 60, calc(var(--lift, 0) * 0.22));
+  transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 340ms ease, text-shadow 340ms ease;
+  will-change: transform;
+}
+
+:focus-visible {
+  outline: 2px solid #ffb066;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: rgba(255, 176, 102, 0.28);
+  color: #f2f0ec;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRELOADER DEAD-MAN FAILSAFE — pure CSS, no JS required.
+   The preloader overlay ships in the static HTML; if the app never hydrates
+   (hung chunk through a bad tunnel), this animation lifts the veil at ~6.5 s
+   all by itself. In every healthy path React removes the node long before the
+   delay expires, so this never shows. Keep the delay ABOVE the worst healthy
+   path (4 s wall-clock cap + 1.3 s flicker + 0.6 s exit ≈ 5.9 s).
+   ──────────────────────────────────────────────────────────────────────────── */
+@keyframes preloader-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.preloader-veil {
+  animation: preloader-failsafe 0.5s ease 6.5s forwards;
+}
+
+/* Same dead-man for the route veil (app/template.tsx). Its SSR markup ships in
+   the covering state and its exits are all React/Framer - measured through a
+   flaky tunnel, a GLB request that suspends the tree wedges React and the veil
+   never lifts. CSS animations outrank Framer's inline styles, so this fades it
+   regardless. Healthy path unmounts the node by ~0.9 s; 3 s never shows. */
+.route-veil {
+  animation: preloader-failsafe 0.5s ease 3s forwards;
+}
+
+/* Reduced motion: static compositions, no scrub, no grain shimmer. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .grain { animation: none; }
+  .k-char { transform: none; }
+  .pool-drift { animation: none; }
+  .roll-c { transition: none; }
+  .fig-plate { transform: none; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   === SHOP WALKTHROUGH (ported) ===
+
+   The 2D half of the 3D walk-through, ported from the cinematic speedshop
+   build and re-graded into the After Hours system: tungsten (#ffb066) where
+   the original burned neon red, bay-black #0a0a0b, no new accents. Additive
+   only — nothing above this block is modified. Classes renamed against the
+   original where a name could collide (`world-veil` → `wt-world-veil`; the
+   rise cascade is scoped to `.wt-cascade` instead of `.scrim`).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── The world veil — one step in front of the canvas, behind the copy ──────
+   Lives INSIDE the fixed WalkthroughWorld host (absolute, not fixed) and is
+   also the no-WebGL fallback: its gradients paint unconditionally, so a
+   machine that never mounts the canvas still gets a graded room — warm wash
+   off the ceiling, cold spill at the floor, dark corners — instead of flat
+   black with copy floating on it. The final flat layer is the dial between
+   "the shop is the backdrop" and "the copy is the product"; the walk-through
+   IS the stage, so the shutter is nearly open. */
+.wt-world-veil {
+  pointer-events: none;
+  background:
+    /* tungsten wash off the ceiling */
+    radial-gradient(120% 70% at 50% -12%, rgba(255, 176, 102, 0.07), transparent 62%),
+    /* sodium spill through the far bay */
+    radial-gradient(90% 55% at 50% 118%, rgba(125, 156, 204, 0.05), transparent 64%),
+    /* corner vignette — a hint of falloff, not a second iris: the canvas
+       already renders its own Vignette pass. */
+    radial-gradient(
+      132% 100% at 50% 46%,
+      transparent 0%,
+      rgba(10, 10, 11, 0.1) 64%,
+      rgba(10, 10, 11, 0.46) 100%
+    ),
+    rgb(10 10 11 / 0.06);
+}
+
+/* ── Station cascade — the content of a revealed plate arrives in beats ─────
+   The wrapper (StationReveal) is pulled out of the subject as one plate;
+   these rules make its CONTENT land as a cascade — eyebrow, headline, copy,
+   spec list — each a beat behind the last. Scoped to `.wt-cascade` so the
+   site-wide `.scrim` plates are untouched. Pre-hydration (`data-rise="ssr"`)
+   and no-JS readers get everything visible: this only ever animates IN. */
+@keyframes wt-rise-child {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.wt-cascade[data-rise="risen"] > * {
+  animation: wt-rise-child 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.wt-cascade[data-rise="risen"] > :nth-child(2) { animation-delay: 110ms; }
+.wt-cascade[data-rise="risen"] > :nth-child(3) { animation-delay: 220ms; }
+.wt-cascade[data-rise="risen"] > :nth-child(4) { animation-delay: 330ms; }
+.wt-cascade[data-rise="risen"] > :nth-child(5) { animation-delay: 430ms; }
+.wt-cascade[data-rise="risen"] > :nth-child(n + 6) { animation-delay: 520ms; }
+
+/* ── The callout — a spec-sheet leader pulled out of the subject ────────────
+   Dot ignites at the subject's edge of the frame, line draws down, panel
+   scales up its length. The line's scaleY and the dot's opacity are driven
+   per-frame from the rail (StationReveal); everything here is geometry.
+   Tungsten, not red: on this site every glow has a source, and this one is
+   the work lamp. */
+.callout {
+  position: absolute;
+  left: 18%;
+  top: -96px;
+  height: 96px;
+  width: 1px;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .callout {
+    top: -64px;
+    height: 64px;
+    left: 12%;
+  }
+}
+
+.callout-dot {
+  position: absolute;
+  top: -5px;
+  left: -3.5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffb066;
+  box-shadow:
+    0 0 8px rgba(255, 176, 102, 0.9),
+    0 0 22px rgba(255, 176, 102, 0.45);
+  opacity: 0;
+}
+
+.callout-line {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 176, 102, 0.9),
+    rgba(255, 176, 102, 0.35) 55%,
+    rgba(154, 156, 160, 0.25)
+  );
+  transform: scaleY(0);
+  transform-origin: top;
+}
+
+/* ── Letterbox — film language for the travels ──────────────────────────────
+   Two bars ride in while the camera is genuinely moving between subjects and
+   lift as it settles into an orbit. Pointer-transparent, under the nav. */
+.cine-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 5.5vh;
+  max-height: 62px;
+  background: #050506;
+  z-index: 30;
+  pointer-events: none;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cine-bar-top {
+  top: 0;
+  transform: translateY(-101%);
+  border-bottom: 1px solid rgba(242, 240, 236, 0.05);
+}
+
+.cine-bar-bottom {
+  bottom: 0;
+  transform: translateY(101%);
+  border-top: 1px solid rgba(242, 240, 236, 0.05);
+}
+
+.cine-on .cine-bar-top,
+.cine-on .cine-bar-bottom {
+  transform: translateY(0);
+}
+
+/* ── The station rail — a film-strip index of the seven orbits ──────────────
+   Desktop only (the component hides it below lg); active tick burns tungsten
+   with the standard source glow. */
+.station-rail button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.station-rail .tick {
+  display: block;
+  width: 18px;
+  height: 1px;
+  background: rgba(154, 156, 160, 0.4);
+  transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1), background-color 300ms ease;
+}
+
+.station-rail .label {
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 260ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.station-rail button:hover .label,
+.station-rail button[data-active="true"] .label {
+  opacity: 1;
+  transform: none;
+}
+
+.station-rail button:hover .tick {
+  width: 26px;
+  background: rgba(242, 240, 236, 0.75);
+}
+
+.station-rail button[data-active="true"] .tick {
+  width: 34px;
+  background: #ffb066;
+  box-shadow: 0 0 8px rgba(255, 176, 102, 0.7);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   === JOURNAL ===
+   Appended block: The Shop Journal (/blog) article typography and hardware.
+   Articles are authored as semantic TSX inside `.prose-dark`; these rules ARE
+   the authoring contract (see lib/blog/types.ts). Same light logic as the
+   rest of After Hours: tungsten is punctuation, separation comes from rules
+   and pools, never from boxes.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* The measure: every direct child holds a book column; opt-outs (.table-bleed,
+   .stat-plate) widen but stay centered. Archivo 17/1.75 per the journal spec. */
+.prose-dark {
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.75;
+  color: #b6b8bc;
+}
+.prose-dark > * {
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+.prose-dark > * + * {
+  margin-top: 1.5em;
+}
+.prose-dark strong {
+  color: #f2f0ec;
+  font-weight: 600;
+}
+.prose-dark a {
+  color: #f2f0ec;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 176, 102, 0.4);
+  text-underline-offset: 4px;
+  transition: color 200ms ease, text-decoration-color 200ms ease;
+}
+.prose-dark a:hover {
+  color: #ffb066;
+  text-decoration-color: rgba(255, 176, 102, 0.8);
+}
+
+/* Question-form H2s in the display face — the article's chapter cards. */
+.prose-dark h2 {
+  margin-top: 3.4rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.65rem, 3.4vw, 2.4rem);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #f2f0ec;
+}
+.prose-dark h3 {
+  margin-top: 2.4rem;
+  font-family: var(--font-sub);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ffb066;
+}
+
+/* Lists: the site's diamond bullets; ordered lists count in mono. */
+.prose-dark ul,
+.prose-dark ol {
+  list-style: none;
+  padding: 0;
+}
+.prose-dark ul li,
+.prose-dark ol li {
+  position: relative;
+  margin-top: 0.9em;
+}
+.prose-dark ul li {
+  padding-left: 1.5rem;
+}
+.prose-dark ul li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.58em;
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  background: rgba(255, 176, 102, 0.65);
+}
+.prose-dark ol {
+  counter-reset: journal-ol;
+}
+.prose-dark ol li {
+  padding-left: 2.4rem;
+  counter-increment: journal-ol;
+}
+.prose-dark ol li::before {
+  content: counter(journal-ol, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0.3em;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #ffb066;
+}
+
+/* Comparison tables: full-bleed treatment — wider than the prose column,
+   mono headers, tungsten rules. Wrap the <table> in .table-bleed. */
+.prose-dark .table-bleed {
+  max-width: 64rem;
+  margin-top: 2.6rem;
+  overflow-x: auto;
+}
+.prose-dark .table-bleed table {
+  min-width: 640px;
+}
+.prose-dark table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.prose-dark thead th {
+  padding: 0.7rem 1rem 0.7rem 0;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #ffb066;
+  border-bottom: 1px solid rgba(255, 176, 102, 0.38);
+}
+.prose-dark tbody td,
+.prose-dark tbody th {
+  padding: 1rem 1rem 1rem 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(51, 52, 58, 0.55);
+}
+.prose-dark tbody th[scope="row"] {
+  font-family: var(--font-sub);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f2f0ec;
+}
+/* Money and figure cells. */
+.prose-dark .num {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: #ffb066;
+  white-space: nowrap;
+}
+
+/* Pull-quotes: the giant Bodoni quotation mark, serif italic, mono
+   attribution in an optional <footer>. */
+.prose-dark blockquote {
+  position: relative;
+  margin-top: 3.4rem;
+  margin-bottom: 3.4rem;
+  padding-left: 2.8rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+  line-height: 1.4;
+  color: #f2f0ec;
+}
+.prose-dark blockquote::before {
+  content: "\201C";
+  position: absolute;
+  left: -0.4rem;
+  top: -1.6rem;
+  font-family: var(--font-serif);
+  font-size: 5.5rem;
+  line-height: 1;
+  color: #ffb066;
+  opacity: 0.85;
+}
+.prose-dark blockquote p {
+  margin: 0;
+}
+.prose-dark blockquote footer {
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(154, 156, 160, 0.7);
+}
+
+/* Key figures plate: big display numerals over mono labels, plate ground. */
+.prose-dark .stat-plate,
+.stat-plate {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.6rem 2rem;
+  margin-top: 2.8rem;
+  padding: 1.6rem 1.8rem 1.8rem;
+  max-width: 52rem;
+  background:
+    linear-gradient(180deg, rgba(242, 240, 236, 0.03), transparent 60%),
+    #0e0e10;
+  border-top: 1px solid rgba(255, 176, 102, 0.35);
+}
+.stat-plate .stat-v {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  line-height: 1;
+  color: #ffd9ad;
+}
+.stat-plate .stat-l {
+  display: block;
+  margin-top: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(154, 156, 160, 0.75);
+}
+
+/* Inline citation superscripts → the SOURCES list. */
+.prose-dark a.cite-ref {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 0;
+  vertical-align: super;
+  margin-left: 2px;
+  color: #ffb066;
+  text-decoration: none;
+}
+.prose-dark a.cite-ref:hover {
+  color: #ffd9ad;
+}
+
+/* The hero illustration sits on its own dark plate with contained grain:
+   .grain is a fixed overlay by default — scoping it under .journal-illo pins
+   it inside the plate instead. */
+.journal-illo {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(80% 90% at 50% 12%, rgba(255, 176, 102, 0.05), transparent 60%),
+    #0c0c0e;
+}
+.journal-illo > .grain {
+  position: absolute;
+}
+

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "2240-combined",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 3117
+    },
+    {
+      "name": "2240-combined-b",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--port", "3213"],
+      "port": 3213
+    }
+  ]
+}

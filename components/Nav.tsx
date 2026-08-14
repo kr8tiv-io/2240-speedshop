@@ -1,0 +1,153 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { site } from "@/lib/site";
+import { Roll } from "@/components/fx/Roll";
+
+const links = [
+  { href: "/services", label: "Services", n: "01" },
+  { href: "/builds", label: "Builds", n: "02" },
+  { href: "/edmonton", label: "Edmonton", n: "03" },
+  { href: "/guides", label: "Guides", n: "04" },
+  { href: "/about", label: "About", n: "05" },
+  { href: "/reviews", label: "Reviews", n: "06" },
+  { href: "/blog", label: "Journal", n: "07" },
+];
+
+/**
+ * AFTER HOURS nav: a thin instrument strip. Transparent over the hero, a dark
+ * plate once the page moves. Desktop links carry the backlit hover language;
+ * mobile opens a full-screen panel with big display type.
+ */
+export function Nav() {
+  const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    // 100px: past the first breath of the page, the bar compacts to a hairline.
+    const onScroll = () => setScrolled(window.scrollY > 100);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.documentElement.style.overflow = "";
+    };
+  }, [open]);
+
+  return (
+    <header
+      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color] duration-500 ${
+        scrolled || open
+          ? "border-b border-bone/[0.07] bg-bay-black/90 backdrop-blur-md"
+          : "border-b border-transparent bg-transparent"
+      }`}
+    >
+      <div
+        className={`mx-auto flex max-w-[92rem] items-center justify-between px-5 transition-[padding] duration-500 sm:px-8 ${
+          scrolled && !open ? "py-2" : "py-3.5"
+        }`}
+      >
+        <Link href="/" className="group flex items-baseline gap-3" onClick={() => setOpen(false)}>
+          <span className="font-display text-[26px] leading-none tracking-[0.02em] text-bone transition-colors group-hover:text-ember">
+            2240
+          </span>
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.3em] text-steel sm:block">
+            Speed Shop / Edmonton AB
+          </span>
+        </Link>
+
+        <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
+          {links.map((l) => {
+            const active = pathname === l.href || pathname.startsWith(`${l.href}/`);
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                aria-current={active ? "page" : undefined}
+                className={`backlit relative !bg-transparent px-4 py-2 font-sub text-[11px] uppercase tracking-[0.2em] transition-colors hover:text-bone ${
+                  active ? "is-active text-bone" : "text-steel"
+                }`}
+              >
+                <span aria-hidden="true" className="mr-1.5 font-mono text-[9px] text-tungsten/60">
+                  {l.n}
+                </span>
+                <Roll text={l.label} />
+                <span className="nav-underline" aria-hidden="true" />
+              </Link>
+            );
+          })}
+          <Link href="/quote" data-magnetic className="cta ml-4 !px-6 !py-3 !text-[11px]">
+            Start your build
+          </Link>
+        </nav>
+
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls="mobile-nav"
+          aria-label={open ? "Close menu" : "Open menu"}
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-10 w-10 flex-col items-center justify-center gap-[6px] lg:hidden"
+        >
+          <span
+            className={`h-px w-6 bg-bone transition-transform duration-300 ${open ? "translate-y-[7px] rotate-45" : ""}`}
+          />
+          <span className={`h-px w-6 bg-bone transition-opacity duration-300 ${open ? "opacity-0" : ""}`} />
+          <span
+            className={`h-px w-6 bg-bone transition-transform duration-300 ${open ? "-translate-y-[7px] -rotate-45" : ""}`}
+          />
+        </button>
+      </div>
+
+      {/* Full-screen mobile panel — the menu is a room, not a dropdown. */}
+      <nav
+        id="mobile-nav"
+        aria-label="Mobile"
+        className={`fixed inset-0 top-[57px] flex flex-col justify-between bg-bay-black/97 px-6 pb-8 pt-10 backdrop-blur-lg transition-opacity duration-300 lg:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <ul>
+          {links.map((l, i) => (
+            <li key={l.href} className="border-b border-rust/50">
+              <Link
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="flex items-baseline gap-4 py-4"
+              >
+                <span className="font-mono text-[10px] text-tungsten/70">{l.n}</span>
+                <span
+                  className="font-display text-4xl uppercase leading-none tracking-wide text-bone"
+                  style={{ transitionDelay: `${i * 30}ms` }}
+                >
+                  {l.label}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <div className="space-y-4">
+          <div className="flex gap-3">
+            <Link href="/quote" onClick={() => setOpen(false)} className="cta flex-1 text-center">
+              Start your build
+            </Link>
+            <a href={`tel:${site.phone}`} className="cta cta-ghost flex-1 text-center">
+              Call the shop
+            </a>
+          </div>
+          <p className="corner-note">
+            {site.street} · {site.city} {site.region} · Mon–Fri 9–5
+          </p>
+        </div>
+      </nav>
+    </header>
+  );
+}

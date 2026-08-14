@@ -1,0 +1,102 @@
+# 2240 Speed Shop — static export, shared LiteSpeed/Apache host.
+#
+# Everything here is guarded by IfModule: a host without the module ignores the
+# block rather than throwing a 500. Three jobs only — compress the text, cache
+# the fingerprinted assets forever, and serve the 3D formats with the right MIME
+# type so the browser streams them instead of guessing.
+
+# ── MIME ────────────────────────────────────────────────────────────────────
+<IfModule mod_mime.c>
+  AddType model/gltf-binary          .glb
+  AddType image/ktx2                 .ktx2
+  AddType application/wasm           .wasm
+  AddType font/woff2                 .woff2
+  AddType image/webp                 .webp
+  AddType image/avif                 .avif
+</IfModule>
+
+# ── Pre-compressed models ───────────────────────────────────────────────────
+# The claim below — that .glb is "already compressed" — is true of the props,
+# whose bytes are nearly all WebP, and false of the CARS, which are raw float32
+# geometry with no textures. Brotli takes the set from 16.2 MB to 11.3 MB and
+# the hero Charger from 474 KB to 86 KB. `scripts/precompress.js` does the work
+# at build time, so this costs the server nothing per request: if the browser
+# takes brotli and a .br twin exists, serve it with the right headers.
+# The rule is written against DOCUMENT_ROOT and substitutes an absolute URL
+# path. The obvious form — matching `%{REQUEST_FILENAME}.br` and substituting
+# `%{REQUEST_URI}.br` — silently did not match on this host: the twins were
+# deployed and directly fetchable at 86 KB with `content-encoding: br`, while
+# the plain URL still served 474 KB. It failed safe, which is why it took a
+# request to notice rather than an outage.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Accept-Encoding} br
+  RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}\.br -f
+  RewriteRule ^(.+)\.glb$ /$1.glb.br [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.glb\.br$">
+    Header set Content-Encoding br
+    Header append Vary Accept-Encoding
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  # Without this the .br twin is served as its own type and the browser saves it.
+  AddType model/gltf-binary .br
+</IfModule>
+
+# ── Compression ─────────────────────────────────────────────────────────────
+# KTX2 and WOFF2 are already compressed — running deflate over them burns CPU on
+# both ends for nothing, so they are deliberately absent from this list. GLB is
+# handled above, at build time, rather than per request.
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/css text/xml
+  AddOutputFilterByType BROTLI_COMPRESS application/javascript application/x-javascript
+  AddOutputFilterByType BROTLI_COMPRESS application/json application/manifest+json
+  AddOutputFilterByType BROTLI_COMPRESS image/svg+xml application/xml
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+  AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+  AddOutputFilterByType DEFLATE application/json application/manifest+json
+  AddOutputFilterByType DEFLATE image/svg+xml application/xml
+</IfModule>
+
+# ── Cache ───────────────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  # Next fingerprints everything under /_next/static — safe to pin for a year.
+  <FilesMatch "\.(js|css|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # The shop itself: transcoder, photographs. A month, not a year.
+  <FilesMatch "\.(ktx2|wasm|jpg|jpeg|png|webp|avif|svg|ico)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+  # Models live under a content-hashed directory (`/models-opt-a1b2c3d4/`), so a
+  # model URL changes whenever its bytes do and `immutable` is simply true.
+  # This rule must also cover the `.glb.br` twin, which is what the loader
+  # actually requests: the twins were inheriting a one-month expiry from our own
+  # `AddType model/gltf-binary .br`, and the edge served a stale one — 94 kB with
+  # `age: 2551` against a 43 kB file on disk, i.e. last build's faceted car,
+  # returned with a 200 and no error.
+  <FilesMatch "\.glb(\.br)?$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # HTML must never be sticky: the whole site is one deploy behind otherwise.
+  <FilesMatch "\.(html|txt|xml|json)$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType model/gltf-binary "access plus 1 month"
+  ExpiresByType image/ktx2        "access plus 1 month"
+  ExpiresByType application/wasm  "access plus 1 month"
+  ExpiresByType text/css          "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType font/woff2        "access plus 1 year"
+</IfModule>
