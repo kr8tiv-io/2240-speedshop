@@ -319,10 +319,50 @@ html[data-ui-overlay="menu"] .grain {
   padding: 0.8rem 1.35rem;
   letter-spacing: 0.18em;
 }
+.cta-act-three {
+  min-height: 44px;
+}
+/* Let the final decision pair wrap without becoming bulky on a 320px phone.
+   Vertical air and the 44px target stay intact; only redundant side padding
+   and tracking contract at the smallest tier. */
+@media (max-width: 359px) {
+  .cta-act-three {
+    padding-inline: 0.75rem;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
+}
 @media (min-width: 640px) {
   .cta-compact {
     padding: 1rem 2rem;
     letter-spacing: 0.22em;
+  }
+}
+
+/* The Act III car is intentionally the brightest frame in the film. Give the
+   sales detail a feathered patch of black smoke so its small type stays crisp
+   over the headlights, without veiling or reducing the car outside that local
+   reading zone. The gradient has no visible box edge. */
+@media (min-width: 640px) {
+  .act-three-detail {
+    position: relative;
+    isolation: isolate;
+  }
+  .act-three-detail::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -1.25rem -4rem -1.25rem -2rem;
+    background: linear-gradient(
+      90deg,
+      rgba(10, 10, 11, 0.96) 0%,
+      rgba(10, 10, 11, 0.9) 52%,
+      rgba(10, 10, 11, 0.58) 72%,
+      transparent 100%
+    );
+    -webkit-mask-image: radial-gradient(ellipse 92% 118% at 12% 50%, #000 0%, #000 48%, transparent 100%);
+    mask-image: radial-gradient(ellipse 92% 118% at 12% 50%, #000 0%, #000 48%, transparent 100%);
+    pointer-events: none;
   }
 }
 .cta-ghost {

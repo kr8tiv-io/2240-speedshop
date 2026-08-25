@@ -259,7 +259,7 @@ export default function HomePage() {
           <div className="mx-auto w-full max-w-[92rem] px-5 pb-10 sm:px-8">
             <p className="corner-note text-tungsten">THE ROOM ITSELF</p>
             <h2 className="mt-3 font-display text-[clamp(2.2rem,8vw,7rem)] uppercase leading-[0.85] tracking-wide text-bone mix-blend-screen">
-              No showroom. This is the room.
+              The work is the showroom.
             </h2>
           </div>
         </div>
@@ -268,16 +268,16 @@ export default function HomePage() {
       {/* REVIEWS — three real Google quotes, honest context, no stars invented. */}
       <section aria-labelledby="reviews-heading" className="px-5 py-28 sm:px-8">
         <div className="mx-auto max-w-[92rem]">
-          <p className="corner-note text-tungsten">THEY TOLD SOMEBODY</p>
+          <p className="corner-note text-tungsten">WORD FROM THE ROAD</p>
           <Kinetic
             as="h2"
             id="reviews-heading"
             className="mt-4 font-display text-[clamp(2.4rem,6vw,5.5rem)] uppercase leading-[0.9] tracking-wide text-bone"
           >
-            Car people do not write essays.
+            The work gets remembered.
           </Kinetic>
           <p className="mt-5 max-w-2xl font-body text-sm leading-relaxed text-steel">
-            Three Google reviews with words in them, verbatim. The rest of the honest picture is on
+            A few words from people who brought us their cars, quoted exactly. See every review on
             the{" "}
             <Link className="text-tungsten underline decoration-tungsten/40 underline-offset-4 hover:text-ember" href="/reviews">
               reviews page
@@ -303,9 +303,9 @@ export default function HomePage() {
             id="areas-heading"
             className="max-w-md font-display text-3xl uppercase leading-[0.95] tracking-wide text-bone sm:text-4xl"
           >
-            East Edmonton. Worth the drive from anywhere.
+            East Edmonton. Right on the Sherwood Park line.
           </h2>
-          <ul className="flex flex-wrap gap-x-8 gap-y-3 font-mono text-[12px] uppercase tracking-[0.2em] text-steel">
+          <ul className="grid grid-cols-2 gap-x-5 gap-y-4 border-l border-tungsten/25 pl-4 font-mono text-[11px] uppercase tracking-[0.16em] text-steel sm:flex sm:flex-wrap sm:gap-x-8 sm:gap-y-3 sm:border-0 sm:pl-0 sm:text-[12px] sm:tracking-[0.2em]">
             <li>
               <Link className="transition-colors hover:text-ember" href="/edmonton">
                 <Roll text="Edmonton" />
@@ -358,8 +358,9 @@ export default function HomePage() {
           </div>
           <div className="mt-8 flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
             <p className="max-w-xl font-body text-lg leading-relaxed text-steel">
-              Barn find, stalled project, or a driver that deserves better. Photos in, honest scope
-              out. Two business days.
+              Barn find, stalled project, or a driver that deserves better. Send the photos. Terry
+              comes back with what it needs, how to phase it, and the first real number — within
+              two business days.
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <Link href="/quote" data-magnetic className="cta">

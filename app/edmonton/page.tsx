@@ -128,7 +128,7 @@ export default function EdmontonHubPage() {
             Saskatchewan — most of the metro sits inside a forty-minute drive.
           </p>
           <p className="mt-4 text-base leading-relaxed text-steel">
-            East Edmonton. Sherwood Park line. Worth the drive from anywhere.
+            East Edmonton. Sherwood Park line. Come see the work.
           </p>
         </div>
 

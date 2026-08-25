@@ -13,6 +13,7 @@
 # testing
 /coverage
 /shots-handoffs/
+/shots-copy/
 
 # next.js
 /.next/

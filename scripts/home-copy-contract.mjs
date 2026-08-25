@@ -1,0 +1,43 @@
+import fs from "node:fs";
+import assert from "node:assert/strict";
+
+const files = [
+  "components/home/HomeCinema.tsx",
+  "components/shop/WalkthroughSections.tsx",
+  "app/page.tsx",
+  "app/reviews/page.tsx",
+  "app/edmonton/page.tsx",
+];
+const source = files.map((file) => fs.readFileSync(new URL(`../${file}`, import.meta.url), "utf8")).join("\n");
+
+const retired = [
+  "Tell me what it",
+  "One finished car, doing",
+  "Six trades,",
+  "The wall keeps the",
+  "No showroom. This is the room.",
+  "Car people do not write essays.",
+  "car people are not essayists",
+  "Three Google reviews with words in them",
+  "Worth the drive from anywhere",
+  "going home this week",
+  "the shop that made it for them without asking",
+];
+
+for (const phrase of retired) {
+  assert.ok(!source.includes(phrase), `retired weak copy is still present: ${phrase}`);
+}
+
+for (const proof of [
+  "Bring us the car you",
+  "See what",
+  "Every system, one",
+  "Proof, pinned to the",
+  "The work is the showroom.",
+  "The work gets remembered.",
+  "Right on the Sherwood Park line.",
+]) {
+  assert.ok(source.includes(proof), `replacement selling line missing: ${proof}`);
+}
+
+console.log("home copy contract: PASS");

@@ -122,12 +122,12 @@ export function WalkthroughSections() {
         headingId="wt-doorway-heading"
       >
         <h2 id="wt-doorway-heading" className={`mt-4 ${STATION_HEAD}`}>
-          One finished car, doing <em className="accent-serif">slow</em> circles
+          See what <em className="accent-serif">finished</em> looks like
         </h2>
         <p className={STATION_BODY}>
-          The sign is neon, the turntable is real, and the Charger on it is going home this week.
-          Everything past this beat is work in progress — this is the only showroom the building
-          has, and it is one car deep.
+          The sign is neon. The turntable is real. The Charger earns every slow degree. This is the
+          only showroom the building needs; everything past it is metal, sparks, and work in
+          progress.
         </p>
         <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.18em] text-steel/70">
           Walk on. The bays are open.
@@ -148,7 +148,7 @@ export function WalkthroughSections() {
           Start <em className="accent-serif">under</em> the car
         </h2>
         <p className={`${STATION_BODY} ml-auto`}>
-          A Challenger up on the posts, pans down, nothing hidden. The first honest conversation
+          A Challenger up on the posts, pans down, nothing hidden. The first serious conversation
           about any build happens right here — what the floors and the frame actually say, before
           anyone talks paint. The owner is the one holding the light.
         </p>
@@ -170,12 +170,12 @@ export function WalkthroughSections() {
         headingId="wt-engine-heading"
       >
         <h2 id="wt-engine-heading" className={`mt-4 ${STATION_HEAD}`}>
-          Six trades, <em className="accent-serif">one</em> roof
+          Every system, one <em className="accent-serif">standard</em>
         </h2>
         <p className={STATION_BODY}>
-          A blown V8 on the stand, headers holding one hard line of light. Nothing here gets farmed
-          out — the metal, the motor, the colour, and the trim all happen in this building, with
-          one person answerable for the lot.
+          The blown V8 on the stand is one chapter of the same build. Metal, motor, colour, wiring,
+          and trim are planned together in this building, with one person answerable for how the
+          whole car drives and feels.
         </p>
         <ul className={STATION_LIST}>
           <li>Frame-off &amp; rolling restorations</li>
@@ -220,7 +220,7 @@ export function WalkthroughSections() {
           It gets <em className="accent-serif">driven</em> before it leaves
         </h2>
         <p className={STATION_BODY}>
-          A car on the rollers under the tuning neon, gauges reading honest. Nothing goes home on a
+          A car on the rollers under the tuning neon, the numbers holding steady. Nothing goes home on a
           trailer of hope — it runs, it gets sorted, and it runs again. Same four steps, every
           build.
         </p>
@@ -243,7 +243,7 @@ export function WalkthroughSections() {
         align="end"
       >
         <h2 id="wt-office-heading" className={`mt-4 ${STATION_HEAD}`}>
-          The wall keeps the <em className="accent-serif">receipts</em>
+          Proof, pinned to the <em className="accent-serif">wall</em>
         </h2>
         <p className={`${STATION_BODY} ml-auto`}>
           Every print on that corkboard is a customer&rsquo;s car — the D100 a photographer pulled

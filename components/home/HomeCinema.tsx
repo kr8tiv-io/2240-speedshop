@@ -487,7 +487,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
                 A restoration is a <em className="accent-serif">decision</em>, not a purchase.
               </>
             }
-            body="You are not buying parts and labour. You are deciding what this car is going to be for the next thirty years — how it sits, what it sounds like at 2,000 rpm, whether the door still shuts like a bank vault in 2055. That decision gets made once. Most of what people regret is the shop that made it for them without asking."
+            body="You are choosing what this car will be for the next thirty years — how it sits, what it sounds like at 2,000 rpm, whether the door still shuts like a bank vault in 2055. We settle those decisions with you before the metal moves, then build to that standard all the way through."
             stat={{ figure: "200–400", caption: "extra hours a true frame-off adds. We quote them out loud." }}
           />
 
@@ -497,7 +497,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
             act="ACT II"
             title="Hood up"
             subject="1972 coupe · mid-build, panels in primer"
-            note="THE HONEST PART OF THE JOB"
+            note="THE PART THAT SETS THE STANDARD"
           />
 
           {/* CH.02 — six trades (ACT II) */}
@@ -585,40 +585,41 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
             className="pointer-events-none absolute inset-0 flex items-end px-5 pb-8 pt-[84px] opacity-0 sm:items-center sm:px-8 sm:py-0"
           >
             <div className="copy-plate mx-auto w-full max-w-[92rem]">
-              <p className="corner-note text-tungsten">ACT III — BRING US THE PROBLEM</p>
+              <p className="corner-note text-tungsten">ACT III — THE NEXT ONE STARTS HERE</p>
               <div className="relative mt-4 max-w-3xl sm:mt-5">
                 <p
                   aria-hidden="true"
                   data-echo-film
                   className="echo-outline text-balance font-display text-[clamp(2.05rem,8.2vw,6.5rem)] uppercase leading-[0.95] tracking-[0.005em] sm:leading-[0.86]"
                 >
-                  Tell me what it&rsquo;s <em className="accent-serif">worth</em> to you.
+                  Bring us the car you <em className="accent-serif">can&rsquo;t</em> let go of.
                 </p>
                 <h2 className="text-balance font-display text-[clamp(2.05rem,8.2vw,6.5rem)] uppercase leading-[0.95] tracking-[0.005em] text-bone sm:leading-[0.86]">
-                  Tell me what it&rsquo;s <em className="accent-serif">worth</em> to you.
+                  Bring us the car you <em className="accent-serif">can&rsquo;t</em> let go of.
                 </h2>
               </div>
-              <p className="mt-5 max-w-md font-body text-[15px] leading-[1.7] text-steel sm:mt-6 sm:text-base">
-                {/* The tallest copy block on the page. At 320 the full version
-                    still reached the car; phones get the short cut. */}
-                <span className="sm:hidden">
-                  Barn find, stalled project, or a car that deserves better. Terry reads every
-                  request himself — real hours, a real number, two business days.
-                </span>
-                <span className="hidden sm:inline">
-                  Barn find, stalled project, or the car you already love that deserves better than
-                  it&rsquo;s getting. Terry reads every request himself and tells you straight what
-                  it takes — real hours, a real number, two business days. No discovery fee, no
-                  sales guy, no runaround.
-                </span>
-              </p>
-              <div className="pointer-events-auto mt-6 flex flex-wrap gap-3 sm:mt-8 sm:gap-4">
-                <Link href="/quote" data-magnetic className="cta cta-compact">
-                  Start your build
-                </Link>
-                <a href={`tel:${site.phone}`} className="cta cta-ghost cta-compact">
-                  {site.phoneDisplay}
-                </a>
+              <div className="act-three-detail mt-4 max-w-[34rem] sm:mt-6">
+                <p className="max-w-md font-body text-[14px] leading-[1.6] text-steel sm:text-base sm:leading-[1.7] sm:text-bone/80">
+                  {/* The tallest copy block on the page. At 320 the full version
+                      still reached the car; phones get the short cut. */}
+                  <span className="sm:hidden">
+                    Barn find, stalled project, or the car you can&rsquo;t quit. Terry reads every
+                    request — real hours, a real number, two business days.
+                  </span>
+                  <span className="hidden sm:inline">
+                    Send the photos. Terry tells you what it needs, how to phase it, and the first
+                    real number — personally, within two business days. No discovery fee. No sales
+                    handoff.
+                  </span>
+                </p>
+                <div className="pointer-events-auto mt-4 flex flex-wrap gap-2 sm:mt-6 sm:gap-4">
+                  <Link href="/quote" data-magnetic className="cta cta-compact cta-act-three">
+                    Start your build
+                  </Link>
+                  <a href={`tel:${site.phone}`} className="cta cta-ghost cta-compact cta-act-three">
+                    {site.phoneDisplay}
+                  </a>
+                </div>
               </div>
             </div>
           </div>

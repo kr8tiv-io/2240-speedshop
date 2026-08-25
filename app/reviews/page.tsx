@@ -114,7 +114,7 @@ export default function ReviewsPage() {
           What do customers actually say?
         </h2>
         <p className="mt-3 max-w-2xl font-body text-[15px] leading-relaxed text-steel">
-          Three reviews, verbatim, from Google. Short ones — car people are not essayists.
+          Three reviews, verbatim, from Google. Short, direct, and quoted exactly as posted.
         </p>
 
         <div className="mt-10 grid gap-4 lg:grid-cols-3">
@@ -146,8 +146,8 @@ export default function ReviewsPage() {
           </h2>
           <div className="mt-5 space-y-5 font-body text-[15px] leading-relaxed text-steel">
             <p>
-              Here is the honest version, because pretending otherwise would be insulting. This is a
-              small shop with a short review history. Alongside the reviews above sit a few ratings
+              The full context matters. This is a small shop with a short review history. Alongside
+              the reviews above sit a few ratings
               that arrived with no comment, no vehicle and no invoice attached to them — stars and
               nothing else.
             </p>
