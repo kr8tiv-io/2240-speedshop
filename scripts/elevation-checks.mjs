@@ -16,8 +16,8 @@ const CHROME =
   process.env.CHROME_PATH ||
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const BASE = (process.env.BASE_URL || "http://localhost:3117").replace(/\/+$/, "");
-const URL = `${BASE}/?tune=1`;
 const FOCUS = (process.env.ELEVATION_FOCUS || "all").trim().toLowerCase();
+const URL = `${BASE}/?tune=1${FOCUS === "shop" ? "&perf=1" : ""}`;
 
 const PRELOADER_BUDGET_MS = 12_000;
 const PRELOADER_EMERGENCY_MS = 20_000;
@@ -617,6 +617,7 @@ async function auditSize(browserContext, size) {
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("console", (message) => {
     const text = message.text();
+    if (FOCUS === "shop" && text.startsWith("[shop]")) console.log(`TRACE ${text}`);
     if (message.type() === "error") consoleErrors.push(text);
     else if (/webgl/i.test(text) && /(error|lost|invalid|context)/i.test(text)) {
       consoleErrors.push(`${message.type()}: ${text}`);
@@ -1024,9 +1025,10 @@ try {
       "--no-first-run",
     ],
   });
-  await auditHeroBoot(browser);
+  if (FOCUS !== "shop") await auditHeroBoot(browser);
   if (FOCUS !== "boot") {
-    for (const size of SIZES) {
+    const sizes = FOCUS === "desktop" || FOCUS === "shop" ? SIZES.slice(0, 1) : SIZES;
+    for (const size of sizes) {
       let browserContext;
       try {
         browserContext = await browser.createBrowserContext();

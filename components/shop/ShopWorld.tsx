@@ -42,7 +42,6 @@ import {
 } from "./Effects";
 import {
   DetailCull,
-  VisibilityWatchdog,
   StationBundle,
   WarmScene,
   primeLoaders,
@@ -2258,10 +2257,6 @@ function SceneContents({
       {/* No padding lights on a phone: the bays there carry no real lights to
           pad against, so the loop stays exactly as long as the building needs. */}
       <WarmScene target={shell} padLights={lite ? 0 : 10} />
-      {/* Answers to none of the pacing mechanisms: whatever they hide, this
-          puts back if they have not. A slow shop is a problem; an empty one
-          is a broken site. */}
-      <VisibilityWatchdog target={shell} />
       {lite && <DetailCull target={shell} />}
 
       <FocusRig effect={dof} />
@@ -2395,11 +2390,11 @@ export function ShopWorld({
      to run. At 1.0 it is 330k — and on a screen where the whole car is four
      inches wide, the sharpness difference is not visible and the frame rate
      is. */
-  const [dpr, setDpr] = useState(() =>
+  const dpr = useRef(
     tier === "lite"
       ? 1
       : Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1.5 : 1.5, 2),
-  );
+  ).current;
 
   useEffect(() => {
     // Park the loop when the tab goes away, wake it when it comes back. Driven
@@ -2472,18 +2467,11 @@ export function ShopWorld({
       }`}
     >
       <Canvas
-        /* A FIFTH OF A PIXEL PER PIXEL, UNTIL IT IS WARM.
-           The warm-up renders its first frames by hand, and those frames are
-           where the post chain is built: the AO pass alone re-draws the whole
-           building through a depth material, which is another fifty programs
-           for Direct3D to translate. At full resolution that came to a single
-           fifteen-second command buffer — past the Windows display watchdog,
-           which resets the driver and drops the WebGL context.
-           Shader translation does not care how many pixels it is asked to
-           cover, so the warm frames are rendered at a fifth of the resolution
-           and cost a fraction of the time. The moment the shop is warm the
-           canvas snaps back to full sharpness, and the only thing that first
-           real frame has left to do is allocate its buffers. */
+        /* FIXED RESOLUTION FOR THE LIFE OF THE CONTEXT.
+           Changing DPR rebuilds the composer's render targets and can force
+           ANGLE to translate the post chain again. The hidden warm therefore
+           uses the exact final resolution; adaptive quality spends optional
+           passes instead of ever pulsing sharpness. */
         dpr={dpr}
         frameloop={awake && warm && active ? "always" : "never"}
         gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}

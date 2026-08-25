@@ -22,6 +22,14 @@ const contextGuard = await readFile(
   new URL("../components/gl/WebGLContextGuard.tsx", import.meta.url),
   "utf8",
 ).catch(() => "");
+const loaders = await readFile(
+  new URL("../components/shop/Loaders.tsx", import.meta.url),
+  "utf8",
+);
+const pacedWarm = loaders.slice(
+  loaders.indexOf("async function pacedWarm"),
+  loaders.indexOf("export function StationBundle"),
+);
 
 assert.ok(
   /const previousOnProgress = manager\.onProgress/.test(shop),
@@ -71,5 +79,12 @@ assert.ok(
   /<WebGLContextGuard \/>/.test(shop),
   "The shop canvas must report asynchronous context loss to its boundary.",
 );
-
+assert.ok(
+  pacedWarm.includes("try {") && pacedWarm.includes("} finally {") && pacedWarm.includes("restore();"),
+  "Every paced warm exit must restore the visibility state it received.",
+);
+assert.ok(
+  !/VisibilityWatchdog|watchdog showed/.test(loaders + shop),
+  "A timer may not reveal objects while the paced warm still owns visibility.",
+);
 console.log("loader ownership contract: PASS");

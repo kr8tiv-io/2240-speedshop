@@ -1108,13 +1108,10 @@ export function Vehicle(props: Omit<PlacedProps, "orient">) {
    and linked by ANGLE, INSIDE the frame that first draws them, because a
    material is not compiled until the renderer meets it in a render.
 
-   So the renderer never meets one in a render any more. Each bay mounts
-   HIDDEN, and `compileAsync` — which walks with `traverse`, not
-   `traverseVisible`, so a hidden subtree is fair game — links every program
-   through `KHR_parallel_shader_compile` on the driver's own threads. Textures
-   get pushed up the same way. Only when the promise resolves does the group
-   become visible, and by then there is nothing left for the frame to do but
-   draw it.
+   So the renderer meets them before the camera arrives. Each bay mounts hidden;
+   the base renderer allocates its program set, then the real composer draws the
+   shipped HDR/post-processing variants in adaptive slices and yields between
+   them. Only when both steps finish does the group become available to reveal.
 
    The same resolution opens the gate for the next bay, so the shop arrives as
    an orderly queue rather than a stampede. */
@@ -1259,18 +1256,7 @@ async function warmSubtree(
   await warmUp(gl, node, camera, scene);
 }
 
-/**
- * Build the programs a subtree needs, off the animation loop.
- *
- * The first cut of this waited on `KHR_parallel_shader_compile` and then forced
- * every program's uniform locations, on the theory that linking was the
- * expensive part. A V8 CPU profile said otherwise: on Windows, ANGLE reports
- * the link complete and DEFERS the translation to Direct3D until the program is
- * first DRAWN with — so the wait bought nothing and the cost still landed on
- * the frame that drew the bay. What actually pays it is a draw, which is why
- * each bay is rendered once by hand in `firstUse` below. This is the cheap
- * half: create the programs so that manual frame has nothing left to allocate.
- */
+/** Allocate the base material programs before the paced composer first-use. */
 async function warmUp(
   gl: THREE.WebGLRenderer,
   node: THREE.Object3D,
@@ -1280,7 +1266,7 @@ async function warmUp(
   try {
     gl.compile(node, camera, node === scene ? undefined : scene);
   } catch {
-    /* a material the renderer will not touch is not one we can warm */
+    /* A material the renderer will not touch is not one we can warm. */
   }
   await wait(0);
 }
@@ -1310,14 +1296,14 @@ let warmQueue: Promise<void> = Promise.resolve();
    survives the re-suspension, so identity is the honest key. */
 const PACED = new WeakSet<THREE.Object3D>();
 
-/* Which objects a paced warm is currently holding hidden, and since when.
+/* Which objects a paced warm currently owns while temporarily hidden.
    NOT on userData: drei's <Clone> spreads `userData` BY REFERENCE, so every
    clone of one source model — across every bay — shares a single userData
    object. A mark written there phantom-marks the whole fleet at once, one
-   bay's restore erases another bay's mark while that bay's mesh is still
-   hidden, and the watchdog goes blind to exactly the objects it exists to
-   save. Identity lives in a WeakMap instead, which cannot be shared by
-   construction. */
+   bay's restore can otherwise erase another bay's ownership. Identity lives
+   in a WeakMap instead, which cannot be shared by construction. The detail
+   cull consults this map and leaves owned visibility alone; pacedWarm's
+   finally block is the only authority that clears it. */
 const PACED_HIDDEN = new WeakMap<THREE.Object3D, number>();
 
 /**
@@ -1409,15 +1395,14 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
     node.visible = wasGroup;
   };
 
-  for (const object of drawables) {
-    object.visible = false;
-    // Marked so the watchdog can tell "the warm-up hid this" from "this is
-    // meant to be hidden", and put back only the former. The mark carries its
-    // OWN hide time, so the watchdog can distinguish a slice in progress from
-    // a leak without knowing anything about who is pacing.
-    PACED_HIDDEN.set(object, performance.now());
-  }
-  node.visible = true;
+  try {
+    for (const object of drawables) {
+      object.visible = false;
+      // The ownership mark prevents the detail cull from touching a drawable
+      // until this warm has restored the exact state it received.
+      PACED_HIDDEN.set(object, performance.now());
+    }
+    node.visible = true;
 
   const step = () => {
     try {
@@ -1465,54 +1450,57 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
   let size = 1;
   let i = 0;
 
-  while (i < drawables.length) {
-    if (performance.now() > deadline) {
-      if (DEBUG) {
-        console.log(
-          `[shop]   ${label || "warm"} hit its deadline with ${drawables.length - i} left — showing everything`,
-        );
+    while (i < drawables.length) {
+      if (performance.now() > deadline) {
+        if (DEBUG) {
+          console.log(
+            `[shop]   ${label || "warm"} hit its deadline with ${drawables.length - i} left — showing everything`,
+          );
+        }
+        break;
       }
-      break;
-    }
 
-    // Wait for the reader to stop — unless the canvas is PARKED, where an
-    // invisible scene cannot jank and waiting for scroll-stillness only
-    // starves the warm (the film scroll never goes quiet). If the reader
-    // never stops on a LIVE canvas, the work still has to happen, so it goes
-    // ahead one mesh at a time: thin enough that a forced slice costs a frame.
-    const parked = parkedNow();
-    const idle = parked ? true : await untilIdle();
-    const take = idle ? size : 1;
-    for (let k = i; k < Math.min(i + take, drawables.length); k++) {
-      drawables[k].visible = was[k];
-      PACED_HIDDEN.delete(drawables[k]);
-    }
-    i += take;
+      // Wait for the reader to stop — unless the canvas is PARKED, where an
+      // invisible scene cannot jank and waiting for scroll-stillness only
+      // starves the warm (the film scroll never goes quiet). If the reader
+      // never stops on a LIVE canvas, the work still has to happen, so it goes
+      // ahead one mesh at a time: thin enough that a forced slice costs a frame.
+      const parked = parkedNow();
+      const idle = parked ? true : await untilIdle();
+      const take = idle ? size : 1;
+      for (let k = i; k < Math.min(i + take, drawables.length); k++) {
+        drawables[k].visible = was[k];
+        PACED_HIDDEN.delete(drawables[k]);
+      }
+      i += take;
 
-    const started = performance.now();
-    if (liveNow()) await nextFrame();
-    else step();
-    const cost = performance.now() - started;
+      const started = performance.now();
+      if (liveNow()) await nextFrame();
+      else step();
+      const cost = performance.now() - started;
 
-    if (idle) {
-      /* Parked slices share the thread with the FILM's render loop, so they
-         tune against a tighter budget: ~60 ms keeps the film above 15fps in
-         the worst slice and typically far better, where 120 ms would read as
-         visible film stutter. */
-      const budget = parked ? 60 : BUDGET;
-      if (cost > budget) size = Math.max(1, Math.floor(size / 2));
-      else if (cost < budget / 3) size = Math.min(12, size + 2);
+      if (idle) {
+        /* Parked slices share the thread with the FILM's render loop, so they
+           tune against a tighter budget: ~60 ms keeps the film above 15fps in
+           the worst slice and typically far better, where 120 ms would read as
+           visible film stutter. */
+        const budget = parked ? 60 : BUDGET;
+        if (cost > budget) size = Math.max(1, Math.floor(size / 2));
+        else if (cost < budget / 3) size = Math.min(12, size + 2);
+      }
+      if (DEBUG && cost > 400) {
+        console.log(`[shop]   ${label || "warm"} slice ${Math.round(cost)} ms → batch ${size}`);
+      }
+      /* Parked: hand the thread a real animation frame so the film renders
+         between slices — that yield IS the fix for the 9.5 s handoff freeze. */
+      if (parked) await nextFrame();
+      else await wait(idle ? 0 : 16);
     }
-    if (DEBUG && cost > 400) {
-      console.log(`[shop]   ${label || "warm"} slice ${Math.round(cost)} ms → batch ${size}`);
-    }
-    /* Parked: hand the thread a real animation frame so the film renders
-       between slices — that yield IS the fix for the 9.5 s handoff freeze. */
-    if (parked) await nextFrame();
-    else await wait(idle ? 0 : 16);
+  } finally {
+    // This is the visibility contract. Exceptions, deadline exits, context
+    // interruptions and successful completion all restore the same snapshot.
+    restore();
   }
-
-  restore();
 }
 
 
@@ -1901,56 +1889,6 @@ function WarmStation({ station, children }: { station: number; children: ReactNo
    seven bays. Ten, because a bay that gains a lamp costs one recompile of the
    whole building, and a spare costs one dead iteration of the light loop. The
    warning under `?perf` fires if a bay ever pushes past it. */
-/**
- * THE LAST LINE: nothing may leave the shop invisible.
- *
- * Several mechanisms in this file hide objects temporarily and rely on their
- * own completion to put them back — the warm-up pacing, the bay gate, the
- * detail cull. Each is individually careful, and together they are a single
- * point of failure, because every one of them fails the same way: an empty
- * scene. A black shop is the one outcome worse than any performance problem,
- * so it gets a watchdog that answers to none of them.
- *
- * Ten seconds after the world mounts, anything the warm-up hid and has not put
- * back is shown. If the pacing is working, this finds nothing to do.
- */
-export function VisibilityWatchdog({ target }: { target: React.RefObject<THREE.Object3D | null> }) {
-  const scene = useThree((state) => state.scene);
-
-  useEffect(() => {
-    /* RECURRING, NOT ONE-SHOT.
-       A single sweep 10 s after mount protected the original page, where every
-       bay warmed behind the preloader. On the combined page the bays stream in
-       for a minute after the world mounts — most of them AFTER a one-shot
-       sweep has come and gone, which is how the probe caught bays still
-       hidden forty seconds in. The sweep now repeats, and it reads the age
-       stamped on each mark so a slice legitimately in progress is left alone:
-       only marks older than a full warm deadline are leaks.
-
-       (And THE SCENE, NOT THE SHELL: every bay is a SIBLING of the shell
-       group, so a sweep scoped to `target` could never see the exact objects
-       most likely to be left hidden.) */
-    const timer = window.setInterval(() => {
-      const root = scene;
-      const now = performance.now();
-      let shown = 0;
-      root.traverse((child) => {
-        const mark = PACED_HIDDEN.get(child);
-        if (mark === undefined || child.visible) return;
-        if (now - mark > 8000) {
-          child.visible = true;
-          PACED_HIDDEN.delete(child);
-          shown++;
-        }
-      });
-      if (shown > 0) console.warn(`[shop] watchdog showed ${shown} objects the warm-up left hidden`);
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [scene, target]);
-
-  return null;
-}
-
 export function WarmScene({
   target,
   padLights = 10,

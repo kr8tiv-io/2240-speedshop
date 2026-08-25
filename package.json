@@ -8,6 +8,7 @@
     "start": "next start -p 3117",
     "lint": "eslint",
     "audit:elevation": "node scripts/elevation-checks.mjs",
+    "test:gl-images": "node scripts/gl-images-contract.mjs",
     "test:loader-ownership": "node scripts/loader-ownership-contract.mjs",
     "shots:combined": "node scripts/combined-shots.js"
   },
