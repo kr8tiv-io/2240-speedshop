@@ -138,10 +138,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
           const value = window.__film?.edge;
           return Number.isFinite(value) ? Number(value) : null;
         });
-        if (edge !== null && edge > 1) {
+        const filmBeat = runway === "a" || runway === "c";
+        if (filmBeat && edge === null) {
+          problems.push(`${size.name}: ${label} WHOLE-CAR EDGE MISSING/NON-FINITE`);
+        } else if (filmBeat && edge > 1) {
           problems.push(`${size.name}: ${label} WHOLE-CAR EDGE ${edge.toFixed(3)} > 1`);
         }
-        console.log(`${size.name}: ${label} edge=${edge === null ? "n/a" : edge.toFixed(3)}`);
+        console.log(
+          `${size.name}: ${label} edge=${edge === null ? "n/a" : edge.toFixed(3)}` +
+            (filmBeat ? "" : " (shop beat; optional)"),
+        );
         await page.screenshot({
           path: path.join(OUT, `${LABEL}-${size.name}-${label}.png`),
         });

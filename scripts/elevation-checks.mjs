@@ -95,23 +95,16 @@ async function seek(page, selector, progress) {
 }
 
 async function auditMenu(page, size) {
-  const trigger = await page.evaluate(() => {
-    const button = document.querySelector('button[aria-controls="mobile-nav"]');
-    if (!button) return null;
-    const rect = button.getBoundingClientRect();
-    return { width: rect.width, height: rect.height };
-  });
-
-  check(
-    size.name,
-    "mobile menu trigger is at least 44×44 CSS px",
-    !!trigger && trigger.width >= 44 && trigger.height >= 44,
-    trigger
-      ? `measured ${trigger.width.toFixed(1)}×${trigger.height.toFixed(1)}px; required >=44×44px`
-      : "button[aria-controls=mobile-nav] missing",
-  );
-
-  if (!trigger) return;
+  const trigger = await page.$('button[aria-controls="mobile-nav"]');
+  if (!trigger) {
+    check(
+      size.name,
+      "all exposed mobile-menu interactive controls are at least 44×44 CSS px",
+      false,
+      "menu toggle/close control missing; open-menu targets could not be measured",
+    );
+    return;
+  }
 
   let opened = false;
   try {
@@ -125,7 +118,73 @@ async function auditMenu(page, size) {
   } catch (error) {
     check(size.name, "mobile menu opens", false, `click/open failed: ${error.message}`);
   }
-  if (!opened) return;
+  if (!opened) {
+    check(
+      size.name,
+      "all exposed mobile-menu interactive controls are at least 44×44 CSS px",
+      false,
+      "menu did not open; interactive targets could not be measured",
+    );
+    return;
+  }
+
+  const targetAudit = await page.evaluate(() => {
+    const menu = document.getElementById("mobile-nav");
+    const toggle = document.querySelector('button[aria-controls="mobile-nav"]');
+    if (!menu || !toggle) return null;
+    const selector = [
+      "a[href]",
+      "area[href]",
+      "button:not([disabled])",
+      "input:not([type='hidden']):not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "summary",
+      "[role='button']",
+      "[role='link']",
+      "[contenteditable='true']",
+      "[tabindex]:not([tabindex='-1'])",
+    ].join(",");
+    const controls = [...new Set([toggle, ...menu.querySelectorAll(selector)])];
+    const targets = controls
+      .filter((control) => {
+        const rect = control.getBoundingClientRect();
+        const style = getComputedStyle(control);
+        const visible = control.checkVisibility
+          ? control.checkVisibility({ opacityProperty: true, visibilityProperty: true })
+          : style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0;
+        return visible && style.pointerEvents !== "none" && rect.width > 0 && rect.height > 0;
+      })
+      .map((control) => {
+        const rect = control.getBoundingClientRect();
+        const rawLabel =
+          control.getAttribute("aria-label") ||
+          control.textContent ||
+          control.getAttribute("href") ||
+          control.tagName;
+        return {
+          label: rawLabel.replace(/\s+/g, " ").trim().slice(0, 54),
+          tag: control.tagName.toLowerCase(),
+          width: rect.width,
+          height: rect.height,
+          toggle: control === toggle,
+        };
+      });
+    return { targets, hasToggle: targets.some((target) => target.toggle) };
+  });
+  const undersized =
+    targetAudit?.targets.filter((target) => target.width < 44 || target.height < 44) || [];
+  const targetsAvailable = !!targetAudit && targetAudit.hasToggle && targetAudit.targets.length > 1;
+  check(
+    size.name,
+    "all exposed mobile-menu interactive controls are at least 44×44 CSS px",
+    targetsAvailable && undersized.length === 0,
+    !targetsAvailable
+      ? `interactive target diagnostics unavailable or incomplete (${targetAudit?.targets.length ?? 0} rendered control(s), toggle=${targetAudit?.hasToggle ?? false})`
+      : undersized.length
+        ? `${undersized.length}/${targetAudit.targets.length} undersized: ${undersized.map((target) => `${target.tag}“${target.label}” ${target.width.toFixed(1)}×${target.height.toFixed(1)}px`).join("; ")}`
+        : `${targetAudit.targets.length} rendered controls measured; smallest dimensions all >=44×44px`,
+  );
 
   const layer = await page.evaluate(() => {
     const menu = document.getElementById("mobile-nav");
@@ -359,9 +418,13 @@ async function auditSize(browser, size) {
   );
   check(
     size.name,
-    `opening film uses at most ${MAX_CANVASES} canvas/WebGL surfaces`,
-    opening.canvases.length <= MAX_CANVASES,
-    `${opening.canvases.length} connected canvases: ${opening.canvases.map((c) => `#${c.index} ${c.context} ${c.css}/${c.backing}`).join("; ")}`,
+    `opening film has 1–${MAX_CANVASES} instrumented WebGL canvas surfaces`,
+    opening.canvases.length > 0 &&
+      opening.canvases.length <= MAX_CANVASES &&
+      opening.canvases.every((canvas) => /^(webgl2?|experimental-webgl)$/i.test(canvas.context)),
+    opening.canvases.length
+      ? `${opening.canvases.length} connected canvases: ${opening.canvases.map((c) => `#${c.index} ${c.context} ${c.css}/${c.backing}`).join("; ")}`
+      : "WebGL instrumentation unavailable: 0 connected canvases",
   );
 
   if (!size.mobile) {
@@ -393,14 +456,23 @@ async function auditSize(browser, size) {
     const early = editorial.filter(
       (entry) => entry.path && requestedPaths.has(entry.path) && !entry.near,
     );
-    check(
-      size.name,
-      "editorial GL-image textures wait until their DOM section is near",
-      early.length === 0,
-      early.length
-        ? `${early.length} early texture(s): ${early.map((entry) => `${entry.path} (${entry.section}, ${entry.sectionDistance}px beyond viewport)`).join("; ")}`
-        : `${editorial.length} GL-image wrapper(s), no far-section texture request within the ${EDITORIAL_NEAR_PX}px activation margin`,
-    );
+    if (!editorial.length) {
+      check(
+        size.name,
+        "desktop GL-image wrapper diagnostics are available",
+        false,
+        "no .flashlight img wrappers registered; early-texture budget cannot be measured",
+      );
+    } else {
+      check(
+        size.name,
+        "editorial GL-image textures wait until their DOM section is near",
+        early.length === 0,
+        early.length
+          ? `${early.length} early texture(s): ${early.map((entry) => `${entry.path} (${entry.section}, ${entry.sectionDistance}px beyond viewport)`).join("; ")}`
+          : `${editorial.length} GL-image wrapper(s), no far-section texture request within the ${EDITORIAL_NEAR_PX}px activation margin`,
+      );
+    }
     await auditDesktopScroll(page);
   } else {
     await auditMenu(page, size);
