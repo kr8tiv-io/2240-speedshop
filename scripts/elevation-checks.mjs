@@ -17,6 +17,7 @@ const CHROME =
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const BASE = (process.env.BASE_URL || "http://localhost:3117").replace(/\/+$/, "");
 const URL = `${BASE}/?tune=1`;
+const FOCUS = (process.env.ELEVATION_FOCUS || "all").trim().toLowerCase();
 
 const PRELOADER_BUDGET_MS = 12_000;
 const PRELOADER_EMERGENCY_MS = 20_000;
@@ -298,6 +299,155 @@ async function auditDesktopScroll(page) {
       ? "rAF sampler produced no finite samples"
       : `worst ${worst.toFixed(1)}ms; p95 ${p95.toFixed(1)}ms; ${gaps.length} frames; budget ${MAX_RAF_GAP_MS}ms`,
   );
+}
+
+/**
+ * Cold-start contract for the homepage's first 3D boundary.
+ *
+ * This deliberately runs before the wider launch matrix. It catches two bugs
+ * that a settled screenshot cannot: mounting the desktop renderer for a phone
+ * and merely hiding an already-downloaded Three scene for reduced motion.
+ */
+async function auditHeroBoot(browser) {
+  const scenarios = [
+    { name: "boot-phone390", reduced: false },
+    { name: "boot-reduced390", reduced: true },
+  ];
+
+  for (const scenario of scenarios) {
+    let browserContext;
+    let page;
+    try {
+      browserContext = await browser.createBrowserContext();
+      page = await browserContext.newPage();
+      await page.setCacheEnabled(false);
+      await page.setViewport({
+        width: 390,
+        height: 844,
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      });
+      await page.emulateMediaFeatures([
+        {
+          name: "prefers-reduced-motion",
+          value: scenario.reduced ? "reduce" : "no-preference",
+        },
+      ]);
+
+      const pageErrors = [];
+      const hydrationErrors = [];
+      const requests = [];
+      page.on("pageerror", (error) => pageErrors.push(error.message));
+      page.on("console", (message) => {
+        const value = message.text();
+        if (
+          message.type() === "error" &&
+          /hydration|hydrated|server rendered html|did not match/i.test(value)
+        ) {
+          hydrationErrors.push(value);
+        }
+      });
+      page.on("request", (request) => requests.push(request.url()));
+
+      await page.evaluateOnNewDocument(() => {
+        window.__elevationHeroBoot = { firstProfile: null, mounts: [] };
+        const record = (node) => {
+          if (!(node instanceof Element)) return;
+          const runtimes = [
+            ...(node.matches("[data-hero-runtime]") ? [node] : []),
+            ...node.querySelectorAll("[data-hero-runtime]"),
+          ];
+          for (const runtime of runtimes) {
+            const profile = runtime.getAttribute("data-runtime-profile");
+            window.__elevationHeroBoot.mounts.push(profile);
+            window.__elevationHeroBoot.firstProfile ??= profile;
+          }
+        };
+        new MutationObserver((records) => {
+          for (const entry of records) {
+            for (const node of entry.addedNodes) record(node);
+          }
+        }).observe(document, { childList: true, subtree: true });
+      });
+
+      await page.goto(`${URL}&boot=${scenario.reduced ? "reduced" : "mobile"}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 120_000,
+      });
+
+      if (scenario.reduced) {
+        // Long enough for the old post-hydration preference effect and the
+        // shop's early warm timer to fire; still short enough for a focused
+        // boot check to stay useful while iterating.
+        await sleep(4_500);
+      } else {
+        await page
+          .waitForFunction(
+            () =>
+              window.__elevationHeroBoot?.firstProfile !== null &&
+              document.querySelector("[data-hero-runtime] canvas"),
+            { timeout: 15_000 },
+          )
+          .catch(() => {});
+      }
+
+      const state = await page.evaluate(() => ({
+        firstProfile: window.__elevationHeroBoot?.firstProfile ?? null,
+        mounts: window.__elevationHeroBoot?.mounts ?? [],
+        runtimeCount: document.querySelectorAll("[data-hero-runtime]").length,
+        runtimeCanvasCount: document.querySelectorAll("[data-hero-runtime] canvas").length,
+        canvasCount: document.querySelectorAll("canvas").length,
+      }));
+      const heroGlbs = requests.filter((requestUrl) => {
+        try {
+          return /\/models\/hero(?:-[^/]+)?\/[^?#]+\.glb$/i.test(
+            new globalThis.URL(requestUrl).pathname,
+          );
+        } catch {
+          return /\/models\/hero(?:-[^/]+)?\/[^?#]+\.glb(?:[?#]|$)/i.test(requestUrl);
+        }
+      });
+
+      if (scenario.reduced) {
+        check(
+          scenario.name,
+          "reduced motion mounts zero WebGL canvases",
+          state.canvasCount === 0,
+          `${state.canvasCount} connected canvas(es); runtime wrappers ${state.runtimeCount}`,
+        );
+        check(
+          scenario.name,
+          "reduced motion requests zero hero GLBs",
+          heroGlbs.length === 0,
+          heroGlbs.length
+            ? `${heroGlbs.length} hero request(s): ${[...new Set(heroGlbs)].join(", ")}`
+            : "0 /models/hero/*.glb requests",
+        );
+        const bootErrors = [...new Set([...pageErrors, ...hydrationErrors])];
+        check(
+          scenario.name,
+          "reduced motion has zero hydration or page errors",
+          bootErrors.length === 0,
+          bootErrors.length ? `${bootErrors.length} error(s): ${bootErrors.join(" | ")}` : "0 errors",
+        );
+      } else {
+        check(
+          scenario.name,
+          "first hero runtime mount is explicitly mobile",
+          state.firstProfile === "mobile" && state.runtimeCanvasCount === 1,
+          `first profile ${state.firstProfile ?? "missing"}; mounts ${JSON.stringify(state.mounts)}; runtime canvases ${state.runtimeCanvasCount}`,
+        );
+      }
+    } catch (error) {
+      const message = `${scenario.name} · boot audit execution — ${error.stack || error.message}`;
+      failures.push(message);
+      console.error(`FAIL ${message}`);
+    } finally {
+      await page?.close().catch(() => {});
+      await browserContext?.close().catch(() => {});
+    }
+  }
 }
 
 async function auditSize(browserContext, size) {
@@ -722,17 +872,20 @@ try {
       "--no-first-run",
     ],
   });
-  for (const size of SIZES) {
-    let browserContext;
-    try {
-      browserContext = await browser.createBrowserContext();
-      await auditSize(browserContext, size);
-    } catch (error) {
-      const message = `${size.name} · audit execution — ${error.stack || error.message}`;
-      failures.push(message);
-      console.error(`FAIL ${message}`);
-    } finally {
-      await browserContext?.close().catch(() => {});
+  await auditHeroBoot(browser);
+  if (FOCUS !== "boot") {
+    for (const size of SIZES) {
+      let browserContext;
+      try {
+        browserContext = await browser.createBrowserContext();
+        await auditSize(browserContext, size);
+      } catch (error) {
+        const message = `${size.name} · audit execution — ${error.stack || error.message}`;
+        failures.push(message);
+        console.error(`FAIL ${message}`);
+      } finally {
+        await browserContext?.close().catch(() => {});
+      }
     }
   }
 } catch (error) {

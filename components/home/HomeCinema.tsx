@@ -1,17 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { site } from "@/lib/site";
 import { splitChars } from "@/lib/split";
 import { Preloader } from "./Preloader";
-import { HeroScene, type Shot } from "./HeroScene";
+import type { Shot } from "./HeroScene";
+import { addMediaQueryChangeListener, resetHeroBoot } from "./hero-boot";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
+
+const LazyHeroRuntime = dynamic(
+  () => import("./HeroRuntime").then((module) => module.HeroRuntime),
+  { ssr: false, loading: () => null },
+);
+
+type RuntimeProfile = null | {
+  mobile: boolean;
+  reduced: boolean;
+  webgl2: boolean;
+};
+
+function supportsWebGL2() {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(window.WebGL2RenderingContext && canvas.getContext("webgl2"));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The film, in three acts — SPLIT AROUND THE SHOP.
@@ -41,33 +63,60 @@ const ACT = [0, 100];
 /** Runway C is its own 100-beat timeline; act III positions are local to it. */
 
 export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
-  const shot = useRef<Shot>({
+  const [shot] = useState<Shot>(() => ({
     film: 0,
     flare: 0,
     lamp: 1,
     warm: 0,
     cool: 0,
     tail: 0,
-  }).current;
+  }));
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [reduced, setReduced] = useState(false);
-  const [mobile, setMobile] = useState(false);
+  const [runtimeProfile, setRuntimeProfile] = useState<RuntimeProfile>(null);
   const [ready, setReady] = useState(false);
   const [heroActive, setHeroActive] = useState(true);
-  /** Set once every shader in the film is compiled — gates the preloader. */
-  const [sceneReady, setSceneReady] = useState(false);
-  const onSceneReady = useCallback(() => setSceneReady(true), []);
   const flared = useRef(false);
+  const motionEnabled =
+    runtimeProfile !== null && !runtimeProfile.reduced && runtimeProfile.webgl2;
 
-  useEffect(() => {
-    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    setMobile(window.matchMedia("(max-width: 767px)").matches);
+  /* The server and first client render both stay at `null`. A layout effect
+     then chooses the correct renderer before the heavy chunk can mount, so a
+     phone never briefly builds the desktop scene and reduced motion never
+     evaluates HeroScene's module-scope model preloads. */
+  useLayoutEffect(() => {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const phone = window.matchMedia("(max-width: 767px)");
+    let previousKey: string | null = null;
+
+    const decide = () => {
+      const next = {
+        mobile: phone.matches,
+        reduced: motion.matches,
+        // A reduced-motion visit never needs to create even a disposable
+        // capability-test context.
+        webgl2: motion.matches ? false : supportsWebGL2(),
+      };
+      const key = `${Number(next.mobile)}${Number(next.reduced)}${Number(next.webgl2)}`;
+      if (key === previousKey) return;
+      previousKey = key;
+      resetHeroBoot();
+      setRuntimeProfile(next);
+    };
+
+    decide();
+    const removeMotion = addMediaQueryChangeListener(motion, decide);
+    const removePhone = addMediaQueryChangeListener(phone, decide);
+    return () => {
+      removeMotion();
+      removePhone();
+    };
   }, []);
 
   // The fixed canvas serves two runways with the walk-through between them.
   // While NEITHER runway is near the viewport the film must not render
   // (frameloop "never") — the walk-through world owns the GPU in that gap.
   useEffect(() => {
+    if (!motionEnabled) return;
     const wrap = wrapRef.current;
     if (!wrap) return;
     const runways = wrap.querySelectorAll("[data-film-runway]");
@@ -85,11 +134,11 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
     );
     runways.forEach((r) => io.observe(r));
     return () => io.disconnect();
-  }, [reduced]);
+  }, [motionEnabled]);
 
   useGSAP(
     () => {
-      if (reduced) return;
+      if (!motionEnabled) return;
       const wrap = wrapRef.current;
       if (!wrap) return;
       const q = gsap.utils.selector(wrap);
@@ -299,7 +348,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
       tl.fromTo(q("[data-runway-a] [data-echo-film]"), { y: 22 }, { y: -14, duration: 200 }, 0);
       tlC.fromTo(q("[data-runway-c] [data-echo-film]"), { y: -2 }, { y: -26, duration: 100 }, 0);
     },
-    { scope: wrapRef, dependencies: [reduced] },
+    { scope: wrapRef, dependencies: [motionEnabled] },
   );
 
   const onPreloaderDone = () => {
@@ -308,7 +357,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
   };
 
   /* ── Reduced motion: still compositions, everything readable. ─────────── */
-  if (reduced) {
+  if (runtimeProfile && (runtimeProfile.reduced || !runtimeProfile.webgl2)) {
     return (
       <div>
         <section className="relative isolate flex min-h-[92svh] items-end overflow-hidden">
@@ -324,13 +373,19 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
 
   return (
     <div ref={wrapRef} className="relative">
-      <Preloader onDone={onPreloaderDone} sceneReady={sceneReady} />
+      <Preloader onDone={onPreloaderDone} />
 
       {/* THE STAGE — one fixed canvas behind both film runways. It starts
           visible under runway A; the timelines drop the curtain for the
           walk-through and raise it again for the finale. */}
       <div data-film-canvas className="fixed inset-0 z-0">
-        <HeroScene shot={shot} mobile={mobile} active={heroActive} onReady={onSceneReady} />
+        {motionEnabled && runtimeProfile ? (
+          <LazyHeroRuntime
+            shot={shot}
+            mobile={runtimeProfile.mobile}
+            active={heroActive}
+          />
+        ) : null}
       </div>
 
       {/* REEL ONE — Acts I and II. 850vh: the title card, two cars, and two

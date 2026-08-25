@@ -27,11 +27,15 @@ export default function Template({ children }: { children: React.ReactNode }) {
     <>
       {children}
       <PageFx />
-      {!gone && !reduced && (
+      {!gone && (
         <motion.div
           initial={{ opacity: 1 }}
           animate={{ opacity: 0 }}
-          transition={{ duration: 0.55, delay: 0.28, ease: [0.65, 0, 0.35, 1] }}
+          transition={
+            reduced
+              ? { duration: 0 }
+              : { duration: 0.55, delay: 0.28, ease: [0.65, 0, 0.35, 1] }
+          }
           onAnimationComplete={() => setGone(true)}
           className="route-veil pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-bay-black"
           aria-hidden="true"

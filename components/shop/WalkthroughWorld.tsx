@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { addMediaQueryChangeListener } from "@/components/home/hero-boot";
 import { markWorldSkipped, noteMotion } from "./boot";
 import {
   RUNWAY_ID,
@@ -109,11 +110,11 @@ export function WalkthroughWorld() {
     };
 
     decide();
-    motion.addEventListener("change", decide);
-    wide.addEventListener("change", decide);
+    const removeMotionListener = addMediaQueryChangeListener(motion, decide);
+    const removeWideListener = addMediaQueryChangeListener(wide, decide);
     return () => {
-      motion.removeEventListener("change", decide);
-      wide.removeEventListener("change", decide);
+      removeMotionListener();
+      removeWideListener();
     };
   }, []);
 

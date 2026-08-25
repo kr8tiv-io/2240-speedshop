@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import Lenis from "lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { addMediaQueryChangeListener } from "@/components/home/hero-boot";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -76,9 +77,9 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       else start();
     };
 
-    query.addEventListener("change", onPreferenceChange);
+    const removePreferenceListener = addMediaQueryChangeListener(query, onPreferenceChange);
     return () => {
-      query.removeEventListener("change", onPreferenceChange);
+      removePreferenceListener();
       stop();
     };
   }, []);

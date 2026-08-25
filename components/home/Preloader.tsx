@@ -1,142 +1,147 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useProgress } from "@react-three/drei";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/Logo";
+import { useHeroBootSnapshot } from "./hero-boot";
 
 /**
- * The preloader as brand moment: black screen, a mono percentage tied to REAL
- * asset progress, and the 2240 sign-badge stuttering ON like a cold neon tube.
- * Minimum 1.2 s so the flicker lands, hard cap 2.5 s so nobody waits on a
- * stuck loader — then it hands off directly into the hero.
- *
- * Failsafes, layered (a flaky tunnel taught us): (1) a 4 s wall-clock timeout
- * armed on mount that force-completes regardless of what useProgress reports;
- * (2) a 6 s React-BYPASSING escape hatch — a hung GLB request wedges React's
- * commits entirely (the % freezes, no setState paints), so this one hides the
- * veil and hands off with raw DOM calls; (3) `.preloader-veil` in globals.css
- * — a pure-CSS dead-man fade at ~6.5 s that lifts the overlay even if
- * hydration itself never happens (a hung JS chunk must not brick the page).
+ * A lightweight brand plate in front of the lazy Three runtime. Progress and
+ * compile readiness arrive through hero-boot, so importing this component can
+ * never evaluate drei, R3F, Three, postprocessing, or the hero model preloads.
  */
-/* Backstops, not the normal path. Both were raised from 4 s / 6 s: at those
-   values a legitimate cold load on a slow connection tripped the failsafe and
-   handed off mid-compile, which is the very stutter this is meant to prevent.
-   They still bound the worst case — a hung GLB cannot brick the page. */
-const HARD_CAP_MS = 14000;
-const ESCAPE_MS = 18000;
+const HARD_CAP_MS = 14_000;
+const ESCAPE_MS = 18_000;
+const MIN_BRAND_MS = 1_200;
 
-export function Preloader({ onDone, sceneReady }: { onDone?: () => void; sceneReady?: boolean }) {
-  const { progress } = useProgress();
-  const [phase, setPhase] = useState<"loading" | "flicker" | "exit" | "gone">("loading");
-  const mounted = useRef(Date.now());
+type Phase = "loading" | "flicker" | "exit" | "gone";
+type ReadyReason = "scene" | "emergency-failed" | "emergency-hard-cap" | "emergency-css-failsafe";
+type LoaderState = { phase: Phase; reason: ReadyReason | null };
+
+export function Preloader({ onDone }: { onDone?: () => void }) {
+  const boot = useHeroBootSnapshot();
+  const [loader, setLoader] = useState<LoaderState>({ phase: "loading", reason: null });
+  const mounted = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(onDone);
-  doneRef.current = onDone;
 
-  // Displayed number never goes backwards even if the manager resets.
-  const shown = useRef(0);
-  shown.current = Math.max(shown.current, Math.round(progress));
-
-  /* WAIT FOR THE SCENE, NOT FOR A STOPWATCH.
-     The old condition handed off at 2500 ms flat whatever the state of the
-     film, and the film was reliably NOT ready: measured, the first scroll then
-     froze for 3.1–3.3 s while three compiled the dissolve shaders, and models
-     arrived late. Two thirds of "it isn't smooth" was this one number.
-     `sceneReady` fires when every shader is compiled (see ScenePrimer), so the
-     loader now covers the real cost instead of ending in the middle of it.
-     The cap stays as a backstop but is far enough out to let an honest load
-     finish; the 6 s DOM escape hatch below moves with it. */
   useEffect(() => {
-    if (phase !== "loading") return;
-    const tryFinish = () => {
-      const elapsed = Date.now() - mounted.current;
-      const assetsIn = progress >= 100 && sceneReady;
-      if ((assetsIn && elapsed >= 1200) || elapsed >= HARD_CAP_MS) {
-        shown.current = 100;
-        setPhase("flicker");
-      }
-    };
-    tryFinish();
-    const id = window.setInterval(tryFinish, 100);
-    return () => window.clearInterval(id);
-  }, [progress, phase, sceneReady]);
+    doneRef.current = onDone;
+  }, [onDone]);
 
-  // HARD WALL-CLOCK FAILSAFE — armed once on mount, zero dependency on
-  // useProgress or any loader event. Whatever a flaky network does (a GLB
-  // request that hangs forever, a manager that never reports), the preloader
-  // force-completes at 4 s flat. The scene renders whatever it has.
   useEffect(() => {
-    const t1 = window.setTimeout(() => {
-      setPhase((p) => {
-        if (p !== "loading") return p;
-        shown.current = 100;
-        return "flicker";
-      });
-    }, HARD_CAP_MS);
-    // ESCAPE HATCH — bypasses React entirely. Measured failure mode: a GLB
-    // request that HANGS (no error, no bytes) leaves the scene suspended
-    // forever and React stops committing — the % freezes and the setPhase
-    // above never paints. Raw timers still run, and GSAP + the canvas loop
-    // live outside React, so at 6 s we imperatively hide the veil, restore
-    // scroll, and hand off to the film. `display` is not React-managed on
-    // this node, so a late React recovery still reconciles cleanly.
-    const t2 = window.setTimeout(() => {
+    mounted.current = Date.now();
+  }, []);
+
+  const beginHandoff = useCallback((reason: ReadyReason) => {
+    setLoader((current) => {
+      if (current.phase !== "loading" || current.reason !== null) return current;
+      return { phase: "flicker", reason };
+    });
+  }, []);
+
+  /* The normal path has one exact provenance: every tracked asset is in AND
+     ScenePrimer has compiled/uploaded the film. Nothing timed may claim it. */
+  useEffect(() => {
+    if (loader.phase !== "loading" || loader.reason !== null) return;
+    if (boot.failed) {
+      const timer = window.setTimeout(() => beginHandoff("emergency-failed"), 0);
+      return () => window.clearTimeout(timer);
+    }
+    if (boot.progress < 100 || !boot.sceneReady) return;
+    const wait = Math.max(0, MIN_BRAND_MS - (Date.now() - mounted.current));
+    const timer = window.setTimeout(() => beginHandoff("scene"), wait);
+    return () => window.clearTimeout(timer);
+  }, [beginHandoff, boot.failed, boot.progress, boot.sceneReady, loader]);
+
+  /* React and raw-DOM backstops remain honest emergency paths. A suspended
+     tree cannot paint state, so the final timer stamps provenance on the node
+     before bypassing React and releasing the document. */
+  useEffect(() => {
+    const hardCap = window.setTimeout(
+      () => beginHandoff("emergency-hard-cap"),
+      HARD_CAP_MS,
+    );
+    const escape = window.setTimeout(() => {
       const veil = rootRef.current;
       if (!veil || !veil.isConnected || veil.style.display === "none") return;
+      veil.dataset.readyReason = "emergency-escape";
+      veil.dataset.state = "emergency-escape";
+      veil.style.animation = "none";
       veil.style.display = "none";
       document.documentElement.style.overflow = "";
       doneRef.current?.();
     }, ESCAPE_MS);
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      window.clearTimeout(hardCap);
+      window.clearTimeout(escape);
     };
-  }, []);
+  }, [beginHandoff]);
 
   useEffect(() => {
-    if (phase === "flicker") {
-      // tube-on runs 1.05 s; hold the lit sign a beat, then hand off.
-      const id = window.setTimeout(() => {
-        setPhase("exit");
+    if (loader.phase === "flicker") {
+      const timer = window.setTimeout(() => {
+        setLoader((current) =>
+          current.phase === "flicker" ? { ...current, phase: "exit" } : current,
+        );
         doneRef.current?.();
-      }, 1300);
-      return () => window.clearTimeout(id);
+      }, 1_300);
+      return () => window.clearTimeout(timer);
     }
-    if (phase === "exit") {
-      const id = window.setTimeout(() => setPhase("gone"), 600);
-      return () => window.clearTimeout(id);
+    if (loader.phase === "exit") {
+      const timer = window.setTimeout(
+        () =>
+          setLoader((current) =>
+            current.phase === "exit" ? { ...current, phase: "gone" } : current,
+          ),
+        600,
+      );
+      return () => window.clearTimeout(timer);
     }
-  }, [phase]);
+  }, [loader.phase]);
 
-  // Scroll stays locked while the loader owns the screen.
   useEffect(() => {
-    if (phase === "exit" || phase === "gone") return;
+    if (loader.phase === "exit" || loader.phase === "gone") return;
     const html = document.documentElement;
-    const prev = html.style.overflow;
+    const previous = html.style.overflow;
     html.style.overflow = "hidden";
     return () => {
-      html.style.overflow = prev;
+      html.style.overflow = previous;
     };
-  }, [phase]);
+  }, [loader.phase]);
 
-  if (phase === "gone") return null;
+  if (loader.phase === "gone") return null;
+
+  const emergency = loader.reason !== null && loader.reason !== "scene";
+  const state = emergency ? `emergency-${loader.phase}` : loader.phase;
+  const displayedProgress = loader.phase === "loading" ? Math.round(boot.progress) : 100;
 
   return (
     <div
       ref={rootRef}
+      data-preloader
+      data-state={state}
+      data-ready-reason={loader.reason ?? undefined}
       className={`preloader-veil fixed inset-0 z-[80] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[600ms] ease-out ${
-        phase === "exit" ? "-translate-y-6 opacity-0" : ""
+        loader.phase === "exit" ? "-translate-y-6 opacity-0" : ""
       }`}
+      /* Once genuine scene provenance exists, the CSS dead-man must not win
+         a later race during the branded flicker/exit choreography. */
+      style={loader.reason === "scene" ? { animation: "none" } : undefined}
+      onAnimationStart={(event) => {
+        if (event.animationName === "preloader-failsafe") {
+          beginHandoff("emergency-css-failsafe");
+        }
+      }}
       aria-hidden="true"
     >
-      <div className={phase === "flicker" ? "tube-on" : "opacity-[0.06]"}>
+      <div className={loader.phase === "flicker" ? "tube-on" : "opacity-[0.06]"}>
         <Badge className="h-28 w-auto sm:h-36" hole="#0a0a0b" title="" />
       </div>
 
       <div className="absolute bottom-10 left-0 right-0 flex items-end justify-between px-6 sm:px-10">
         <p className="corner-note">2240 SPEED SHOP · EDMONTON AB</p>
         <p className="font-mono text-4xl tabular-nums leading-none text-bone/80 sm:text-5xl">
-          {String(Math.min(shown.current, 100)).padStart(3, "0")}
+          {String(Math.min(displayedProgress, 100)).padStart(3, "0")}
           <span className="text-tungsten">%</span>
         </p>
       </div>
