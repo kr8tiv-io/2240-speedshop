@@ -108,6 +108,56 @@ async function auditSize(browser, size) {
       : "global grain layer missing",
   );
 
+  for (const beat of [
+    { name: "act-one", chapter: "1", progress: 0.3, act: 0 },
+    { name: "act-two", chapter: "2", progress: 0.8, act: 1 },
+  ]) {
+    let ready = false;
+    for (let attempt = 0; attempt < 3 && !ready; attempt += 1) {
+      await seek(page, "[data-runway-a]", beat.progress);
+      ready = await page
+        .waitForFunction(
+          ({ chapter, act }) => {
+            const node = document.querySelector(`[data-chapter='${chapter}']`);
+            return window.__film?.stage?.act === act && Number(getComputedStyle(node).opacity) >= 0.9;
+          },
+          { polling: 50, timeout: 4_000 },
+          beat,
+        )
+        .then(() => true)
+        .catch(() => false);
+    }
+    await sleep(300);
+    const layout = await page.evaluate(({ chapter }) => {
+      const node = document.querySelector(`[data-chapter='${chapter}']`);
+      const plate = node?.querySelector(".copy-plate");
+      const heading = node?.querySelector("h2");
+      if (!node || !plate || !heading) return null;
+      const rect = plate.getBoundingClientRect();
+      return {
+        opacity: Number(getComputedStyle(node).opacity),
+        text: heading.textContent?.replace(/\s+/g, " ").trim() || "",
+        rect: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right },
+        viewport: { width: innerWidth, height: innerHeight },
+      };
+    }, beat);
+    const fits =
+      !!layout &&
+      layout.rect.top >= 68 &&
+      layout.rect.bottom <= layout.viewport.height - 8 &&
+      layout.rect.left >= 0 &&
+      layout.rect.right <= layout.viewport.width;
+    check(
+      size.name,
+      `${beat.name.replace("-", " ")} selling plate fits beneath the nav`,
+      ready && !!layout && layout.opacity >= 0.9 && fits,
+      layout
+        ? `opacity=${layout.opacity.toFixed(2)}; heading=“${layout.text}”; plate=${JSON.stringify(layout.rect)}; viewport=${layout.viewport.width}×${layout.viewport.height}`
+        : `chapter ${beat.chapter} missing`,
+    );
+    await capture(page, size, `${beat.name}-copy`);
+  }
+
   let actThreeReady = false;
   for (let attempt = 0; attempt < 3 && !actThreeReady; attempt += 1) {
     await seek(page, "[data-runway-c]", 0.7);

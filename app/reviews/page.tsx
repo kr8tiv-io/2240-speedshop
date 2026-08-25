@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "2240 Speed Shop Reviews — Edmonton",
     description:
-      "The reviews that carry words, an honest note about the ones that do not, and an open invitation to come look at the work.",
+      "Customer words, quoted exactly, plus a practical way to judge the workmanship in person.",
     url: "/reviews",
   },
 };
@@ -51,8 +51,8 @@ const judging = [
     body: "Paint hides a decade of shortcuts for about two winters. Rockers, floor pans and frame rails are where an Alberta restoration is actually judged.",
   },
   {
-    title: "Ask for the customer who came back",
-    body: "Anybody can produce one happy customer. A shop worth using has people on their second and third car, which is a harder thing to fake.",
+    title: "Ask about repeat work",
+    body: "A second or third project is stronger evidence than a first visit. Ask whether customers come back with another car, and why.",
   },
   {
     title: "Read the quote, not the number",
@@ -100,10 +100,9 @@ export default function ReviewsPage() {
             2240 Speed Shop reviews
           </h1>
           <p className="mt-6 max-w-2xl font-body text-lg leading-relaxed text-bone">
-            2240 Speed Shop reviews come from a small, real customer list. Three Google reviewers
-            wrote about the work: they call Terry&apos;s cars beautiful, the service outstanding,
-            and the quality terrific. The shop is owner-operated in east Edmonton, so every review
-            is about one man&apos;s workmanship. Read them, then come look.
+            Customers describe Terry&apos;s cars as beautiful, the service as outstanding, and the
+            work as terrific. Their notes are public, direct, and unedited. Read them, then judge
+            the panels, welds, and floors in person.
           </p>
         </div>
       </section>
@@ -114,7 +113,7 @@ export default function ReviewsPage() {
           What do customers actually say?
         </h2>
         <p className="mt-3 max-w-2xl font-body text-[15px] leading-relaxed text-steel">
-          Three reviews, verbatim, from Google. Short, direct, and quoted exactly as posted.
+          Public Google reviews, quoted exactly as posted.
         </p>
 
         <div className="mt-10 grid gap-4 lg:grid-cols-3">
@@ -142,19 +141,16 @@ export default function ReviewsPage() {
       <section className="border-y border-rust/25 bg-panel/40">
         <div className="mx-auto max-w-3xl px-5 py-16">
           <h2 className="font-display text-3xl tracking-wide text-bone sm:text-4xl">
-            What about the star average?
+            What a rating cannot show
           </h2>
           <div className="mt-5 space-y-5 font-body text-[15px] leading-relaxed text-steel">
             <p>
-              The full context matters. This is a small shop with a short review history. Alongside
-              the reviews above sit a few ratings
-              that arrived with no comment, no vehicle and no invoice attached to them — stars and
-              nothing else.
+              Google&rsquo;s listing includes the written reviews above alongside star-only ratings. A
+              number names no car, no scope, and no result, so we do not turn it into a story.
             </p>
             <p>
-              We are not going to argue with anonymous numbers on the internet, and we are not going
-              to buy reviews to bury them. The reviews with words in them are on this page. The work
-              they describe is in the shop right now, on a hoist, with the panels off.
+              The customer words are quoted exactly. Reviews are never bought, and the stronger
+              proof is available in the shop: welds, gaps, floors, wiring, and cars mid-build.
             </p>
             <p className="text-bone">
               Better yet — come by. Look at what is on the hoist. The work does the talking.
@@ -186,12 +182,12 @@ export default function ReviewsPage() {
               If we built something for you
             </p>
             <h2 className="mt-3 font-display text-4xl leading-[0.95] tracking-wide text-bone sm:text-5xl">
-              Leave a review with words in it.
+              Put the car in the review.
             </h2>
             <p className="mt-4 max-w-xl font-body text-[15px] leading-relaxed text-steel">
-              A rating is a number. A sentence about what car it was and what got done is worth ten
-              of them — to the next person deciding whether to trust a small shop with a car they
-              have owned for thirty years. Open the Google listing, tap Reviews, then Write a review.
+              Name the car. Say what came in, what changed, and how the process went. That detail
+              helps the next owner deciding whether to trust a shop with something irreplaceable.
+              Open the Google listing, tap Reviews, then Write a review.
             </p>
           </div>
           <div className="flex flex-col gap-3">
@@ -224,8 +220,7 @@ export default function ReviewsPage() {
           How should you judge a restoration shop?
         </h2>
         <p className="mt-3 max-w-2xl font-body text-[15px] leading-relaxed text-steel">
-          Use this on us and on everybody else you call. A shop that flinches at any of it is telling
-          you something.
+          Ask us these questions. Ask every shop. The answers should make the decision easier.
         </p>
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {judging.map((item) => (

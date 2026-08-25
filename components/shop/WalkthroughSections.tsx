@@ -125,9 +125,8 @@ export function WalkthroughSections() {
           See what <em className="accent-serif">finished</em> looks like
         </h2>
         <p className={STATION_BODY}>
-          The sign is neon. The turntable is real. The Charger earns every slow degree. This is the
-          only showroom the building needs; everything past it is metal, sparks, and work in
-          progress.
+          Finished paint under honest light. The Charger turns so every gap, reflection, and body
+          line has nowhere to hide. Past it: bare metal, open engines, and work in progress.
         </p>
         <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.18em] text-steel/70">
           Walk on. The bays are open.
@@ -220,9 +219,9 @@ export function WalkthroughSections() {
           It gets <em className="accent-serif">driven</em> before it leaves
         </h2>
         <p className={STATION_BODY}>
-          A car on the rollers under the tuning neon, the numbers holding steady. Nothing goes home on a
-          trailer of hope — it runs, it gets sorted, and it runs again. Same four steps, every
-          build.
+          A car on the rollers under the tuning neon, the numbers holding steady. It starts, idles,
+          heat-soaks, stops, tracks, and runs again. The handoff comes after the shakedown, not
+          before it.
         </p>
         <ul className={STATION_LIST}>
           <li>01 · Talk it through</li>

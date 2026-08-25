@@ -22,6 +22,15 @@ const retired = [
   "Worth the drive from anywhere",
   "going home this week",
   "the shop that made it for them without asking",
+  "Last September a photographer pulled over mid-drive",
+  "A restoration is a decision, not a purchase.",
+  "Most shops farm out the paint",
+  "The Charger earns every slow degree.",
+  "trailer of hope",
+  "The reviews that carry words",
+  "reviews with words in them",
+  "Leave a review with words in it.",
+  "A shop that flinches",
 ];
 
 for (const phrase of retired) {
@@ -36,6 +45,10 @@ for (const proof of [
   "The work is the showroom.",
   "The work gets remembered.",
   "Right on the Sherwood Park line.",
+  "One car. One",
+  "Before the first cut,",
+  "Finished paint under honest light.",
+  "Put the car in the review.",
 ]) {
   assert.ok(source.includes(proof), `replacement selling line missing: ${proof}`);
 }

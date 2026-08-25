@@ -451,29 +451,29 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
             className="pointer-events-none absolute inset-0 flex items-end px-5 pb-8 pt-[84px] opacity-0 sm:items-center sm:px-8 sm:py-0"
           >
             <div className="copy-plate mx-auto w-full max-w-[92rem]">
-              <p className="corner-note text-tungsten">ACT I — THE ONE THAT GETS LOOKED AT</p>
+              <p className="corner-note text-tungsten">ACT I — THE STANDARD IN ONE FRAME</p>
               <div className="relative mt-4 max-w-4xl sm:mt-5">
                 <p
                   aria-hidden="true"
                   data-echo-film
                   className="echo-outline text-balance font-display text-[clamp(2.05rem,8.2vw,6.5rem)] uppercase leading-[0.95] tracking-[0.005em] sm:leading-[0.86]"
                 >
-                  Parked, it still <em className="accent-serif">stops</em> people.
+                  One car. One <em className="accent-serif">standard.</em>
                 </p>
                 <h2 className="text-balance font-display text-[clamp(2.05rem,8.2vw,6.5rem)] uppercase leading-[0.95] tracking-[0.005em] text-bone sm:leading-[0.86]">
-                  Parked, it still <em className="accent-serif">stops</em> people.
+                  One car. One <em className="accent-serif">standard.</em>
                 </h2>
               </div>
               <p className="mt-5 max-w-md font-body text-[15px] leading-[1.7] text-steel sm:mt-6 sm:text-base">
-                Last September a photographer pulled over mid-drive to shoot the shop&rsquo;s D100 —
-                patina, rust-bloomed tailgate, no wax on it. Nobody staged that. That is the whole
-                job: build the one that makes a stranger turn the car around.
+                Paint only earns the spotlight after the metal, gaps, stance, wiring, and road
+                manners are right. The finish gets attention. The decisions underneath are why it
+                keeps it.
               </p>
               <Link
-                href="/builds/1960s-dodge-d100"
+                href="/builds"
                 className="pointer-events-auto mt-5 inline-block font-mono text-[11px] uppercase tracking-[0.24em] text-tungsten transition-colors hover:text-ember sm:mt-6"
               >
-                The D100&rsquo;s build page →
+                See the finished work →
               </Link>
             </div>
           </div>
@@ -484,11 +484,11 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
             eyebrow={["INTERLUDE 01", "INTERLUDE — WHAT YOU ARE ACTUALLY BUYING"]}
             lead={
               <>
-                A restoration is a <em className="accent-serif">decision</em>, not a purchase.
+                Before the first cut, <em className="accent-serif">define</em> the car.
               </>
             }
-            body="You are choosing what this car will be for the next thirty years — how it sits, what it sounds like at 2,000 rpm, whether the door still shuts like a bank vault in 2055. We settle those decisions with you before the metal moves, then build to that standard all the way through."
-            stat={{ figure: "200–400", caption: "extra hours a true frame-off adds. We quote them out loud." }}
+            body="Stance, engine, gearing, brakes, steering, exhaust, and interior have to agree. We lock the use, the spec, and the sequence before teardown, then make every later decision against that brief."
+            stat={{ figure: "One plan", caption: "metal, drivetrain, paint, wiring, and trim built to the same brief." }}
           />
 
           {/* ACT II slate — the room announces itself as the coupe assembles */}
@@ -506,23 +506,22 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
             className="pointer-events-none absolute inset-0 flex items-end justify-end px-5 pb-8 pt-[84px] opacity-0 sm:items-center sm:px-8 sm:py-0"
           >
             <div className="copy-plate text-right w-full max-w-xl">
-              <p className="corner-note text-tungsten">ACT II — NOBODY SUBS THIS OUT</p>
+              <p className="corner-note text-tungsten">ACT II — ONE BUILD, ONE STANDARD</p>
               <div className="relative mt-4 sm:mt-5">
                 <p
                   aria-hidden="true"
                   data-echo-film
                   className="echo-outline text-balance font-display text-[clamp(2.05rem,7.8vw,6rem)] uppercase leading-[0.95] tracking-[0.005em] sm:leading-[0.86]"
                 >
-                  It never <em className="accent-serif">leaves</em> the building.
+                  Every system follows the <em className="accent-serif">plan.</em>
                 </p>
                 <h2 className="text-balance font-display text-[clamp(2.05rem,7.8vw,6rem)] uppercase leading-[0.95] tracking-[0.005em] text-bone sm:leading-[0.86]">
-                  It never <em className="accent-serif">leaves</em> the building.
+                  Every system follows the <em className="accent-serif">plan.</em>
                 </h2>
               </div>
               <p className="mt-4 font-body text-[15px] leading-[1.7] text-steel sm:mt-5 sm:text-base">
-                Most shops farm out the paint, then the trim, then the wiring — and your car spends
-                a year in other people&rsquo;s parking lots. Here the metal, the motor, the colour
-                and the interior all happen under one roof, with one person answerable for it.
+                Metalwork, drivetrain, wiring, body, colour, and trim follow one build plan here.
+                Terry sees each stage, makes the calls, and stays answerable for the whole car.
               </p>
               {/* 12px mono at 0.22em wraps every one of these onto two lines at
                   320 — six rows become twelve and the list swallows the shot. */}

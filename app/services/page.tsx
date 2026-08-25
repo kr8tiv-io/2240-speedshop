@@ -78,10 +78,9 @@ export default function ServicesHubPage() {
           Classic car shop in Edmonton
         </Kinetic>
         <p className="mt-6 text-lg leading-relaxed text-bone md:text-xl">
-          2240 Speed Shop is a classic car shop in Edmonton, Alberta, owned by Terry Harmider. Six
-          trades run under one roof: restoration, restomods and hot rods, engine swaps, performance
-          and tuning, body and paint, and interiors with classic mechanical service. One shop, one
-          standard, from a stalled barn find to a finished build.
+          2240 Speed Shop is Terry Harmider&rsquo;s classic car shop in Edmonton. Restoration,
+          restomods and hot rods, engine swaps, tuning, body and paint, interiors, and classic
+          mechanical work follow one build plan from teardown to shakedown.
         </p>
         <p className="mt-5 max-w-3xl leading-relaxed text-steel">
           The shop sits at {site.street}, {site.city} — right on the Sherwood Park line. Every trade
@@ -97,7 +96,7 @@ export default function ServicesHubPage() {
           id="trades"
           className="font-display text-3xl uppercase tracking-wide text-bone md:text-4xl"
         >
-          Which trade does your project need?
+          What does the car need?
         </h2>
 
         <ul className="mt-10 grid gap-8 md:grid-cols-2">
@@ -166,8 +165,8 @@ export default function ServicesHubPage() {
           Got a project sitting?
         </h2>
         <p className="mx-auto mt-4 max-w-2xl leading-relaxed text-steel">
-          Barn find, stalled build, or a daily that deserves better. Send photos and the vehicle
-          details. Photos in, honest scope out.
+          Send clear photos, the VIN, what you know, and what you want the car to become. Terry will
+          tell you where to start and what the first stage should cover.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
