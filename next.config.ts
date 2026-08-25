@@ -10,9 +10,15 @@ import modelVersion from "./scripts/model-version.js";
    plain paths — nothing renames the directories, so a stamped URL is a
    guaranteed 404 and the walk-through plays to an empty room. */
 const MODELS_VERSION = process.env.EXPORT ? modelVersion() : "";
+const HERO_MODELS_VERSION = process.env.EXPORT
+  ? (modelVersion as typeof modelVersion & { heroVersion: () => string }).heroVersion()
+  : "";
 
 const nextConfig: NextConfig = {
-  env: { NEXT_PUBLIC_MODELS_VERSION: MODELS_VERSION },
+  env: {
+    NEXT_PUBLIC_MODELS_VERSION: MODELS_VERSION,
+    NEXT_PUBLIC_HERO_MODELS_VERSION: HERO_MODELS_VERSION,
+  },
   // `EXPORT=1 next build` produces a fully static `out/` for dumb hosts
   // (Hostinger shared, any Apache/nginx). Unset, the build stays a normal
   // Node target for the VPS. The site is 100% SSG either way; export only

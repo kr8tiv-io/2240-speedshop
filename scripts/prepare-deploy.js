@@ -23,8 +23,9 @@ const modelVersion = require("./model-version.js");
 
 const OUT = path.resolve(__dirname, "..", "out");
 const VERSION = modelVersion();
+const HERO_VERSION = modelVersion.heroVersion();
 /* COMBINED-SITE DIFFERENCE: the hero film (components/home/HeroScene.tsx)
-   fetches /models/hero/*.glb at runtime, so out/models cannot be dropped
+   fetches /models/hero-<hash>/*.glb at runtime, so out/models cannot be dropped
    wholesale the way the speedshop build did. The authoring .glb files at the
    top of out/models ARE dead weight (the walk-through fetches only the
    models-opt / models-mobile shelves) — prune them, keep hero/. */
@@ -76,6 +77,21 @@ if (fs.existsSync(MODELS)) {
     fs.rmSync(full, { recursive: true, force: true });
   }
   console.log(`pruned out/models to hero/  (${pruned.toFixed(1)} MB removed)`);
+}
+
+/* The hero shelf gets its own small hash, independent of the 71-model shop
+   shelves. Its exported URL and this directory name are compiled from the
+   same bytes, so immutable caching can never strand returning visitors on an
+   older paint/model refinement. */
+if (HERO_VERSION) {
+  const HERO_FROM = path.join(MODELS, "hero");
+  const HERO_TO = path.join(MODELS, `hero-${HERO_VERSION}`);
+  if (!fs.existsSync(HERO_FROM)) {
+    throw new Error(`hero shelf missing at ${HERO_FROM}`);
+  }
+  fs.rmSync(HERO_TO, { recursive: true, force: true });
+  fs.renameSync(HERO_FROM, HERO_TO);
+  console.log(`stamped out/models/hero → hero-${HERO_VERSION}`);
 }
 
 /* Stamp the shelves with the same hash the build compiled into the loader's

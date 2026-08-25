@@ -16,6 +16,9 @@
     "test:hero-runtime": "node scripts/hero-runtime-contract.mjs",
     "test:home-copy": "node scripts/home-copy-contract.mjs",
     "test:grain-budget": "node scripts/grain-budget.mjs",
+    "test:hero-model-version": "node scripts/hero-model-version-contract.mjs",
+    "audit:export-hero": "node scripts/export-hero-check.mjs",
+    "serve:export": "node scripts/serve-export.mjs",
     "shots:combined": "node scripts/combined-shots.js"
   },
   "dependencies": {

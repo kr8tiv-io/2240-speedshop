@@ -1,5 +1,5 @@
 /**
- * A content hash of the two shipped model shelves.
+ * Content hashes for every shipped model shelf.
  *
  *   node scripts/model-version.js        prints the hash
  *   require(...)()                       returns it
@@ -34,11 +34,12 @@ const crypto = require("crypto");
 
 const ROOT = path.resolve(__dirname, "..");
 const SHELVES = ["models-opt", "models-mobile"];
+const HERO_SHELF = "models/hero";
 
-function modelVersion() {
+function contentVersion(shelves) {
   const hash = crypto.createHash("sha1");
   let counted = 0;
-  for (const shelf of SHELVES) {
+  for (const shelf of shelves) {
     const dir = path.join(ROOT, "public", shelf);
     if (!fs.existsSync(dir)) continue;
     for (const name of fs.readdirSync(dir).sort()) {
@@ -54,7 +55,19 @@ function modelVersion() {
   return counted ? hash.digest("hex").slice(0, 8) : "";
 }
 
+function modelVersion() {
+  return contentVersion(SHELVES);
+}
+
+/* Keep the three hero cars on their own hash. A refined hero should invalidate
+   only ~333 kB of film assets, not force returning visitors to refetch both
+   71-model walk-through shelves. */
+function heroVersion() {
+  return contentVersion([HERO_SHELF]);
+}
+
 module.exports = modelVersion;
 module.exports.SHELVES = SHELVES;
+module.exports.heroVersion = heroVersion;
 
 if (require.main === module) process.stdout.write(modelVersion());

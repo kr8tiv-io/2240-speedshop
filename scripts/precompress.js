@@ -24,7 +24,9 @@ const path = require("path");
 const zlib = require("zlib");
 
 const ROOT = path.resolve(__dirname, "..");
-const DIRS = ["models-opt", "models-mobile"].map((d) => path.join(ROOT, "public", d));
+const DIRS = ["models-opt", "models-mobile", "models/hero"].map((d) =>
+  path.join(ROOT, "public", d),
+);
 
 let before = 0;
 let after = 0;

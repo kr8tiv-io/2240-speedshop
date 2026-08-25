@@ -132,12 +132,16 @@ function byName(name: string): Role | null {
   return null;
 }
 
+/* Export builds rename the hero shelf to its content hash. Development and
+   Node builds keep the plain path so local assets remain directly editable. */
+const HERO_MODELS_VERSION = process.env.NEXT_PUBLIC_HERO_MODELS_VERSION || "";
+const HERO_MODEL_ROOT = `/models/${HERO_MODELS_VERSION ? `hero-${HERO_MODELS_VERSION}` : "hero"}`;
 
 const ACTS: Act[] = [
   {
     // ACT I — the finished car. The original shot, untouched: it is the one
     // Matt keeps scrolling back to.
-    url: "/models/hero/challenger.glb",
+    url: `${HERO_MODEL_ROOT}/challenger.glb`,
     length: 4.7,
     paint: "#571c1c",
     lampBoost: 1,
@@ -170,7 +174,7 @@ const ACTS: Act[] = [
   {
     // ACT II — the same shop, one bay over: hood up, motor open, the lamp
     // pulled right down into the engine bay.
-    url: "/models/hero/coupe-hoodup.glb",
+    url: `${HERO_MODEL_ROOT}/coupe-hoodup.glb`,
     length: 4.9,
     paint: "#5a2f10",
     lampBoost: 0.85,
@@ -215,7 +219,7 @@ const ACTS: Act[] = [
   {
     // ACT III — the driver. Back bay, moonlight through the door, one bare
     // bulb a long way off, and a late-60s Charger sitting in it in old paint.
-    url: "/models/hero/charger.glb",
+    url: `${HERO_MODEL_ROOT}/charger.glb`,
     length: 4.95,
     // Lifted from #2e4a4a: a near-black teal on a moonlit night scene with a
     // camera on the unlit side is a silhouette, not a car.

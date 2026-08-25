@@ -2,9 +2,9 @@
 #
 #   pwsh scripts/deploy-combined.ps1 -Repo C:\tmp\2240deploy\daylight -Message "..."
 #
-# Chain: EXPORT=1 build (stamps NEXT_PUBLIC_MODELS_VERSION) -> precompress
-# (brotli twins) -> prepare-deploy (renames the model shelves to their
-# content-addressed names and prunes out/models to hero/) -> prune the rest ->
+# Chain: precompress (fresh byte-identical Brotli twins) -> EXPORT=1 build
+# (stamps both model versions and copies the twins) -> prepare-deploy (renames the model shelves to their
+# content-addressed names and prunes out/models to hero-<hash>/) -> prune the rest ->
 # flatten-rsc -> mirror -> signed commit -> token push.
 #
 # Session workarounds baked in (2026-08-12):
@@ -22,6 +22,10 @@ $ErrorActionPreference = "Stop"
 $project = Split-Path -Parent $PSScriptRoot
 Set-Location $project
 
+Write-Host "== precompressing model transport twins"
+node scripts/precompress.js
+if ($LASTEXITCODE -ne 0) { throw "precompress failed" }
+
 Write-Host "== building static export"
 $env:EXPORT = "1"
 pnpm exec next build
@@ -30,14 +34,12 @@ if ($LASTEXITCODE -ne 0) { throw "next build failed" }
 $out = Join-Path $project "out"
 if (-not (Test-Path $out)) { throw "no out/ produced" }
 
-Write-Host "== precompress + content-address the model shelves"
-node scripts/precompress.js
-if ($LASTEXITCODE -ne 0) { throw "precompress failed" }
+Write-Host "== content-addressing the model shelves"
 node scripts/prepare-deploy.js
 if ($LASTEXITCODE -ne 0) { throw "prepare-deploy failed" }
 
 Write-Host "== pruning payload"
-# Raw source GLBs (~140 MB) never ship; only models/hero survives, and
+# Raw source GLBs (~140 MB) never ship; only models/hero-<hash> survives, and
 # prepare-deploy has already enforced that. Belt and braces on the rest:
 Get-ChildItem (Join-Path $out "models") -File -ErrorAction SilentlyContinue | Remove-Item -Force
 Remove-Item (Join-Path $out "draco") -Recurse -Force -ErrorAction SilentlyContinue

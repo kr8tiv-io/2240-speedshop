@@ -222,7 +222,12 @@ async function auditSize(browser, size) {
     await capture(page, size, name);
   }
 
-  check(size.name, "copy pass emits no page or console errors", errors.length === 0, `${errors.length} error(s)`);
+  check(
+    size.name,
+    "copy pass emits no page or console errors",
+    errors.length === 0,
+    errors.length ? `${errors.length} error(s): ${errors.join(" | ").slice(0, 1_200)}` : "0 error(s)",
+  );
   await context.close();
 }
 
