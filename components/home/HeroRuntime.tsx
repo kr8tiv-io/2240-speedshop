@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useProgress } from "@react-three/drei";
+import { WebGLBoundary } from "@/components/gl/WebGLBoundary";
 import { HeroScene, type Shot } from "./HeroScene";
 import { publishHeroBoot } from "./hero-boot";
 
@@ -25,6 +26,7 @@ export function HeroRuntime({
   active?: boolean;
 }) {
   const onSceneReady = useCallback(() => publishHeroBoot({ sceneReady: true }), []);
+  const onRuntimeFailure = useCallback(() => publishHeroBoot({ failed: true }), []);
 
   return (
     <div
@@ -34,12 +36,14 @@ export function HeroRuntime({
       className="absolute inset-0 h-full w-full"
     >
       <HeroProgressBridge />
-      <HeroScene
-        shot={shot}
-        mobile={mobile}
-        active={active}
-        onReady={onSceneReady}
-      />
+      <WebGLBoundary onFailure={onRuntimeFailure}>
+        <HeroScene
+          shot={shot}
+          mobile={mobile}
+          active={active}
+          onReady={onSceneReady}
+        />
+      </WebGLBoundary>
     </div>
   );
 }

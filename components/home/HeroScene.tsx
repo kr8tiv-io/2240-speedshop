@@ -11,6 +11,7 @@ import {
 } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { Effect, EffectAttribute, ToneMappingMode } from "postprocessing";
+import { WebGLContextGuard } from "@/components/gl/WebGLContextGuard";
 import {
   addDissolve,
   chainCompile,
@@ -1833,6 +1834,7 @@ export function HeroScene({
       className="!absolute !inset-0"
       aria-hidden="true"
     >
+      <WebGLContextGuard />
       {/* QUALITY ONLY EVER GOES DOWN, AND ONLY ONCE.
           Each tier carries a different dpr, and changing dpr reallocates the
           drawing buffer — the canvas is destroyed at one resolution and

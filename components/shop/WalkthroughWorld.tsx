@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { WebGLBoundary } from "@/components/gl/WebGLBoundary";
 import { addMediaQueryChangeListener } from "@/components/home/hero-boot";
 import { markWorldSkipped, noteMotion } from "./boot";
 import {
@@ -50,13 +51,12 @@ const ShopWorld = dynamic(() => import("./ShopWorld").then((m) => m.ShopWorld), 
 
 type Verdict = "idle" | "run-full" | "run-lite" | "skip";
 
-function hasWebGL() {
+function hasWebGL2() {
   try {
     const canvas = document.createElement("canvas");
-    return Boolean(
-      window.WebGLRenderingContext &&
-        (canvas.getContext("webgl2") ?? canvas.getContext("webgl")),
-    );
+    // Three r185 is WebGL2-only. Letting a WebGL1-only browser through this
+    // gate merely defers the failure until Canvas construction.
+    return Boolean(canvas.getContext("webgl2"));
   } catch {
     return false;
   }
@@ -94,7 +94,7 @@ export function WalkthroughWorld() {
       // Phones and tablets run the shop too. The only machines that keep the
       // graded veil are the ones that genuinely cannot run it (no WebGL, 2 GB
       // budget phones) or asked not to (prefers-reduced-motion).
-      const capable = !motion.matches && cores >= 3 && memory >= 2 && hasWebGL();
+      const capable = !motion.matches && cores >= 3 && memory >= 2 && hasWebGL2();
 
       // Everything under a desktop viewport — every phone, every tablet —
       // gets the LITE tier: same shop, same models, same rail, minus the
@@ -223,7 +223,9 @@ export function WalkthroughWorld() {
     >
       {/* The building. Mounted early (warm gate), drawn late (draw gate). */}
       {run && mounted ? (
-        <ShopWorld tier={verdict === "run-full" ? "full" : "lite"} active={active} />
+        <WebGLBoundary onFailure={markWorldSkipped}>
+          <ShopWorld tier={verdict === "run-full" ? "full" : "lite"} active={active} />
+        </WebGLBoundary>
       ) : null}
 
       {/* The graded veil — above the canvas, below the DOM copy. Also the

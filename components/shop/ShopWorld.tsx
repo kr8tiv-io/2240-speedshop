@@ -30,6 +30,7 @@ import {
   Noise,
   Vignette,
 } from "@react-three/postprocessing";
+import { WebGLContextGuard } from "@/components/gl/WebGLContextGuard";
 
 import {
   DoorShaft,
@@ -2438,15 +2439,27 @@ export function ShopWorld({
   const onStruggle = useCallback((_struggling: boolean) => {}, []);
 
   useEffect(() => {
-    // The meter at the door. Downloads own the first 70% — everything past
-    // that is compile, and compile is reported by the bays themselves.
+    // The meter at the door. This manager is shared by every Three canvas on
+    // the page, so the shop must compose with the hero's existing subscriber,
+    // never replace it. Slow phones can still be loading a hero when this
+    // scene mounts on its 3.5 s warm timer.
     const manager = THREE.DefaultLoadingManager;
+    const previousOnProgress = manager.onProgress;
     reportBootProgress(0.06);
-    manager.onProgress = (_url, loaded, total) => {
-      reportBootProgress(0.06 + 0.64 * (loaded / Math.max(total, 1)));
+    const onProgress = (url: string, loaded: number, total: number) => {
+      previousOnProgress?.call(manager, url, loaded, total);
+      // Only shop-owned requests move the shop meter. The underlying counts
+      // remain the manager's global truth, but hero events cannot make this
+      // scene appear further along before one of its own assets arrives.
+      if (/\/(?:models-(?:opt|mobile)(?:-[^/]+)?|shop)\//i.test(url)) {
+        reportBootProgress(0.06 + 0.64 * (loaded / Math.max(total, 1)));
+      }
     };
+    manager.onProgress = onProgress;
     return () => {
-      manager.onProgress = () => {};
+      // A later owner may have composed on top of us. Restore only when our
+      // wrapper is still current so cleanup cannot clobber that newer chain.
+      if (manager.onProgress === onProgress) manager.onProgress = previousOnProgress;
     };
   }, []);
 
@@ -2535,6 +2548,7 @@ export function ShopWorld({
           requestAnimationFrame(() => setLit(true));
         }}
       >
+        <WebGLContextGuard />
         {/* THE DPR MONITOR IS GONE, DELIBERATELY.
             A `PerformanceMonitor` sat here walking the device pixel ratio up
             and down with the frame rate, which is the textbook answer and, on

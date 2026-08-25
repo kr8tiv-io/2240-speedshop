@@ -572,6 +572,23 @@ async function auditHeroBoot(browser) {
             ? `${knownHeroRuntimeScripts.length} hero-marked JS response(s): ${knownHeroRuntimeScripts.join(", ")}`
             : `no hero marker in ${scripts.requested.length} inspected JS response(s); ${scripts.failed.length} inspection failure(s)`,
         );
+        const lossExtensionAvailable = await page.evaluate(() => {
+          const canvas = document.querySelector("[data-hero-runtime] canvas");
+          const context = canvas?.getContext("webgl2");
+          const extension = context?.getExtension("WEBGL_lose_context");
+          extension?.loseContext();
+          return Boolean(extension);
+        });
+        const fallbackVisible = await page
+          .waitForSelector("[data-hero-runtime] [data-webgl-fallback]", { timeout: 4_000 })
+          .then(() => true)
+          .catch(() => false);
+        check(
+          scenario.name,
+          "hero context loss resolves into the cinematic fallback",
+          lossExtensionAvailable && fallbackVisible,
+          `WEBGL_lose_context=${lossExtensionAvailable}; fallback=${fallbackVisible}`,
+        );
       }
     } catch (error) {
       const message = `${scenario.name} · boot audit execution — ${error.stack || error.message}`;
