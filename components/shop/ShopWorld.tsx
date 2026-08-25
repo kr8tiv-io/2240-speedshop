@@ -2256,7 +2256,7 @@ function SceneContents({
           thing the door waits on. */}
       {/* No padding lights on a phone: the bays there carry no real lights to
           pad against, so the loop stays exactly as long as the building needs. */}
-      <WarmScene target={shell} padLights={lite ? 0 : 10} composer={composer} />
+      <WarmScene target={shell} padLights={lite ? 0 : 5} composer={composer} />
       {lite && <DetailCull target={shell} />}
 
       <FocusRig effect={dof} />

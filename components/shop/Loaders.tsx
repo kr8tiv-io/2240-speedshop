@@ -211,6 +211,7 @@ function finishOf(url: string): Finish {
 export function primeLoaders(_gl: THREE.WebGLRenderer) {
   /* Nothing needs the live renderer any more. Kept as the one seam where a
      decoder that does would be wired in. */
+  void _gl;
 }
 
 /**
@@ -1400,6 +1401,45 @@ async function warmComposerPrograms(
 }
 
 /**
+ * Let drei's one-frame procedural Environment capture its lightformers before
+ * any shop material is compiled.
+ *
+ * With `frames={1}` the environment texture does not exist until R3F advances
+ * once. The old order compiled every PBR material without IBL, then the first
+ * composed frame created the 256px environment and forced ANGLE to build the
+ * reflective variants all over again. Hide every renderable for this one root
+ * advance: the portal lightformers still capture, while no car, prop, floor or
+ * shell material can accidentally pay first-use work on the main thread.
+ */
+async function primeEnvironment(root: RootState) {
+  const hidden: THREE.Object3D[] = [];
+  root.scene.traverse((object) => {
+    const renderable = object as THREE.Mesh;
+    if (
+      object.visible &&
+      (renderable.isMesh || (object as THREE.Points).isPoints || (object as THREE.Line).isLine)
+    ) {
+      hidden.push(object);
+      object.visible = false;
+    }
+  });
+  try {
+    // One is the contract; the two fallback turns cover a concurrent React
+    // commit where the Environment hook joined just after WarmScene's effect.
+    for (let i = 0; i < 3 && !root.scene.environment; i++) {
+      advance(performance.now(), true, root);
+      if (!root.scene.environment) await wait(0);
+    }
+    if (DEBUG) console.log(`[shop] environment primed ${Boolean(root.scene.environment)}`);
+  } catch {
+    // A missing environment is not fatal; warmSubtree retains the original
+    // fallback and the scene can still build the variant on its composed pass.
+  } finally {
+    for (const object of hidden) object.visible = true;
+  }
+}
+
+/**
  * Draw a subtree through the real composer, a few meshes at a time.
  *
  * `compile()` builds programs for the configuration it is given; the post chain
@@ -2012,14 +2052,15 @@ function WarmStation({ station, children }: { station: number; children: ReactNo
  * the shell, the weather, the neon. Reports itself to the boot channel, so the
  * plate at the door holds until the room it is hiding is genuinely ready.
  */
-/* Measured with every bay on screen at once, on the build of 2026-08-04:
-   stations 1 (3), 4 (2), 6 (2), 2 (1) and 3 (1) — nine point lights across the
-   seven bays. Ten, because a bay that gains a lamp costs one recompile of the
-   whole building, and a spare costs one dead iteration of the light loop. The
-   warning under `?perf` fires if a bay ever pushes past it. */
+/* Re-measured from the full 2026-08-25 stream: stations 1 (2), 2 (1), 3 (1)
+   and 4 (1) — five real bay point lights across all seven stations. The old
+   budget of ten was stale scene history; it doubled every material shader's
+   light loop and turned cold ANGLE compilation into a 24-second doorway wait
+   without illuminating one extra pixel. Five preserves every real light. The
+   pool grows (and warns under `?perf`) if a future bay adds another. */
 export function WarmScene({
   target,
-  padLights = 10,
+  padLights = 5,
   composer,
 }: {
   /** The building itself — everything that is NOT a streaming bay. */
@@ -2066,12 +2107,13 @@ export function WarmScene({
       let t = performance.now();
       await warmComposerPrograms(gl, composer);
       t = mark("async post compile", t);
+      await primeEnvironment(get());
+      t = mark("environment prime", t);
       await warmSubtree(gl, target.current ?? scene, camera, scene);
       t = mark("settle+compile", t);
       // Cheap first: the whole building drawn to a postage stamp, which pays
       // most of the driver's translation bill without submitting a frame's
       // worth of work in one go.
-      /* No oven pass for the shell: measured, its programs are not the ones
       /* No oven pass for the shell: measured, its programs are not the ones
          the composer ends up using (a scene rendered straight to a plain
          target is a different configuration to one rendered through an HDR
@@ -2088,7 +2130,7 @@ export function WarmScene({
          with its own magic batch number; both are now the same self-tuning
          loop, so a fix to one can never again miss the other. */
       await warmThroughComposer(target.current ?? scene, "shell", get());
-      t = mark("composer warm", t);
+      mark("composer warm", t);
     };
     const started = performance.now();
     const start = window.setTimeout(() => {
@@ -2108,7 +2150,7 @@ export function WarmScene({
       window.clearTimeout(start);
       window.clearTimeout(failsafe);
     };
-  }, [gl, camera, scene, get, composer]);
+  }, [gl, camera, scene, get, composer, target]);
 
   return null;
 }

@@ -76,6 +76,10 @@ export function WalkthroughWorld() {
       film above. Never unlatches — recompiling the shop is the single most
       expensive thing this page can do, so once built it only ever parks. */
   const [mounted, setMounted] = useState(false);
+  /** The photographic doorway is requested only when the runway enters the
+      warm corridor. It stays latched so a reader who reverses direction never
+      watches the browser decode the same plate twice. */
+  const [doorwayNear, setDoorwayNear] = useState(false);
   /** True around the runway and its crossfades: the only time frames are
       actually drawn. */
   const [active, setActive] = useState(false);
@@ -162,6 +166,7 @@ export function WalkthroughWorld() {
     const warm = new IntersectionObserver(
       ([entry]) => {
         warmNear = entry.isIntersecting;
+        if (warmNear) setDoorwayNear(true);
         window.clearTimeout(warmTimer);
         if (warmNear) warmTimer = window.setTimeout(mountWhenIdle, 150);
       },
@@ -259,7 +264,25 @@ export function WalkthroughWorld() {
           then dissolve it away once the full world is ready. */}
       <div
         className={`wt-world-boot-light absolute inset-0 transition-opacity duration-1000 ${worldReady ? "opacity-0" : "opacity-100"}`}
-      />
+        data-shop-doorway={doorwayNear ? "near" : "parked"}
+      >
+        {doorwayNear ? (
+          <picture>
+            <source
+              media="(max-width: 767px)"
+              srcSet="/shop/opt/shop-showroom-neon-800.webp"
+            />
+            <img
+              className="wt-world-boot-photo"
+              src="/shop/opt/shop-showroom-neon-1600.webp"
+              alt=""
+              loading="eager"
+              decoding="async"
+              fetchPriority="low"
+            />
+          </picture>
+        ) : null}
+      </div>
     </div>
   );
 }

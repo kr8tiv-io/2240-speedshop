@@ -1017,6 +1017,17 @@ async function auditSize(browserContext, size) {
       ? `${opening.canvases.length} connected canvases: ${opening.canvases.map((c) => `#${c.index} ${c.context} ${c.css}/${c.backing} ${c.renderer}`).join("; ")}`
       : "WebGL instrumentation unavailable: 0 connected canvases",
   );
+  const earlyDoorwayRequests = requests.filter((requestUrl) =>
+    /\/shop\/opt\/shop-showroom-neon-(?:800|1600)\.webp(?:[?#]|$)/i.test(requestUrl),
+  );
+  check(
+    size.name,
+    "shop doorway photograph waits for the shop warm corridor",
+    earlyDoorwayRequests.length === 0,
+    earlyDoorwayRequests.length
+      ? `early request(s): ${[...new Set(earlyDoorwayRequests)].join(", ")}`
+      : "0 doorway-poster requests during the opening film",
+  );
 
   if (!size.mobile) {
     const requestedPaths = new Set(
