@@ -94,6 +94,49 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       });
 
       await page.goto(`${BASE.replace(/\/+$/, "")}/?tune=1${SCOPE === "shop" ? "&perf=1" : ""}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+      if (SCOPE === "shop") {
+        await page.evaluate(() => {
+          const timer = window.setInterval(() => {
+            const passes = window.__shop?.composer?.current?.passes;
+            if (!Array.isArray(passes) || passes.length < 2) return;
+            window.clearInterval(timer);
+            console.log(
+              `[shop] composer passes ${passes.map((pass) =>
+                JSON.stringify({
+                  name: pass?.name,
+                  type: pass?.constructor?.name,
+                  needsSwap: pass?.needsSwap,
+                  needsDepthBlit: pass?.needsDepthBlit,
+                  clearPass: Boolean(pass?.clearPass),
+                  effects: Array.isArray(pass?.effects)
+                    ? pass.effects.map((effect) => effect?.name || effect?.constructor?.name)
+                    : [],
+                }),
+              ).join(" | ")}`,
+            );
+            for (const pass of passes) {
+              if (!pass || typeof pass.render !== "function" || pass.__timedByAudit) continue;
+              const render = pass.render;
+              let calls = 0;
+              pass.render = function (...args) {
+                const started = performance.now();
+                try {
+                  return render.apply(this, args);
+                } finally {
+                  calls += 1;
+                  const cost = performance.now() - started;
+                  if (calls <= 2 || cost > 120) {
+                    console.log(
+                      `[shop] pass ${pass.constructor?.name || "Pass"} #${calls} ${Math.round(cost)} ms`,
+                    );
+                  }
+                }
+              };
+              pass.__timedByAudit = true;
+            }
+          }, 40);
+        });
+      }
       // Let the preloader hand off (it gates on shader compilation).
       await page
         .waitForFunction(
