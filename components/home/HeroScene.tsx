@@ -305,6 +305,52 @@ const stage = { act: 0, local: 0, reveal: 0, t: 0, cut: false };
    module flag is active only inside ScenePrimer's compile/upload pass. */
 const SCENE_PRIMER = { active: false };
 
+function collectSceneMaterials(scene: THREE.Object3D) {
+  const materials = new Set<THREE.Material>();
+  scene.traverse((object) => {
+    const material = (object as THREE.Mesh).material;
+    if (Array.isArray(material)) {
+      for (const entry of material) materials.add(entry);
+    } else if (material) {
+      materials.add(material);
+    }
+  });
+  return materials;
+}
+
+/**
+ * Keep Three's asynchronous compiler from losing a program it is polling.
+ *
+ * WebGLRenderer.compileAsync retains every material returned by compile(),
+ * then reads each material's `currentProgram` from a timer. A responsive R3F
+ * commit can dispose an outgoing floor/environment material in that window;
+ * Three deletes `currentProgram`, the timer throws outside our promise, and
+ * the hero never reaches ready. Disposal is held only for the exact material
+ * set being compiled and replayed immediately after the promise settles.
+ */
+function deferMaterialDisposal(materials: Set<THREE.Material>) {
+  const held = new Map<
+    THREE.Material,
+    { dispose: THREE.Material["dispose"]; requested: boolean }
+  >();
+
+  for (const material of materials) {
+    const dispose = material.dispose;
+    const entry = { dispose, requested: false };
+    held.set(material, entry);
+    material.dispose = () => {
+      entry.requested = true;
+    };
+  }
+
+  return () => {
+    for (const [material, entry] of held) material.dispose = entry.dispose;
+    for (const [material, entry] of held) {
+      if (entry.requested) entry.dispose.call(material);
+    }
+  };
+}
+
 /* Live turntable angle (act I only) — the rig frames against the box the car
    is ACTUALLY at, corner-rotated by this, rather than a swept cylinder. */
 const TURNTABLE = { angle: 0 };
@@ -1661,10 +1707,28 @@ function ScenePrimer({
            multi-second COMPLETION_STATUS query on first scroll. */
         const target = composer.current?.inputBuffer ?? null;
         const previousTarget = gl.getRenderTarget();
+        const compileMaterials = collectSceneMaterials(scene);
+        const releaseMaterialDisposals = deferMaterialDisposal(compileMaterials);
+        const traceCompile = window.location.search.includes("compiletrace");
+        const traceCleanups: Array<() => void> = [];
+        if (traceCompile) {
+          console.log(`[hero-compile] polling ${compileMaterials.size} scene materials`);
+          for (const material of compileMaterials) {
+            const disposed = () => {
+              console.warn(
+                `[hero-compile] material disposed while polling: ${material.name || material.type}`,
+              );
+            };
+            material.addEventListener("dispose", disposed);
+            traceCleanups.push(() => material.removeEventListener("dispose", disposed));
+          }
+        }
         try {
           if (target) gl.setRenderTarget(target);
           await gl.compileAsync(scene, camera);
         } finally {
+          for (const cleanup of traceCleanups) cleanup();
+          releaseMaterialDisposals();
           gl.setRenderTarget(previousTarget);
         }
         /* AND DRAW ONE COMPLETE COMPOSED FRAME. compileAsync builds the
