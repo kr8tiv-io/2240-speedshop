@@ -1,10 +1,11 @@
 /**
  * Falsifiable launch budgets for the combined 3D homepage.
  *
- * Chrome is deliberately headful and parked off-screen. Headless Chrome uses
- * SwiftShader on this machine, which turns a GPU frame-pacing audit into a CPU
- * emulation benchmark. Programmatic scrolling always goes through the page's
- * Lenis instance when it exists.
+ * Chrome is deliberately headful and on-screen. Headless Chrome uses
+ * SwiftShader on this machine, while a fully off-screen native window can have
+ * requestAnimationFrame throttled independently of renderer activity. Either
+ * condition would turn this GPU frame-pacing audit into fiction. Programmatic
+ * scrolling always goes through the page's Lenis instance when it exists.
  *
  *   npm run audit:elevation
  *   BASE_URL=https://example.com npm run audit:elevation
@@ -75,7 +76,7 @@ function percentile(values, fraction) {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))];
 }
 
-async function inspectRequestedJavaScript(requestUrls) {
+async function inspectRequestedJavaScript(page, requestUrls) {
   const urls = [...new Set(requestUrls)].filter((requestUrl) => {
     try {
       return /\.js$/i.test(new globalThis.URL(requestUrl).pathname);
@@ -83,21 +84,36 @@ async function inspectRequestedJavaScript(requestUrls) {
       return /\.js(?:[?#]|$)/i.test(requestUrl);
     }
   });
-  const inspected = await Promise.all(
-    urls.map(async (requestUrl) => {
-      try {
-        const response = await fetch(requestUrl, { signal: AbortSignal.timeout(15_000) });
-        if (!response.ok) return { requestUrl, error: `HTTP ${response.status}` };
-        const source = await response.text();
-        const hero =
-          source.includes(HERO_RUNTIME_CHUNK_MARKER) ||
-          source.includes("/models/hero/challenger.glb") ||
-          source.includes("data-hero-runtime");
-        return { requestUrl, hero };
-      } catch (error) {
-        return { requestUrl, error: error.message };
-      }
-    }),
+  // Inspect through the already-trusted browser origin. Node's bundled CA set
+  // can reject otherwise valid Hostinger certificate chains on Windows, which
+  // used to turn every chunk into an audit failure before source inspection.
+  const inspected = await page.evaluate(
+    async ({ requestUrls: sourceUrls, marker }) =>
+      Promise.all(
+        sourceUrls.map(async (requestUrl) => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15_000);
+          try {
+            const response = await fetch(requestUrl, {
+              cache: "force-cache",
+              signal: controller.signal,
+            });
+            if (!response.ok) return { requestUrl, error: `HTTP ${response.status}` };
+            const source = await response.text();
+            const hero =
+              source.includes(marker) ||
+              source.includes("/models/hero/challenger.glb") ||
+              source.includes("/models/hero/challenger.glb.br") ||
+              source.includes("data-hero-runtime");
+            return { requestUrl, hero };
+          } catch (error) {
+            return { requestUrl, error: error instanceof Error ? error.message : String(error) };
+          } finally {
+            clearTimeout(timeout);
+          }
+        }),
+      ),
+    { requestUrls: urls, marker: HERO_RUNTIME_CHUNK_MARKER },
   );
   return {
     requested: urls,
@@ -325,14 +341,58 @@ async function auditMenu(page, size) {
 }
 
 async function auditDesktopScroll(page) {
+  // The audit is launched from another desktop app, so Chrome is not
+  // guaranteed to own OS focus even though its window is visible. Explicitly
+  // activate this target before sampling; otherwise Chromium is allowed to
+  // reduce rAF cadence for a background tab and the result measures the test
+  // runner rather than the website.
+  await page.bringToFront();
+  const focusSession = await page.createCDPSession();
+  await focusSession.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+  if (FOCUS === "shop") {
+    await focusSession.send("Profiler.enable");
+    await focusSession.send("Profiler.setSamplingInterval", { interval: 1_000 });
+    await focusSession.send("Profiler.start");
+  }
   await seek(page, "[data-runway-a]", 0);
   await sleep(300);
+  const pageState = await page.evaluate(() => ({
+    visibility: document.visibilityState,
+    focused: document.hasFocus(),
+  }));
+  check(
+    "desktop",
+    "frame sampler owns an active foreground document",
+    pageState.visibility === "visible" && pageState.focused,
+    `visibility=${pageState.visibility}; focused=${pageState.focused}`,
+  );
   await page.evaluate(() => {
-    window.__elevationRaf = { active: true, gaps: [], last: null };
+    window.__elevationRaf = { active: true, gaps: [], longTasks: [], last: null };
+    if ("PerformanceObserver" in window) {
+      const observer = new PerformanceObserver((list) => {
+        const sample = window.__elevationRaf;
+        if (!sample?.active) return;
+        for (const entry of list.getEntries()) {
+          sample.longTasks.push({
+            start: entry.startTime,
+            duration: entry.duration,
+            y: window.scrollY,
+          });
+        }
+      });
+      try {
+        observer.observe({ type: "longtask", buffered: false });
+        window.__elevationRaf.observer = observer;
+      } catch {
+        observer.disconnect();
+      }
+    }
     const tick = (now) => {
       const sample = window.__elevationRaf;
       if (!sample?.active) return;
-      if (sample.last !== null) sample.gaps.push(now - sample.last);
+      if (sample.last !== null) {
+        sample.gaps.push({ gap: now - sample.last, y: window.scrollY, at: now });
+      }
       sample.last = now;
       requestAnimationFrame(tick);
     };
@@ -351,21 +411,54 @@ async function auditDesktopScroll(page) {
   }
   await sleep(600);
 
-  const gaps = await page.evaluate(() => {
+  const sample = await page.evaluate(() => {
     const sample = window.__elevationRaf;
     if (!sample || !Array.isArray(sample.gaps)) return null;
     sample.active = false;
-    return sample.gaps.filter((gap) => Number.isFinite(gap) && gap >= 0);
+    sample.observer?.disconnect();
+    return {
+      gaps: sample.gaps.filter((entry) => Number.isFinite(entry.gap) && entry.gap >= 0),
+      longTasks: Array.isArray(sample.longTasks) ? sample.longTasks : [],
+    };
   });
-  const worst = gaps?.length ? Math.max(...gaps) : null;
-  const p95 = gaps ? percentile(gaps, 0.95) : null;
+  const gapValues = sample?.gaps.map((entry) => entry.gap) ?? null;
+  const worstEntry = sample?.gaps.length
+    ? sample.gaps.reduce((largest, entry) => (entry.gap > largest.gap ? entry : largest))
+    : null;
+  const worst = worstEntry?.gap ?? null;
+  const p95 = gapValues ? percentile(gapValues, 0.95) : null;
+  const shopMountedDuringMotion = await page.evaluate(() =>
+    Boolean(document.querySelector("[data-shop-world]")),
+  );
+  if (FOCUS === "shop") {
+    const { profile } = await focusSession.send("Profiler.stop");
+    const nodes = new Map(profile.nodes.map((node) => [node.id, node]));
+    const totals = new Map();
+    for (let i = 0; i < (profile.samples?.length ?? 0); i++) {
+      const node = nodes.get(profile.samples[i]);
+      if (!node) continue;
+      const frame = node.callFrame;
+      const key = `${frame.functionName || "(anonymous)"} · ${frame.url || "browser"}:${frame.lineNumber + 1}`;
+      totals.set(key, (totals.get(key) ?? 0) + (profile.timeDeltas?.[i] ?? 0) / 1_000);
+    }
+    const leaders = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+    for (const [frame, milliseconds] of leaders) {
+      console.log(`TRACE [hero-cpu] ${milliseconds.toFixed(1)} ms · ${frame}`);
+    }
+  }
+  check(
+    "desktop",
+    "continuous hero motion does not start the shop compiler",
+    !shopMountedDuringMotion,
+    `shop mounted during sample=${shopMountedDuringMotion}`,
+  );
   check(
     "desktop",
     "controlled 0→7200 scroll worst rAF gap <=250ms",
     worst !== null && worst <= MAX_RAF_GAP_MS,
     worst === null
       ? "rAF sampler produced no finite samples"
-      : `worst ${worst.toFixed(1)}ms; p95 ${p95.toFixed(1)}ms; ${gaps.length} frames; budget ${MAX_RAF_GAP_MS}ms`,
+      : `worst ${worst.toFixed(1)}ms at y=${Math.round(worstEntry.y)}px; p95 ${p95.toFixed(1)}ms; ${gapValues.length} frames; ${sample.longTasks.length} long task(s)${sample.longTasks.length ? ` (largest ${Math.max(...sample.longTasks.map((entry) => entry.duration)).toFixed(1)}ms)` : ""}; budget ${MAX_RAF_GAP_MS}ms`,
   );
 }
 
@@ -433,7 +526,7 @@ async function auditHeroBoot(browser) {
         if (!scenario.reduced) {
           const hold =
             !heldHeroRequestSeen &&
-            /\/models\/hero(?:-[^/]+)?\/charger\.glb(?:[?#]|$)/i.test(request.url());
+            /\/models\/hero(?:-[^/]+)?\/charger\.glb(?:\.br)?(?:[?#]|$)/i.test(request.url());
           if (hold) {
             heldHeroRequestSeen = true;
             signalHeldHeroRequest();
@@ -548,14 +641,14 @@ async function auditHeroBoot(browser) {
       }));
       const heroGlbs = requests.filter((requestUrl) => {
         try {
-          return /\/models\/hero(?:-[^/]+)?\/[^?#]+\.glb$/i.test(
+          return /\/models\/hero(?:-[^/]+)?\/[^?#]+\.glb(?:\.br)?$/i.test(
             new globalThis.URL(requestUrl).pathname,
           );
         } catch {
-          return /\/models\/hero(?:-[^/]+)?\/[^?#]+\.glb(?:[?#]|$)/i.test(requestUrl);
+          return /\/models\/hero(?:-[^/]+)?\/[^?#]+\.glb(?:\.br)?(?:[?#]|$)/i.test(requestUrl);
         }
       });
-      const scripts = await inspectRequestedJavaScript(requests);
+      const scripts = await inspectRequestedJavaScript(page, requests);
 
       if (scenario.reduced) {
         check(
@@ -881,11 +974,18 @@ async function auditSize(browserContext, size) {
     const width = Math.max(doc.scrollWidth, body?.scrollWidth || 0);
     const canvases = [...document.querySelectorAll("canvas")].map((canvas, index) => {
       const rect = canvas.getBoundingClientRect();
+      const context = canvas.getContext("webgl2") || canvas.getContext("webgl");
+      const debug = context?.getExtension("WEBGL_debug_renderer_info");
+      const renderer =
+        context && debug
+          ? String(context.getParameter(debug.UNMASKED_RENDERER_WEBGL))
+          : "unreported renderer";
       return {
         index,
         context: canvas.__elevationContextType || "unknown",
         css: `${Math.round(rect.width)}×${Math.round(rect.height)}`,
         backing: `${canvas.width}×${canvas.height}`,
+        renderer,
       };
     });
     const offenders = [];
@@ -914,7 +1014,7 @@ async function auditSize(browserContext, size) {
       opening.canvases.length <= MAX_CANVASES &&
       opening.canvases.every((canvas) => /^(webgl2?|experimental-webgl)$/i.test(canvas.context)),
     opening.canvases.length
-      ? `${opening.canvases.length} connected canvases: ${opening.canvases.map((c) => `#${c.index} ${c.context} ${c.css}/${c.backing}`).join("; ")}`
+      ? `${opening.canvases.length} connected canvases: ${opening.canvases.map((c) => `#${c.index} ${c.context} ${c.css}/${c.backing} ${c.renderer}`).join("; ")}`
       : "WebGL instrumentation unavailable: 0 connected canvases",
   );
 
@@ -1092,9 +1192,10 @@ try {
     headless: false,
     protocolTimeout: 240_000,
     args: [
-      "--window-position=-2400,0",
+      "--window-position=40,40",
       "--window-size=1600,1100",
       "--disable-backgrounding-occluded-windows",
+      "--disable-features=CalculateNativeWinOcclusion",
       "--disable-renderer-backgrounding",
       "--disable-background-timer-throttling",
       "--mute-audio",

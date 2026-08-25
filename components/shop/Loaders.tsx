@@ -1263,12 +1263,140 @@ async function warmUp(
   camera: THREE.Camera,
   scene: THREE.Scene,
 ): Promise<void> {
+  // The shipped composer renders the scene into a half-float HDR target. A
+  // program prepared for the default canvas framebuffer is a different ANGLE
+  // variant and does not pay that bill; the old warm-up compiled the wrong
+  // programs, then linked every material again on its first composed frame.
+  const composerTarget = COMPOSER_TARGETS.get(gl);
+  const target =
+    composerTarget ??
+    new THREE.WebGLRenderTarget(2, 2, {
+      type: THREE.HalfFloatType,
+      depthBuffer: true,
+    });
+  const previousTarget = gl.getRenderTarget();
   try {
-    gl.compile(node, camera, node === scene ? undefined : scene);
+    // compileAsync lets KHR_parallel_shader_compile keep ANGLE's link work off
+    // the main thread. The old synchronous compile could hold the film still
+    // for several seconds even though this entire shop canvas was parked.
+    gl.setRenderTarget(target);
+    await gl.compileAsync(node, camera, node === scene ? undefined : scene);
   } catch {
     /* A material the renderer will not touch is not one we can warm. */
+  } finally {
+    gl.setRenderTarget(previousTarget);
+    if (!composerTarget) target.dispose();
   }
   await wait(0);
+}
+
+type ComposerHandle = {
+  passes?: unknown[];
+  inputBuffer?: THREE.WebGLRenderTarget;
+};
+
+const COMPOSER_TARGETS = new WeakMap<THREE.WebGLRenderer, THREE.WebGLRenderTarget>();
+
+/**
+ * Compile the post chain's own fullscreen materials without drawing it.
+ *
+ * `WebGLRenderer.compileAsync(scene)` cannot discover EffectComposer passes:
+ * they live beside the Three scene graph. Previously the first hidden
+ * `advance()` discovered AO, bokeh, bloom, grain, grade and vignette together,
+ * forcing ANGLE to link the whole lens synchronously inside one 9–12 second
+ * frame. We find those already-initialised pass materials, put them on tiny
+ * fullscreen quads, and let the driver's parallel compiler finish them before
+ * the verification frame. No effect, define, texture, target format or scene
+ * material is changed.
+ */
+async function warmComposerPrograms(
+  gl: THREE.WebGLRenderer,
+  composer: React.RefObject<ComposerHandle | null> | undefined,
+) {
+  // The React postprocessing wrapper installs its pass list in a layout
+  // effect. WarmScene is a sibling, so allow one short commit turn for the ref.
+  for (let i = 0; i < 20 && !composer?.current?.passes?.length; i++) await wait(25);
+
+  const materials = new Set<THREE.Material>();
+  const seen = new Set<object>();
+  const visit = (value: unknown, depth = 0) => {
+    if (!value || typeof value !== "object" || depth > 8 || seen.has(value)) return;
+    seen.add(value);
+    if (value instanceof THREE.Material) {
+      materials.add(value);
+      return;
+    }
+    // Postprocessing hides several shaders on fullscreen meshes inside tiny
+    // private scenes. Read their materials, but never walk the real shop scene
+    // (its broad child list is compiled separately by warmSubtree).
+    if (value instanceof THREE.Object3D) {
+      const objectMaterial = (value as THREE.Mesh).material;
+      if (Array.isArray(objectMaterial)) {
+        for (const material of objectMaterial) {
+          if (material instanceof THREE.Material) materials.add(material);
+        }
+      } else if (objectMaterial instanceof THREE.Material) {
+        materials.add(objectMaterial);
+      }
+      if (value.children.length <= 8) {
+        for (const child of value.children) visit(child, depth + 1);
+      }
+      return;
+    }
+    // These graphs are enormous and cannot contain a pass-owned material that
+    // needs discovery. Skipping them also prevents cycles back into the scene.
+    if (
+      value instanceof THREE.Texture ||
+      value instanceof THREE.WebGLRenderer ||
+      value instanceof THREE.WebGLRenderTarget
+    ) {
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const entry of value) visit(entry, depth + 1);
+      return;
+    }
+    if (value instanceof Map || value instanceof Set) {
+      for (const entry of value.values()) visit(entry, depth + 1);
+      return;
+    }
+    for (const entry of Object.values(value as Record<string, unknown>)) {
+      visit(entry, depth + 1);
+    }
+  };
+  visit(composer?.current?.passes ?? []);
+  if (!materials.size) return;
+
+  const composerTarget = composer?.current?.inputBuffer;
+  if (composerTarget) COMPOSER_TARGETS.set(gl, composerTarget);
+
+  const geometry = new THREE.PlaneGeometry(2, 2);
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  for (const material of materials) scene.add(new THREE.Mesh(geometry, material));
+  const target =
+    composerTarget ??
+    new THREE.WebGLRenderTarget(2, 2, {
+      type: THREE.HalfFloatType,
+      depthBuffer: true,
+    });
+  const previousTarget = gl.getRenderTarget();
+  try {
+    gl.setRenderTarget(target);
+    await gl.compileAsync(scene, camera);
+    if (DEBUG) {
+      const parallel = Boolean(gl.getContext().getExtension("KHR_parallel_shader_compile"));
+      console.log(`[shop] async composer programs ${materials.size} · parallel ${parallel}`);
+    }
+  } catch {
+    // The composed verification frame below remains the authoritative fallback
+    // for browsers whose driver rejects an isolated pass material.
+  } finally {
+    gl.setRenderTarget(previousTarget);
+    geometry.dispose();
+    if (!composerTarget) target.dispose();
+    scene.clear();
+  }
 }
 
 /**
@@ -1892,10 +2020,12 @@ function WarmStation({ station, children }: { station: number; children: ReactNo
 export function WarmScene({
   target,
   padLights = 10,
+  composer,
 }: {
   /** The building itself — everything that is NOT a streaming bay. */
   target: React.RefObject<THREE.Object3D | null>;
   padLights?: number;
+  composer?: React.RefObject<ComposerHandle | null>;
 }) {
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
@@ -1934,6 +2064,8 @@ export function WarmScene({
         return performance.now();
       };
       let t = performance.now();
+      await warmComposerPrograms(gl, composer);
+      t = mark("async post compile", t);
       await warmSubtree(gl, target.current ?? scene, camera, scene);
       t = mark("settle+compile", t);
       // Cheap first: the whole building drawn to a postage stamp, which pays
@@ -1976,7 +2108,7 @@ export function WarmScene({
       window.clearTimeout(start);
       window.clearTimeout(failsafe);
     };
-  }, [gl, camera, scene, get]);
+  }, [gl, camera, scene, get, composer]);
 
   return null;
 }

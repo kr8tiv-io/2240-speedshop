@@ -7,7 +7,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentRef,
   type ReactNode,
+  type RefObject,
 } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -1605,7 +1607,13 @@ function cornerEdge(
  * off, which is the whole point: the client said plainly that if it needs time
  * at the start, take the time.
  */
-function ScenePrimer({ onReady }: { onReady?: () => void }) {
+function ScenePrimer({
+  onReady,
+  composer,
+}: {
+  onReady?: () => void;
+  composer: RefObject<ComponentRef<typeof EffectComposer> | null>;
+}) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -1647,16 +1655,30 @@ function ScenePrimer({ onReady }: { onReady?: () => void }) {
         }
       });
       try {
-        await gl.compileAsync(scene, camera);
-        /* AND DRAW ONE FRAME. compileAsync builds the PROGRAMS; it does not
+        /* Compile the variant the film ACTUALLY ships. EffectComposer renders
+           the scene into its half-float input buffer; compiling against the
+           default canvas creates a different ANGLE program and leaves a
+           multi-second COMPLETION_STATUS query on first scroll. */
+        const target = composer.current?.inputBuffer ?? null;
+        const previousTarget = gl.getRenderTarget();
+        try {
+          if (target) gl.setRenderTarget(target);
+          await gl.compileAsync(scene, camera);
+        } finally {
+          gl.setRenderTarget(previousTarget);
+        }
+        /* AND DRAW ONE COMPLETE COMPOSED FRAME. compileAsync builds the
+           scene PROGRAMS; it does not
            upload the geometry. Vertex and index buffers go to the GPU the
            first time a mesh is actually drawn, and until first scroll no car
            is drawn at all (they sit at reveal 0), so three uploaded three
            cars' worth of buffers during the opening scroll. Compiling alone
-           only moved the freeze 3.3 s -> 2.6 s; the rest was upload. This
-           frame costs nothing visually — the loader veil is still over the
-           canvas — and it warms every buffer and texture at once. */
-        gl.render(scene, camera);
+           only moved the freeze 3.3 s -> 2.6 s; the rest was upload. Running
+           the real composer also builds bloom, film, vignette and tone-map
+           shaders under the loader veil, so the first visible film frame is
+           genuinely the second composed frame. */
+        if (composer.current) composer.current.render(0);
+        else gl.render(scene, camera);
       } catch {
         // A compile failure must not strand the page behind the loader —
         // the film still plays, it just pays the stall it used to pay.
@@ -1673,7 +1695,7 @@ function ScenePrimer({ onReady }: { onReady?: () => void }) {
       cancelled = true;
       cancelAnimationFrame(id);
     };
-  }, [gl, scene, camera, onReady]);
+  }, [gl, scene, camera, onReady, composer]);
 
   return null;
 }
@@ -1874,6 +1896,7 @@ export function HeroScene({
     Math.min(typeof window === "undefined" ? 1 : window.devicePixelRatio || 1, 1.15),
   ).current;
   const [primed, setPrimed] = useState(false);
+  const composer = useRef<ComponentRef<typeof EffectComposer> | null>(null);
   const readyNotified = useRef(false);
   const finishPrime = useCallback(() => setPrimed(true), []);
   useEffect(() => {
@@ -1899,6 +1922,16 @@ export function HeroScene({
       frameloop={active && primed ? "always" : "never"}
       camera={{ fov: mobile ? MOBILE_FOV : 32, near: 0.1, far: 60, position: [5.1, 1.15, 1.7] }}
       gl={{ antialias: false, powerPreference: "high-performance" }}
+      onCreated={({ gl }) => {
+        /* Three's development shader validation calls getProgramInfoLog on
+           first use. On Windows/ANGLE that query synchronously waits for D3D
+           translation; the hardware profile measured a 3.6-second hero hitch
+           at y=1200 with no rendering work behind it. Production shaders were
+           already compiled by ScenePrimer, so the log query changes no pixel
+           and catches nothing a build can recover from. Keep an explicit URL
+           opt-in for diagnostics without taxing every visitor. */
+        gl.debug.checkShaderErrors = window.location.search.includes("shaderdebug");
+      }}
       className="!absolute !inset-0"
       aria-hidden="true"
     >
@@ -1938,7 +1971,7 @@ export function HeroScene({
           changes — so there is no smooth version of this. A fixed tier is both
           steadier and, given (3), usually faster. */}
       <Director shot={shot} />
-      <ScenePrimer onReady={finishPrime} />
+      <ScenePrimer onReady={finishPrime} composer={composer} />
       <color attach="background" args={["#0a0a0b"]} />
       <fog attach="fog" args={["#0a0a0b", 9, 22]} />
 
@@ -2001,7 +2034,7 @@ export function HeroScene({
           hardware, and at dpr 1.15 under grain + bloom the silhouettes hold
           without it. Bloom mips 8 -> 6: levels past 6 only widen a glow the
           grade reads as haze. */}
-      <EffectComposer multisampling={0}>
+      <EffectComposer ref={composer} multisampling={0}>
         {[
           <Bloom
             key="bloom"

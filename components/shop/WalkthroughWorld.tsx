@@ -5,11 +5,9 @@ import dynamic from "next/dynamic";
 import { WebGLBoundary } from "@/components/gl/WebGLBoundary";
 import {
   addMediaQueryChangeListener,
-  getHeroBootSnapshot,
-  subscribeHeroBoot,
 } from "@/components/home/hero-boot";
 import { useUIOverlay } from "@/components/ui-overlay";
-import { getBoot, markWorldSkipped, noteMotion, subscribeBoot } from "./boot";
+import { getBoot, markWorldSkipped, noteMotion, stillFor, subscribeBoot } from "./boot";
 import {
   RUNWAY_ID,
   measureRunway,
@@ -31,7 +29,8 @@ import {
  * COMBINED-PAGE DIFFERENCES from the original mount:
  *
  *   · The world no longer owns the document. The canvas mounts only once the
- *     `#walkthrough-runway` element is within ~2 viewports (warm silently in
+ *     `#walkthrough-runway` element is within ~5 viewports and scrolling has
+ *     paused (warm silently in
  *     the background — the film's preloader already ran; there is no second
  *     plate), renders only around its runway (frameloop parks elsewhere), and
  *     overlaps the film across each doorway so neither world drops to black.
@@ -71,7 +70,8 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 export function WalkthroughWorld() {
   const [verdict, setVerdict] = useState<Verdict>("idle");
-  /** Latched true once the runway has come within ~2 viewports: the scene
+  /** Latched true once the runway has come within ~5 viewports and the reader
+      pauses: the scene
       mounts, downloads and compiles silently while the reader is still in the
       film above. Never unlatches — recompiling the shop is the single most
       expensive thing this page can do, so once built it only ever parks. */
@@ -131,40 +131,6 @@ export function WalkthroughWorld() {
     };
   }, []);
 
-  /* EARLY, SILENT WARM — distance is the wrong trigger on this page, but a
-     fixed 3.5-second clock was worse: it linked the shop's large shader graph
-     while ScenePrimer still owned the opening film, repeatedly pushing phone
-     preloads against the 12-second budget. Start only after the hero reports
-     real scene readiness, then leave its handoff choreography 2.2 seconds of
-     clear main thread. pacedWarm still yields whenever the reader moves. */
-  useEffect(() => {
-    let mountTimer = 0;
-    let queued = false;
-    let unsubscribe = () => {};
-    const queueMount = () => {
-      const boot = getHeroBootSnapshot();
-      if (queued || (!boot.sceneReady && !boot.failed)) return;
-      queued = true;
-      unsubscribe();
-      mountTimer = window.setTimeout(() => setMounted(true), 2_200);
-    };
-    unsubscribe = subscribeHeroBoot(queueMount);
-    queueMount();
-    // A broken renderer must not permanently suppress the optional world.
-    // By 20 seconds every hero escape path has already revealed the page.
-    const escapeTimer = window.setTimeout(() => {
-      if (queued) return;
-      queued = true;
-      unsubscribe();
-      setMounted(true);
-    }, 20_000);
-    return () => {
-      unsubscribe();
-      window.clearTimeout(mountTimer);
-      window.clearTimeout(escapeTimer);
-    };
-  }, []);
-
   /* Runway gating + the edge fade. This effect also owns the shared runway
      measurement, so every consumer (camera rig, reveals, rail) reads fresh
      numbers even on machines where the canvas never mounts. */
@@ -174,15 +140,32 @@ export function WalkthroughWorld() {
 
     measureRunway();
 
-    /* Warm gate: ~2 viewports out. Latched — see `mounted`. */
+    /* Warm gate: five viewports out, but only after the reader has paused.
+       Linking the full HDR/AO/lens graph is the shop's one non-interruptible
+       driver task. Starting it on a fixed clock froze the hero film; starting
+       it inside a continuous scroll merely moved that freeze later. Proximity
+       supplies lead time, and real scroll stillness supplies a safe moment.
+       A fast scroller keeps the fully graded boot-light until they stop. */
+    let warmTimer = 0;
+    let warmNear = false;
+    let warmLatched = false;
+    const mountWhenIdle = () => {
+      if (warmLatched || !warmNear) return;
+      if (stillFor() >= 900) {
+        warmLatched = true;
+        setMounted(true);
+        warm.disconnect();
+        return;
+      }
+      warmTimer = window.setTimeout(mountWhenIdle, 150);
+    };
     const warm = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setMounted(true);
-          warm.disconnect();
-        }
+        warmNear = entry.isIntersecting;
+        window.clearTimeout(warmTimer);
+        if (warmNear) warmTimer = window.setTimeout(mountWhenIdle, 150);
       },
-      { rootMargin: "200% 0px 200% 0px" },
+      { rootMargin: "500% 0px 500% 0px" },
     );
     warm.observe(runway);
 
@@ -238,6 +221,7 @@ export function WalkthroughWorld() {
 
     return () => {
       warm.disconnect();
+      window.clearTimeout(warmTimer);
       draw.disconnect();
       document.removeEventListener("scroll", fade, { capture: true });
       window.removeEventListener("resize", measure);

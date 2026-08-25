@@ -2256,7 +2256,7 @@ function SceneContents({
           thing the door waits on. */}
       {/* No padding lights on a phone: the bays there carry no real lights to
           pad against, so the loop stays exactly as long as the building needs. */}
-      <WarmScene target={shell} padLights={lite ? 0 : 10} />
+      <WarmScene target={shell} padLights={lite ? 0 : 10} composer={composer} />
       {lite && <DetailCull target={shell} />}
 
       <FocusRig effect={dof} />
@@ -2286,7 +2286,7 @@ function SceneContents({
            and at ~200 hard vertical edges of cladding per frame that read as
            "soft and shimmery" rather than crisp. WebGL2 multisampled
            renderbuffers put real geometric AA back for one resolve per frame. */
-        <EffectComposer multisampling={4} frameBufferType={THREE.HalfFloatType}>
+        <EffectComposer ref={composer} multisampling={4} frameBufferType={THREE.HalfFloatType}>
           {/* GROUNDING. Nothing in this building casts a real shadow — a shadow
               map across a 68 m span would cost more than the model budget — so
               until now every object sat on a hand-painted blob and the corners,
@@ -2460,6 +2460,7 @@ export function ShopWorld({
 
   return (
     <div
+      data-shop-world={tier}
       aria-hidden="true"
       role="presentation"
       className={`pointer-events-none absolute inset-0 transition-opacity duration-[1600ms] ease-out ${
