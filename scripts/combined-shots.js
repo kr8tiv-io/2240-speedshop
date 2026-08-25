@@ -1,7 +1,7 @@
 /**
  * Combined-page verification: the split film (Acts I–II), the shop
  * walk-through between the reels, the Act III finale, the DOM sections, and
- * the Journal — captured at desktop and two phone widths, with console and
+ * the Journal — captured at desktop and four phone widths, with console and
  * page errors collected rather than assumed absent.
  *
  *   node scripts/combined-shots.js                        # dev on :3213
@@ -24,7 +24,9 @@ const LABEL = process.env.SHOT_LABEL || "combined";
 const SIZES = [
   { name: "desktop", width: 1440, height: 900, dsf: 1 },
   { name: "phone320", width: 320, height: 568, dsf: 2, mobile: true },
+  { name: "phone375", width: 375, height: 667, dsf: 2, mobile: true },
   { name: "phone390", width: 390, height: 844, dsf: 2, mobile: true },
+  { name: "phone430", width: 430, height: 932, dsf: 3, mobile: true },
 ];
 
 /** [label, runway ("a"|"wt"|"c"), progress through that runway] */
@@ -32,16 +34,20 @@ const RUNWAY_BEATS = [
   ["00-title", "a", 0.004],
   ["01-act1-grid", "a", 0.1],
   ["02-act1-turntable", "a", 0.3],
+  ["02a-act1-dark-handoff", "a", 0.445],
   ["03-interlude-01", "a", 0.5],
+  ["03a-act2-dark-handoff", "a", 0.555],
   ["04-act2-grid", "a", 0.62],
   ["05-act2-copy", "a", 0.8],
   ["06-interlude-02", "a", 0.95],
+  ["06a-film-shop-handoff", "a", 0.995],
   ["07-wt-doorway", "wt", 0.03],
   ["08-wt-early", "wt", 0.18],
   ["09-wt-mid", "wt", 0.42],
   ["10-wt-dyno", "wt", 0.62],
   ["11-wt-late", "wt", 0.83],
   ["12-wt-door-out", "wt", 0.97],
+  ["12a-shop-film-handoff", "c", 0.005],
   ["13-act3-grid", "c", 0.28],
   ["14-act3-copy", "c", 0.62],
   ["15-act3-close", "c", 0.97],
@@ -82,7 +88,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         hasTouch: !!size.mobile,
       });
 
-      await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 120000 });
+      await page.goto(`${BASE.replace(/\/+$/, "")}/?tune=1`, { waitUntil: "domcontentloaded", timeout: 120000 });
       // Let the preloader hand off (it gates on shader compilation).
       await page
         .waitForFunction(
@@ -128,9 +134,42 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         }, y);
         // Damped camera + reveals need real time to settle.
         await sleep(label.includes("wt") ? 2600 : 2000);
+        const edge = await page.evaluate(() => {
+          const value = window.__film?.edge;
+          return Number.isFinite(value) ? Number(value) : null;
+        });
+        if (edge !== null && edge > 1) {
+          problems.push(`${size.name}: ${label} WHOLE-CAR EDGE ${edge.toFixed(3)} > 1`);
+        }
+        console.log(`${size.name}: ${label} edge=${edge === null ? "n/a" : edge.toFixed(3)}`);
         await page.screenshot({
           path: path.join(OUT, `${LABEL}-${size.name}-${label}.png`),
         });
+      }
+
+      if (size.mobile) {
+        await page.evaluate(() => {
+          const lenis = window.__lenis2240;
+          if (lenis) lenis.scrollTo(0, { immediate: true, force: true });
+          else window.scrollTo(0, 0);
+        });
+        await sleep(500);
+        const trigger = await page.$('button[aria-controls="mobile-nav"]');
+        if (!trigger) {
+          problems.push(`${size.name}: mobile menu trigger missing`);
+        } else {
+          await trigger.click();
+          await sleep(450);
+          const open = await page.evaluate(
+            () => document.querySelector('button[aria-controls="mobile-nav"]')?.getAttribute("aria-expanded") === "true",
+          );
+          if (!open) problems.push(`${size.name}: mobile menu did not open for capture`);
+          await page.screenshot({
+            path: path.join(OUT, `${LABEL}-${size.name}-mobile-menu-open.png`),
+          });
+          await trigger.click().catch(() => {});
+          await sleep(350);
+        }
       }
 
       // DOM sections + the journal.
