@@ -34,9 +34,9 @@ const SIZES = [
 ];
 
 const EDGE_BEATS = [
-  { name: "act-I", selector: "[data-runway-a]", progress: 0.3 },
-  { name: "act-II", selector: "[data-runway-a]", progress: 0.8 },
-  { name: "act-III", selector: "[data-runway-c]", progress: 0.62 },
+  { name: "act-I", selector: "[data-runway-a]", progress: 0.3, expectedAct: 0 },
+  { name: "act-II", selector: "[data-runway-a]", progress: 0.8, expectedAct: 1 },
+  { name: "act-III", selector: "[data-runway-c]", progress: 0.62, expectedAct: 2 },
 ];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -300,10 +300,16 @@ async function auditDesktopScroll(page) {
   );
 }
 
-async function auditSize(browser, size) {
-  const page = await browser.newPage();
+async function auditSize(browserContext, size) {
+  const page = await browserContext.newPage();
+  // Every viewport is a cold, independent visit. Browser contexts isolate the
+  // HTTP cache from the previous viewport; this also disables this page's own
+  // cache explicitly before the first request is allowed to leave.
+  await page.setCacheEnabled(false);
   const pageErrors = [];
   const consoleErrors = [];
+  // Kept inside this invocation so editorial request evidence cannot leak
+  // across viewport audits even if Puppeteer changes context cache semantics.
   const requests = [];
 
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -325,6 +331,68 @@ async function auditSize(browser, size) {
   });
   await page.evaluateOnNewDocument(() => {
     window.__elevationWebGLErrors = [];
+    window.__elevationPreloader = {
+      seen: false,
+      normalReady: false,
+      readyReason: null,
+      domState: null,
+      emergency: false,
+      removed: false,
+      removedAfterNormalReady: false,
+    };
+
+    /* A computed opacity of zero proves only that the CSS dead-man timer ran.
+       Record explicit runtime provenance instead. A normal handoff must expose
+       data-ready-reason="scene" or data-state="gone" before the veil leaves;
+       timeout / escape / emergency markers explicitly invalidate readiness. */
+    const preloaderSelector = ".preloader-veil, [data-preloader]";
+    const instrumentation = window.__elevationPreloader;
+    const isEmergency = (value) =>
+      /(?:emergency|escape|timeout|hard[-_ ]?cap|css|dead[-_ ]?man)/i.test(value || "");
+    const inspectPreloader = (veil) => {
+      instrumentation.seen = true;
+      const reason = (veil.getAttribute("data-ready-reason") || "").trim().toLowerCase();
+      const domState = (veil.getAttribute("data-state") || "").trim().toLowerCase();
+      if (reason) instrumentation.readyReason = reason;
+      if (domState) instrumentation.domState = domState;
+      if (isEmergency(reason) || isEmergency(domState)) {
+        instrumentation.emergency = true;
+        instrumentation.normalReady = false;
+        return;
+      }
+      if (reason === "scene" || domState === "gone") instrumentation.normalReady = true;
+    };
+    const visitPreloaders = (node, removed = false) => {
+      if (!(node instanceof Element)) return;
+      const veils = [
+        ...(node.matches(preloaderSelector) ? [node] : []),
+        ...node.querySelectorAll(preloaderSelector),
+      ];
+      for (const veil of veils) {
+        inspectPreloader(veil);
+        if (removed) {
+          instrumentation.removed = true;
+          if (instrumentation.normalReady && !instrumentation.emergency) {
+            instrumentation.removedAfterNormalReady = true;
+          }
+        }
+      }
+    };
+    const preloaderObserver = new MutationObserver((records) => {
+      for (const record of records) {
+        if (record.type === "attributes") inspectPreloader(record.target);
+        for (const node of record.addedNodes) visitPreloaders(node);
+        for (const node of record.removedNodes) visitPreloaders(node, true);
+      }
+    });
+    preloaderObserver.observe(document, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-ready-reason", "data-state"],
+    });
+    if (document.documentElement) visitPreloaders(document.documentElement);
+
     window.addEventListener(
       "webglcontextlost",
       (event) => {
@@ -348,38 +416,48 @@ async function auditSize(browser, size) {
   const preloaderReady = await page
     .waitForFunction(
       () => {
-        const veil = document.querySelector(".preloader-veil, [data-preloader]");
-        if (!veil) return true;
-        const style = getComputedStyle(veil);
-        return style.display === "none" || style.visibility === "hidden" || Number(style.opacity) <= 0.01;
+        const state = window.__elevationPreloader;
+        return !!state &&
+          !state.emergency &&
+          (state.normalReady || state.removedAfterNormalReady);
       },
       { timeout: budgetRemaining },
     )
     .then(() => true)
     .catch(() => false);
   const preloaderElapsed = Date.now() - navigationStarted;
+  const preloaderState = await page.evaluate(() => {
+    const state = window.__elevationPreloader;
+    return state ? { ...state } : null;
+  });
   check(
     size.name,
-    `preloader clears within ${PRELOADER_BUDGET_MS}ms non-emergency window`,
-    preloaderReady && preloaderElapsed <= PRELOADER_BUDGET_MS + 50,
+    `preloader reports normal scene readiness within ${PRELOADER_BUDGET_MS}ms`,
+    preloaderReady &&
+      !!preloaderState &&
+      !preloaderState.emergency &&
+      preloaderElapsed <= PRELOADER_BUDGET_MS + 50,
     preloaderReady
-      ? `cleared after ${preloaderElapsed}ms`
-      : `still visible at ${preloaderElapsed}ms; emergency paths are intentionally not the readiness budget`,
+      ? `normal marker after ${preloaderElapsed}ms; reason=${preloaderState?.readyReason || "none"}, state=${preloaderState?.domState || "none"}, removed=${preloaderState?.removed || false}`
+      : preloaderState
+        ? `no explicit normal-ready marker by ${preloaderElapsed}ms; seen=${preloaderState.seen}, removed=${preloaderState.removed}, reason=${preloaderState.readyReason || "none"}, state=${preloaderState.domState || "none"}, emergency=${preloaderState.emergency}`
+        : `preloader readiness instrumentation missing at ${preloaderElapsed}ms`,
   );
-  if (!preloaderReady) {
-    const remaining = Math.max(1, PRELOADER_EMERGENCY_MS - preloaderElapsed);
-    await page
-      .waitForFunction(
-        () => {
-          const veil = document.querySelector(".preloader-veil, [data-preloader]");
-          if (!veil) return true;
-          const style = getComputedStyle(veil);
-          return style.display === "none" || style.visibility === "hidden" || Number(style.opacity) <= 0.01;
-        },
-        { timeout: remaining },
-      )
-      .catch(() => {});
-  }
+  // Budget already decided from explicit provenance above. Wait separately
+  // for React to remove the node or for the imperative emergency escape to
+  // set inline display:none, so the preloader's scroll lock cannot make later
+  // menu checks pass. Computed CSS dead-man visibility is deliberately ignored.
+  const remaining = Math.max(1, PRELOADER_EMERGENCY_MS - preloaderElapsed);
+  await page
+    .waitForFunction(
+      () => {
+        const veil = document.querySelector(".preloader-veil, [data-preloader]");
+        if (!veil) return true;
+        return veil.style.display === "none";
+      },
+      { timeout: remaining },
+    )
+    .catch(() => {});
   await sleep(450);
   await seek(page, "[data-runway-a]", 0);
   await sleep(250);
@@ -484,20 +562,41 @@ async function auditSize(browser, size) {
       check(size.name, `${beat.name} publishes whole-car edge`, false, location.reason);
       continue;
     }
-    await sleep(1_500);
+    const reachedExpectedAct = await page
+      .waitForFunction(
+        (expectedAct) => window.__film?.stage?.act === expectedAct,
+        { timeout: 4_000 },
+        beat.expectedAct,
+      )
+      .then(() => true)
+      .catch(() => false);
+    // Preserve the original camera-damping settle after the act identity is
+    // correct; identity prevents staleness, settle time keeps the edge honest.
+    if (reachedExpectedAct) await sleep(1_500);
     const film = await page.evaluate(() => {
       const edge = window.__film?.edge;
-      return Number.isFinite(edge)
-        ? { available: true, edge: Number(edge) }
-        : { available: false, reason: "window.__film.edge missing or non-finite" };
+      const act = window.__film?.stage?.act;
+      return {
+        act: Number.isInteger(act) ? Number(act) : null,
+        available: Number.isFinite(edge),
+        edge: Number.isFinite(edge) ? Number(edge) : null,
+      };
     });
+    const actMatches = reachedExpectedAct && film.act === beat.expectedAct;
+    check(
+      size.name,
+      `${beat.name} publishes expected act index ${beat.expectedAct}`,
+      actMatches,
+      `expected act ${beat.expectedAct}; measured ${film.act ?? "missing"} at y=${location.y}px`,
+    );
+    if (!actMatches) continue;
     check(
       size.name,
       `${beat.name} whole-car edge <=${MAX_CAR_EDGE}`,
       film.available && film.edge <= MAX_CAR_EDGE,
       film.available
         ? `edge ${film.edge.toFixed(3)} at y=${location.y}px; threshold ${MAX_CAR_EDGE}`
-        : `${film.reason} at y=${location.y}px`,
+        : `window.__film.edge missing or non-finite at y=${location.y}px`,
     );
   }
 
@@ -550,12 +649,16 @@ try {
     ],
   });
   for (const size of SIZES) {
+    let browserContext;
     try {
-      await auditSize(browser, size);
+      browserContext = await browser.createBrowserContext();
+      await auditSize(browserContext, size);
     } catch (error) {
       const message = `${size.name} · audit execution — ${error.stack || error.message}`;
       failures.push(message);
       console.error(`FAIL ${message}`);
+    } finally {
+      await browserContext?.close().catch(() => {});
     }
   }
 } catch (error) {
