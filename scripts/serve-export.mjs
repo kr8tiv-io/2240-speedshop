@@ -32,10 +32,13 @@ const server = http.createServer((request, response) => {
   try {
     if (fs.statSync(file).isDirectory()) file = path.join(file, "index.html");
     const stat = fs.statSync(file);
+    const brotli = file.endsWith(".br");
+    const contentFile = brotli ? file.slice(0, -3) : file;
     response.writeHead(200, {
-      "Content-Type": types.get(path.extname(file).toLowerCase()) || "application/octet-stream",
+      "Content-Type": types.get(path.extname(contentFile).toLowerCase()) || "application/octet-stream",
       "Content-Length": stat.size,
       "Cache-Control": "no-store",
+      ...(brotli ? { "Content-Encoding": "br" } : {}),
     });
     if (request.method === "HEAD") response.end();
     else pipeline(fs.createReadStream(file), response, () => {});

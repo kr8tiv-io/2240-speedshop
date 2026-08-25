@@ -136,12 +136,16 @@ function byName(name: string): Role | null {
    Node builds keep the plain path so local assets remain directly editable. */
 const HERO_MODELS_VERSION = process.env.NEXT_PUBLIC_HERO_MODELS_VERSION || "";
 const HERO_MODEL_ROOT = `/models/${HERO_MODELS_VERSION ? `hero-${HERO_MODELS_VERSION}` : "hero"}`;
+/* LiteSpeed does not rewrite the plain hero request to its twin, although it
+   serves the twin with Content-Encoding: br correctly by name. Export builds
+   therefore ask for that URL directly; local Next builds keep raw GLBs. */
+const HERO_MODEL_EXTENSION = HERO_MODELS_VERSION ? ".glb.br" : ".glb";
 
 const ACTS: Act[] = [
   {
     // ACT I — the finished car. The original shot, untouched: it is the one
     // Matt keeps scrolling back to.
-    url: `${HERO_MODEL_ROOT}/challenger.glb`,
+    url: `${HERO_MODEL_ROOT}/challenger${HERO_MODEL_EXTENSION}`,
     length: 4.7,
     paint: "#571c1c",
     lampBoost: 1,
@@ -174,7 +178,7 @@ const ACTS: Act[] = [
   {
     // ACT II — the same shop, one bay over: hood up, motor open, the lamp
     // pulled right down into the engine bay.
-    url: `${HERO_MODEL_ROOT}/coupe-hoodup.glb`,
+    url: `${HERO_MODEL_ROOT}/coupe-hoodup${HERO_MODEL_EXTENSION}`,
     length: 4.9,
     paint: "#5a2f10",
     lampBoost: 0.85,
@@ -219,7 +223,7 @@ const ACTS: Act[] = [
   {
     // ACT III — the driver. Back bay, moonlight through the door, one bare
     // bulb a long way off, and a late-60s Charger sitting in it in old paint.
-    url: `${HERO_MODEL_ROOT}/charger.glb`,
+    url: `${HERO_MODEL_ROOT}/charger${HERO_MODEL_EXTENSION}`,
     length: 4.95,
     // Lifted from #2e4a4a: a near-black teal on a moonlit night scene with a
     // camera on the unlit side is a silhouette, not a car.

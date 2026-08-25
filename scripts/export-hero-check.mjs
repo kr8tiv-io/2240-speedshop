@@ -41,7 +41,7 @@ try {
   page.on("response", (response) => {
     const pathname = new URL(response.url()).pathname;
     if (response.status() >= 400) errors.push(`response: ${response.url()} — HTTP ${response.status()}`);
-    if (/\/models\/hero(?:-[^/]+)?\/[^/]+\.glb$/i.test(pathname)) {
+    if (/\/models\/hero(?:-[^/]+)?\/[^/]+\.glb(?:\.br)?$/i.test(pathname)) {
       heroResponses.push({ pathname, status: response.status() });
     }
   });
@@ -64,7 +64,7 @@ try {
     .catch(() => {});
   await page
     .waitForFunction(
-      () => performance.getEntriesByType("resource").filter((entry) => /\/models\/hero-[^/]+\/[^/]+\.glb$/i.test(new URL(entry.name).pathname)).length >= 3,
+      () => performance.getEntriesByType("resource").filter((entry) => /\/models\/hero-[^/]+\/[^/]+\.glb\.br$/i.test(new URL(entry.name).pathname)).length >= 3,
       { timeout: 20_000 },
     )
     .catch(() => {});
@@ -85,7 +85,9 @@ try {
   assert.equal(runtime.canvases, 1, `expected one hero canvas, saw ${runtime.canvases}`);
   assert.equal(heroResponses.length, 3, `expected three hero responses, saw ${heroResponses.length}`);
   assert.ok(
-    heroResponses.every((response) => response.pathname.startsWith(expectedRoot)),
+    heroResponses.every(
+      (response) => response.pathname.startsWith(expectedRoot) && response.pathname.endsWith(".glb.br"),
+    ),
     `unversioned or wrong-version hero request: ${JSON.stringify(heroResponses)}`,
   );
   assert.ok(
@@ -94,7 +96,7 @@ try {
   );
   assert.deepEqual(errors, [], `runtime errors: ${errors.join(" | ")}`);
   console.log(
-    `export hero audit: PASS — ${runtime.profile}, ${runtime.canvases} canvas, 3× ${expectedRoot} at HTTP 200`,
+    `export hero audit: PASS — ${runtime.profile}, ${runtime.canvases} canvas, 3× ${expectedRoot}*.glb.br at HTTP 200`,
   );
 } finally {
   await browser.close().catch(() => {});

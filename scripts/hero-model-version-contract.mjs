@@ -14,9 +14,19 @@ assert.match(versioner, /module\.exports\.heroVersion\s*=\s*heroVersion/, "hero 
 assert.match(config, /NEXT_PUBLIC_HERO_MODELS_VERSION/, "hero hash is not compiled into export builds");
 assert.match(hero, /NEXT_PUBLIC_HERO_MODELS_VERSION/, "HeroScene does not consume the compiled hero hash");
 assert.match(hero, /hero-\$\{HERO_MODELS_VERSION\}/, "HeroScene URL is not content-addressed");
+assert.match(
+  hero,
+  /const HERO_MODEL_EXTENSION = HERO_MODELS_VERSION \? "\.glb\.br" : "\.glb"/,
+  "export hero URLs do not request their Brotli twins directly",
+);
 assert.match(deploy, /hero-\$\{HERO_VERSION\}/, "deploy does not stamp the hero directory");
 assert.match(deploy, /renameSync\(HERO_FROM, HERO_TO\)/, "deploy does not atomically rename the hero shelf");
 assert.match(precompress, /models[\\/]hero/, "hero shelf is missing Brotli transport twins");
+assert.match(
+  fs.readFileSync(new URL("./serve-export.mjs", import.meta.url), "utf8"),
+  /"Content-Encoding": "br"/,
+  "static export verifier does not emulate Hostinger's Brotli response",
+);
 assert.ok(
   deployCommand.indexOf("node scripts/precompress.js") < deployCommand.indexOf("pnpm exec next build"),
   "precompression must run before export copies public assets into out/",
