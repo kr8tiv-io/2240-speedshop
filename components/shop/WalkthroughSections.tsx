@@ -91,8 +91,10 @@ function Glide({ note, line }: { note: string; line: string }) {
   return (
     <div className="flex min-h-[42vh] items-center px-5 sm:px-8">
       <div className="mx-auto w-full max-w-[92rem]">
-        <p className="corner-note">{note}</p>
-        <p className="mt-2 max-w-sm font-body text-sm leading-relaxed text-steel/70">{line}</p>
+        <div className="wt-glide-copy w-fit max-w-md">
+          <p className="corner-note">{note}</p>
+          <p className="mt-2 max-w-sm font-body text-sm leading-relaxed text-steel/70">{line}</p>
+        </div>
       </div>
     </div>
   );
@@ -133,7 +135,10 @@ export function WalkthroughSections() {
         </p>
       </Station>
 
-      <Glide note="TRAVEL — PAST THE COPPER CAMARO" line="Bay one. The posts are loaded." />
+      <Glide
+        note="TRAVEL — INTO THE HOIST BAY"
+        line="Two hoists. Every serious inspection starts underneath."
+      />
 
       {/* STATION 01 — THE HOIST */}
       <Station
@@ -159,7 +164,10 @@ export function WalkthroughSections() {
         </ul>
       </Station>
 
-      <Glide note="TRAVEL — DOWN THE DRIVE LINE" line="Drums on the west wall. Keep to the yellow paint." />
+      <Glide
+        note="TRAVEL — TOWARD THE ENGINE ROOM"
+        line="Engines out. Every system planned together."
+      />
 
       {/* STATION 02 — THE ENGINE ROOM */}
       <Station
@@ -186,7 +194,10 @@ export function WalkthroughSections() {
         </ul>
       </Station>
 
-      <Glide note="TRAVEL — PAST THE PARTS SHELVES" line="Mind the cords. The bench is live." />
+      <Glide
+        note="TRAVEL — INTO THE FAB CORNER"
+        line="Metalwork first. Straight before shiny."
+      />
 
       {/* STATION 03 — THE FAB CORNER */}
       <Station
@@ -206,7 +217,10 @@ export function WalkthroughSections() {
         </p>
       </Station>
 
-      <Glide note="TRAVEL — THE GAUGE WALL" line="Rollers ahead. It gets loud for a minute." />
+      <Glide
+        note="TRAVEL — THE GAUGE WALL"
+        line="The rollers settle the handoff."
+      />
 
       {/* STATION 04 — THE DYNO */}
       <Station
@@ -231,7 +245,10 @@ export function WalkthroughSections() {
         </ul>
       </Station>
 
-      <Glide note="TRAVEL — PAST THE PULLED MOTOR" line="The office keeps its door open." />
+      <Glide
+        note="TRAVEL — TOWARD THE OFFICE WALL"
+        line="Build photos, decisions, and proof stay on the wall."
+      />
 
       {/* STATION 05 — THE OFFICE WALL */}
       <Station
@@ -256,7 +273,10 @@ export function WalkthroughSections() {
         </ul>
       </Station>
 
-      <Glide note="TRAVEL — LAST BAY" line="The door is up. Rain on the lane." />
+      <Glide
+        note="TRAVEL — THE LAST BAY"
+        line="Tested, sorted, ready for the road."
+      />
 
       {/* STATION 06 — THE ROLL-UP DOOR */}
       <Station

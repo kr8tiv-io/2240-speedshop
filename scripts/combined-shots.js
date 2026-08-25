@@ -15,11 +15,14 @@
 const puppeteer = require("puppeteer-core");
 const path = require("path");
 const fs = require("fs");
+const sharp = require("sharp");
 
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const BASE = process.env.BASE_URL || "http://localhost:3213";
 const OUT = path.join(__dirname, "..", process.env.SHOT_DIR || "shots-combined");
 const LABEL = process.env.SHOT_LABEL || "combined";
+const FOCUS = (process.env.SHOT_FOCUS || "").trim().toLowerCase();
+const SCOPE = (process.env.SHOT_SCOPE || "all").trim().toLowerCase();
 
 const SIZES = [
   { name: "desktop", width: 1440, height: 900, dsf: 1 },
@@ -27,7 +30,7 @@ const SIZES = [
   { name: "phone375", width: 375, height: 667, dsf: 2, mobile: true },
   { name: "phone390", width: 390, height: 844, dsf: 2, mobile: true },
   { name: "phone430", width: 430, height: 932, dsf: 3, mobile: true },
-];
+].filter((size) => !FOCUS || size.name.toLowerCase() === FOCUS);
 
 /** [label, runway ("a"|"wt"|"c"), progress through that runway] */
 const RUNWAY_BEATS = [
@@ -51,7 +54,7 @@ const RUNWAY_BEATS = [
   ["13-act3-grid", "c", 0.28],
   ["14-act3-copy", "c", 0.62],
   ["15-act3-close", "c", 0.97],
-];
+].filter(([, runway]) => SCOPE !== "shop" || runway === "wt");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -62,8 +65,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     headless: false,
     protocolTimeout: 240000,
     args: [
-      "--window-position=-2400,0",
+      "--window-position=40,40",
       "--window-size=1600,1100",
+      "--disable-features=CalculateNativeWinOcclusion",
       "--disable-backgrounding-occluded-windows",
       "--disable-renderer-backgrounding",
       "--mute-audio",
@@ -78,6 +82,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const errors = [];
       page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
       page.on("console", (m) => {
+        if (SCOPE === "shop" && m.text().startsWith("[shop]")) console.log(`TRACE ${m.text()}`);
         if (m.type() === "error") errors.push(`console: ${m.text()}`);
       });
       await page.setViewport({
@@ -88,7 +93,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         hasTouch: !!size.mobile,
       });
 
-      await page.goto(`${BASE.replace(/\/+$/, "")}/?tune=1`, { waitUntil: "domcontentloaded", timeout: 120000 });
+      await page.goto(`${BASE.replace(/\/+$/, "")}/?tune=1${SCOPE === "shop" ? "&perf=1" : ""}`, { waitUntil: "domcontentloaded", timeout: 120000 });
       // Let the preloader hand off (it gates on shader compilation).
       await page
         .waitForFunction(
@@ -108,8 +113,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
           return { top: r.top + window.scrollY, height: r.height };
         };
         return {
-          overflow:
-            document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          overflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
           doc: document.documentElement.scrollHeight,
           a: rect(el("[data-runway-a]")),
           wt: rect(el("#walkthrough-runway")),
@@ -133,7 +137,29 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
           window.scrollTo(0, yy);
         }, y);
         // Damped camera + reveals need real time to settle.
-        await sleep(label.includes("wt") ? 2600 : 2000);
+        if (SCOPE === "shop" && runway === "wt") {
+          // A shop-only visual run is judging the world, not the compile-safe
+          // photograph in front of it. Wait for the real world to complete its
+          // own 1600 ms dissolve before capturing the first station.
+          const ready = await page
+            .waitForFunction(
+              () => {
+                const host = document.querySelector("[data-shop-ready]");
+                const world = document.querySelector("[data-shop-world]");
+                return host?.getAttribute("data-shop-ready") === "world" &&
+                  world && Number.parseFloat(getComputedStyle(world).opacity) > 0.98;
+              },
+              { timeout: 75_000 },
+            )
+            .then(() => true)
+            .catch(() => false);
+          if (!ready) {
+            problems.push(`${size.name}: ${label} SHOP WORLD NEVER BECAME GENUINELY READY`);
+          }
+          await sleep(2_000);
+        } else {
+          await sleep(label.includes("wt") ? 2600 : 2000);
+        }
         const edge = await page.evaluate(() => {
           const value = window.__film?.edge;
           return Number.isFinite(value) ? Number(value) : null;
@@ -148,12 +174,75 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
           `${size.name}: ${label} edge=${edge === null ? "n/a" : edge.toFixed(3)}` +
             (filmBeat ? "" : " (shop beat; optional)"),
         );
-        await page.screenshot({
-          path: path.join(OUT, `${LABEL}-${size.name}-${label}.png`),
-        });
+        if (SCOPE === "shop" && runway === "wt") {
+          const shop = await page.evaluate(() => {
+            const runtime = window.__shop;
+            const scene = runtime?.scene;
+            const camera = runtime?.camera;
+            if (!scene || !camera) return null;
+            const rail = Number(camera.userData?.rail?.t);
+            const station = Number.isFinite(rail) ? Math.max(0, Math.min(6, Math.round(rail * 6))) : null;
+            const bays = [];
+            scene.traverse((object) => {
+              const match = /^bay-(\d+)$/.exec(object.name || "");
+              if (!match) return;
+              let renderables = 0;
+              let visible = 0;
+              object.traverse((child) => {
+                if (!(child.isMesh || child.isPoints || child.isLine)) return;
+                renderables++;
+                let shown = child.visible;
+                let parent = child.parent;
+                while (shown && parent) {
+                  shown = parent.visible;
+                  parent = parent.parent;
+                }
+                if (shown) visible++;
+              });
+              bays.push({ station: Number(match[1]), renderables, visible });
+            });
+            return { station, bays };
+          });
+          if (!shop) {
+            problems.push(`${size.name}: ${label} SHOP RUNTIME DIAGNOSTICS MISSING`);
+          } else {
+            const nearest = shop.bays.filter((bay) => bay.station === shop.station);
+            const visible = nearest.reduce((sum, bay) => sum + bay.visible, 0);
+            const renderables = nearest.reduce((sum, bay) => sum + bay.renderables, 0);
+            console.log(`${size.name}: ${label} station=${shop.station} visible=${visible}/${renderables}`);
+            if (!nearest.length || renderables === 0 || visible === 0) {
+              problems.push(
+                `${size.name}: ${label} EMPTY CURRENT BAY station=${shop.station} visible=${visible}/${renderables}`,
+              );
+            }
+          }
+        }
+        const shotPath = path.join(OUT, `${LABEL}-${size.name}-${label}.png`);
+        const screenshot = await page.screenshot({ path: shotPath });
+        if (SCOPE === "shop" && runway === "wt") {
+          const left = Math.round(size.width * 0.38 * size.dsf);
+          const top = Math.round(size.height * 0.14 * size.dsf);
+          const width = Math.max(1, Math.round(size.width * 0.42 * size.dsf));
+          const height = Math.max(1, Math.round(size.height * 0.68 * size.dsf));
+          const stats = await sharp(screenshot)
+            .extract({ left, top, width, height })
+            .removeAlpha()
+            .stats();
+          const mean = stats.channels.reduce((sum, channel) => sum + channel.mean, 0) / 3;
+          const deviation =
+            stats.channels.reduce((sum, channel) => sum + channel.stdev, 0) / 3;
+          console.log(
+            `${size.name}: ${label} visual mean=${mean.toFixed(1)} stdev=${deviation.toFixed(1)}`,
+          );
+          if (mean > 220 && deviation < 24) {
+            problems.push(
+              `${size.name}: ${label} WHITE/UNINITIALIZED COMPOSER mean=${mean.toFixed(1)} stdev=${deviation.toFixed(1)}`,
+            );
+          }
+        }
       }
 
-      if (size.mobile) {
+      if (size.mobile && SCOPE !== "shop") {
         await page.evaluate(() => {
           const lenis = window.__lenis2240;
           if (lenis) lenis.scrollTo(0, { immediate: true, force: true });
@@ -179,7 +268,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       }
 
       // DOM sections + the journal.
-      for (const [label, sel] of [
+      for (const [label, sel] of SCOPE === "shop" ? [] : [
         ["16-entity", "[aria-labelledby='entity-heading']"],
         ["17-services", "[aria-labelledby='services-heading']"],
         ["18-reviews", "[aria-labelledby='reviews-heading']"],
@@ -202,7 +291,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         await page.screenshot({ path: path.join(OUT, `${LABEL}-${size.name}-${label}.png`) });
       }
 
-      for (const [label, url] of [
+      for (const [label, url] of SCOPE === "shop" ? [] : [
         ["20-journal", "/blog/"],
         ["21-article", "/blog/what-is-a-restomod/"],
       ]) {

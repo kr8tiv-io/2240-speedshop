@@ -390,16 +390,49 @@ function openGate(next: number) {
   for (const listener of streamListeners) listener();
 }
 
-/* The bays the opening shot cannot start without. Station 1 is deliberately
-   NOT on this list: the hoist is a full orbit of scrolling away and it warms
-   inside the first few seconds of the film, so making the reader wait at the
-   door for it buys nothing but a longer wait. */
-const PENDING = new Set<string>(["shell", "0"]);
+/* The photographic doorway is good enough to be a real loading surface, so
+   the world no longer has to gamble that a later bay can outrun the camera.
+   Every station earns the dissolve. Models still mount through the serialized
+   gate chain — no request stampede — but the renderer remains parked until the
+   whole walk is populated and first-used. A reader who arrives impossibly
+   fast sees a finished photograph; everybody else gets a zero-pop-in tour. */
+const WARM_KEYS = [
+  "shell",
+  ...Array.from({ length: STATION_COUNT }, (_, i) => String(i)),
+  "5-gallery",
+];
+const PENDING = new Set<string>(WARM_KEYS);
+let worldFinalizer: (() => Promise<void>) | null = null;
+let finalizingWorld = false;
+
+async function finalizeWorld() {
+  if (finalizingWorld || PENDING.size !== 0 || !worldFinalizer) return;
+  finalizingWorld = true;
+  restoreComposerOvens();
+  try {
+    // The finalizer renders the ACTUAL full composer behind the photograph.
+    // Only a completed composed frame is allowed to unlock the dissolve.
+    await worldFinalizer();
+    markShellWarm();
+    markWorldReady();
+  } catch (error) {
+    // Keep the finished photograph. Revealing an unverified renderer is never
+    // a recovery path; under ?perf the reason remains inspectable.
+    if (DEBUG) console.warn("[shop] final composed frame failed; retaining doorway", error);
+  } finally {
+    finalizingWorld = false;
+  }
+}
+
+function setWorldFinalizer(finalizer: (() => Promise<void>) | null) {
+  worldFinalizer = finalizer;
+  if (finalizer && PENDING.size === 0) void finalizeWorld();
+}
 
 function reportWarm(key: string) {
   if (PENDING.delete(key)) {
-    reportBootProgress(0.75 + 0.125 * (2 - PENDING.size));
-    if (PENDING.size === 0) markWorldReady();
+    reportBootProgress(0.75 + 0.25 * ((WARM_KEYS.length - PENDING.size) / WARM_KEYS.length));
+    if (PENDING.size === 0) void finalizeWorld();
   }
 }
 
@@ -411,27 +444,18 @@ function reportWarm(key: string) {
    nowhere else. The whole model set is 16 MB now; the bays can fetch their own
    files when their turn comes. */
 
-/** Nothing may hold the door shut forever — a stalled fetch least of all. */
+/**
+ * The stream opens only after the opening room is genuinely ready.
+ *
+ * This used to clear `PENDING` and call `markWorldReady()` on a module-scope
+ * 15-second timer. The timer started when this chunk was imported, not when
+ * the renderer mounted; on a slower GPU it could therefore lift the doorway
+ * photograph while the shell was still compiling and every bay was hidden.
+ * A permanent, fully graded photograph is the honest failure mode. It is much
+ * better than a white composer target or an empty garage, so there is no
+ * time-based path to `ready` anymore.
+ */
 if (typeof window !== "undefined") {
-  window.setTimeout(() => {
-    PENDING.clear();
-    markWorldReady();
-    /* And the rest of the shop must still arrive even if the chain broke —
-       but NOT as a stampede. `openGate(STATION_COUNT)` here mounted every
-       remaining bay at once, and the concurrent paced warms starved the main
-       thread for tens of seconds on the combined page (measured: 7–9 s
-       slices, deadlines everywhere, bays left half-hidden). One gate at a
-       time on a clock is the same guarantee without the pile-up; the healthy
-       chain usually outruns it and this interval finds nothing to do. */
-    const creep = window.setInterval(() => {
-      if (unlocked >= STATION_COUNT) {
-        window.clearInterval(creep);
-        return;
-      }
-      openGate(unlocked + 1);
-    }, 4000);
-  }, 15000);
-
   /* THE STREAM NO LONGER WAITS TO BE EARNED. The original gate chain — each
      bay opens the next only once it is warm — assumed the reader started at
      station 0 and scrolled linearly behind a preloader. On the combined page
@@ -1257,6 +1281,11 @@ async function warmSubtree(
   await warmUp(gl, node, camera, scene);
 }
 
+/** Never begin an indivisible driver upload while the reader is moving. */
+async function waitForReaderQuiet() {
+  while (stillFor() < 450) await wait(80);
+}
+
 /** Allocate the base material programs before the paced composer first-use. */
 async function warmUp(
   gl: THREE.WebGLRenderer,
@@ -1297,6 +1326,15 @@ type ComposerHandle = {
 };
 
 const COMPOSER_TARGETS = new WeakMap<THREE.WebGLRenderer, THREE.WebGLRenderTarget>();
+/* A tiny target with the same colour/depth/MSAA contract as the composer's
+   scene input. Geometry and material first-use happens here without paying AO,
+   bloom, DOF and the rest of the full-screen stack for every bay. */
+const COMPOSER_OVENS = new Map<THREE.WebGLRenderer, THREE.WebGLRenderTarget>();
+
+function restoreComposerOvens() {
+  for (const target of COMPOSER_OVENS.values()) target.dispose();
+  COMPOSER_OVENS.clear();
+}
 
 /**
  * Compile the post chain's own fullscreen materials without drawing it.
@@ -1494,6 +1532,71 @@ function warmThroughComposer(node: THREE.Object3D, label = "", root?: RootState)
   return next;
 }
 
+/**
+ * Three creates one binding state for a geometry/program pair. Drei clones
+ * share both, so a first-use pass only needs one representative for each real
+ * GPU combination — not every copy of every bolt and tyre in a bay.
+ */
+function firstUseKey(object: THREE.Object3D) {
+  const mesh = object as THREE.Mesh;
+  const geometry = mesh.geometry;
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  const materialKey = materials
+    .map((entry) => {
+      const material = entry as THREE.Material & Record<string, unknown>;
+      const maps = [
+        "map",
+        "normalMap",
+        "roughnessMap",
+        "metalnessMap",
+        "alphaMap",
+        "emissiveMap",
+        "aoMap",
+        "lightMap",
+        "clearcoatMap",
+        "clearcoatNormalMap",
+        "transmissionMap",
+      ]
+        .map((slot) => {
+          const texture = material?.[slot] as THREE.Texture | undefined;
+          return texture?.uuid ?? "-";
+        })
+        .join("");
+      const rawDefines = material?.defines;
+      const defines =
+        rawDefines && typeof rawDefines === "object"
+          ? JSON.stringify(
+              rawDefines,
+              Object.keys(rawDefines as Record<string, unknown>).sort(),
+            )
+          : "";
+      return [
+        material?.type,
+        material?.side,
+        Number(Boolean(material?.transparent)),
+        Number(Boolean(material?.alphaTest)),
+        Number(Boolean(material?.depthWrite)),
+        Number(Boolean(material?.vertexColors)),
+        Number(Boolean(material?.toneMapped)),
+        Number(Boolean(material?.fog)),
+        maps,
+        defines,
+      ].join(":");
+    })
+    .join("+");
+  const attributes = geometry?.attributes
+    ? Object.keys(geometry.attributes).sort().join(",")
+    : "";
+  return [
+    geometry?.uuid ?? object.type,
+    attributes,
+    Number(Boolean((object as THREE.InstancedMesh).isInstancedMesh)),
+    Number(Boolean((object as THREE.SkinnedMesh).isSkinnedMesh)),
+    Number(Boolean(mesh.morphTargetInfluences)),
+    materialKey,
+  ].join("|");
+}
+
 async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
   const drawables: THREE.Object3D[] = [];
   const mirrors: THREE.Object3D[] = [];
@@ -1530,6 +1633,112 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
     const live = root?.get ? root.get() : undefined;
     return !!live && live.frameloop === "never";
   };
+
+  /* A PARKED COMPOSER IS AN OVEN, NOT A CINEMA.
+     The previous warm-up revealed one more object at full viewport resolution
+     per frame. That paid the complete MSAA + AO + bloom + depth-of-field stack
+     hundreds of times just to establish a few shared shader programs — 20 to
+     40 seconds of duplicate pixels on the measured Radeon.
+
+     While the real canvas is still behind the doorway photograph, submit one
+     representative of each geometry/program pair to a postage-stamp HDR/MSAA
+     target with the real scene lights and environment. This builds the exact
+     buffers and material programs the composer's scene pass consumes without
+     needlessly running its full-screen effects for every bay. The production
+     composer itself never changes size or quality. */
+  const composerTarget = root ? COMPOSER_TARGETS.get(root.gl) : undefined;
+  if (parkedNow() && root && composerTarget) {
+    const was = drawables.map((object) => object.visible);
+    const wasCulled = drawables.map((object) => object.frustumCulled);
+    const wasGroup = node.visible;
+    const unique = new Map<string, THREE.Object3D>();
+    for (let i = 0; i < drawables.length; i++) {
+      if (!was[i]) continue;
+      const key = firstUseKey(drawables[i]);
+      if (!unique.has(key)) unique.set(key, drawables[i]);
+    }
+    const representatives = [...unique.values()];
+    const sceneVisibility = new Map<THREE.Object3D, boolean>();
+    const started = performance.now();
+    const previousTarget = root.gl.getRenderTarget();
+    let worstSlice = 0;
+    try {
+      // Keep the scene's lights, fog and environment intact, but take every
+      // unrelated drawable out of this private first-use submission.
+      root.scene.traverse((object) => {
+        const renderable = object as THREE.Mesh;
+        if (!(renderable.isMesh || (object as THREE.Points).isPoints || (object as THREE.Line).isLine)) return;
+        sceneVisibility.set(object, object.visible);
+        object.visible = false;
+      });
+      node.visible = true;
+      for (let i = 0; i < drawables.length; i++) {
+        drawables[i].visible = false;
+        drawables[i].frustumCulled = false;
+      }
+      let oven = COMPOSER_OVENS.get(root.gl);
+      if (!oven) {
+        oven = new THREE.WebGLRenderTarget(24, 24, {
+          type: composerTarget.texture.type,
+          format: composerTarget.texture.format as THREE.PixelFormat,
+          colorSpace: composerTarget.texture.colorSpace as THREE.ColorSpace,
+          depthBuffer: composerTarget.depthBuffer,
+          stencilBuffer: composerTarget.stencilBuffer,
+          samples: composerTarget.samples,
+        });
+        COMPOSER_OVENS.set(root.gl, oven);
+      }
+      /* Upload/bind in self-tuning slices. A single submission of the engine
+         room still asked ANGLE to create hundreds of VAOs in one 21-second
+         task. Starting at one makes the first bill bounded; cheap shapes earn
+         larger batches, expensive imported primitives immediately contract
+         back to one. The rAF yield lets the hero film paint between slices. */
+      let size = 1;
+      let index = 0;
+      while (index < representatives.length) {
+        await waitForReaderQuiet();
+        const end = Math.min(index + size, representatives.length);
+        for (let i = index; i < end; i++) representatives[i].visible = true;
+        const sliceStarted = performance.now();
+        root.gl.setRenderTarget(oven);
+        root.gl.render(root.scene, root.camera);
+        root.gl.setRenderTarget(previousTarget);
+        const cost = performance.now() - sliceStarted;
+        worstSlice = Math.max(worstSlice, cost);
+        if (DEBUG && cost > 400) {
+          const sample = representatives.slice(index, end).map((object) => {
+            const mesh = object as THREE.Mesh;
+            const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+            return `${object.name || object.type}:${mesh.geometry?.getAttribute?.("position")?.count ?? 0}:${material?.type ?? "material"}`;
+          });
+          console.log(
+            `[shop]   ${label || "warm"} heavy oven slice ${Math.round(cost)} ms · ${sample.join(", ")}`,
+          );
+        }
+        for (let i = index; i < end; i++) representatives[i].visible = false;
+        index = end;
+        if (cost > 70) size = Math.max(1, Math.floor(size / 2));
+        else if (cost < 18) size = Math.min(12, size + 2);
+        await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      }
+    } finally {
+      root.gl.setRenderTarget(previousTarget);
+      for (const [object, visible] of sceneVisibility) object.visible = visible;
+      for (let i = 0; i < drawables.length; i++) {
+        drawables[i].visible = was[i];
+        drawables[i].frustumCulled = wasCulled[i];
+      }
+      node.visible = wasGroup;
+    }
+    if (DEBUG) {
+      console.log(
+        `[shop]   ${label || "warm"} postage-stamp first use ${Math.round(performance.now() - started)} ms` +
+          ` · ${representatives.length}/${drawables.length} unique geometry/program pairs` +
+          ` · worst slice ${Math.round(worstSlice)} ms`,
+      );
+    }
+    return;
+  }
 
   const was = drawables.map((object) => object.visible);
   const wasGroup = node.visible;
@@ -1674,9 +1883,11 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
 
 export function StationBundle({
   station,
+  warmKey = String(station),
   children,
 }: {
   station: number;
+  warmKey?: string;
   children: ReactNode;
 }) {
   const allowed = useSyncExternalStore(
@@ -1711,9 +1922,9 @@ export function StationBundle({
 
   if (!allowed || !mounted) return null;
   return (
-    <BayBoundary station={station}>
+    <BayBoundary station={station} warmKey={warmKey}>
       <Suspense fallback={null}>
-        <WarmStation station={station}>{children}</WarmStation>
+        <WarmStation station={station} warmKey={warmKey}>{children}</WarmStation>
       </Suspense>
     </BayBoundary>
   );
@@ -1733,7 +1944,7 @@ export function StationBundle({
  * one so the stream never stalls behind it.
  */
 class BayBoundary extends Component<
-  { station: number; children: ReactNode },
+  { station: number; warmKey: string; children: ReactNode },
   { failed: boolean }
 > {
   state = { failed: false };
@@ -1746,7 +1957,7 @@ class BayBoundary extends Component<
     console.warn(`[shop] bay ${this.props.station} failed to load — carrying on`, error);
     // Do not strand the queue behind a bay that will never arrive.
     openGate(this.props.station + 2);
-    reportWarm(String(this.props.station));
+    reportWarm(this.props.warmKey);
   }
 
   render() {
@@ -1874,7 +2085,15 @@ export function DetailCull({ target }: { target: React.RefObject<THREE.Object3D 
   return null;
 }
 
-function WarmStation({ station, children }: { station: number; children: ReactNode }) {
+function WarmStation({
+  station,
+  warmKey,
+  children,
+}: {
+  station: number;
+  warmKey: string;
+  children: ReactNode;
+}) {
   const group = useRef<THREE.Group>(null);
   const warm = useRef(false);
   const lights = useRef(0);
@@ -1911,7 +2130,7 @@ function WarmStation({ station, children }: { station: number; children: ReactNo
       await firstUse();
       if (dead) return;
       warm.current = true;
-      reportWarm(String(station));
+      reportWarm(warmKey);
       /* Two bays in flight on a phone, one on a desktop.
          The phone's warm is cheap — a bay compiles in a couple of hundred
          milliseconds through the lite composer — so the queue is bound by
@@ -1945,10 +2164,20 @@ function WarmStation({ station, children }: { station: number; children: ReactNo
     const firstUse = async () => {
       const node = group.current;
       if (!node) return;
+      /* Compile against the SAME total light count the live frame will use.
+         Without this, making the hidden bay visible for its oven pass added
+         its real drop lights on top of the full pad, creating a brand-new
+         6–7-light PBR variant that cost 2–4 seconds and was discarded the
+         moment the live compensation reduced the total back to five. */
+      setStationLights(String(station), lights.current);
       // Pay the bay's shaders through the composer now, in slices, while the
       // camera is still two stations away — rather than in one lump on the
       // frame the reader scrolls into it.
-      await warmThroughComposer(node, `station ${station}`, get());
+      try {
+        await warmThroughComposer(node, `station ${station}`, get());
+      } catch {
+        // The finally-equivalent state below must still restore the light pad.
+      }
       const near = Math.abs(stationAt(camera) - station) < drawSpan();
       node.visible = near;
       drawn.current = near;
@@ -1995,7 +2224,7 @@ function WarmStation({ station, children }: { station: number; children: ReactNo
       dead = true;
       window.clearTimeout(failsafe);
     };
-  }, [gl, camera, scene, station, get]);
+  }, [gl, camera, scene, station, warmKey, get]);
 
   useEffect(
     () => () => {
@@ -2081,10 +2310,28 @@ export function WarmScene({
 
   useEffect(() => {
     let dead = false;
+    const finalizer = async () => {
+      if (dead) throw new Error("shop warm scene unmounted before final frame");
+      await waitForReaderQuiet();
+      const root = get();
+      const started = performance.now();
+      // Two completed frames: the first allocates/initialises any private pass
+      // state the material compiler cannot see; the second proves the chain can
+      // consume that state and reach the canvas before the photo dissolves.
+      advance(performance.now(), true, root);
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      advance(performance.now(), true, root);
+      if (DEBUG) {
+        console.log(
+          `[shop] final full-composer verification ${Math.round(performance.now() - started)} ms`,
+        );
+      }
+    };
+    setWorldFinalizer(finalizer);
     const finish = () => {
       if (dead) return;
-      // Frames may start now: everything mounted is linked and uploaded.
-      markShellWarm();
+      // The shell is ready, but frames remain parked until every station has
+      // reported too. `reportWarm` owns the one honest transition to live.
       reportWarm("shell");
     };
 
@@ -2144,11 +2391,10 @@ export function WarmScene({
         finish();
       });
     }, 60);
-    const failsafe = window.setTimeout(finish, 9000);
     return () => {
       dead = true;
+      if (worldFinalizer === finalizer) setWorldFinalizer(null);
       window.clearTimeout(start);
-      window.clearTimeout(failsafe);
     };
   }, [gl, camera, scene, get, composer, target]);
 

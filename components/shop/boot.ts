@@ -10,13 +10,14 @@
 
      progress   0 → 1 across the opening download (the shell's textures and the
                 first two bays), reported by the loading manager.
-     warm       each compiled batch — the shell, station 0, station 1. Shader
+     warm       every compiled batch — the shell and all seven stations. Shader
                 linking is the single most expensive thing that happens on this
                 page, and it happens BEHIND the plate on purpose.
      ready      every one of the above is done: the door can roll up.
 
-   Nothing past station 1 is on this path. The rest of the shop streams in
-   behind the reader while the cold start plays, one bay at a time.
+   The bays still stream one at a time behind the photographic doorway; this
+   channel simply refuses to dissolve that photograph until the entire tour is
+   populated and first-used.
    ────────────────────────────────────────────────────────────────────────── */
 
 export type BootState = {

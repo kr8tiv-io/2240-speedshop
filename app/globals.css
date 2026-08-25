@@ -812,6 +812,32 @@ html[data-ui-overlay="menu"] .grain {
   .copy-plate > * {
     position: relative;
   }
+
+  /* Travel beats sit directly on the moving room. A narrow directional wash
+     keeps their two short lines readable on a phone without veiling the car or
+     turning the beat into a card. */
+  .wt-glide-copy {
+    position: relative;
+    isolation: isolate;
+    padding: 0.75rem 1rem 0.8rem 0;
+  }
+  .wt-glide-copy::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -0.65rem -2rem -0.65rem -1.25rem;
+    background: linear-gradient(
+      90deg,
+      rgba(10, 10, 11, 0.82) 0%,
+      rgba(10, 10, 11, 0.58) 52%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+  .wt-glide-copy p {
+    color: rgba(242, 240, 236, 0.78);
+    text-shadow: 0 0 10px rgba(10, 10, 11, 0.95);
+  }
 }
 .hud-rule > span {
   display: block;

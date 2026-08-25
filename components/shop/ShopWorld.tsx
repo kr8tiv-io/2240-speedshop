@@ -2247,7 +2247,7 @@ function SceneContents({
       </StationBundle>
 
       {/* The photographs arrive with the bay they hang in. */}
-      <StationBundle station={5}>
+      <StationBundle station={5} warmKey="5-gallery">
         <OfficeGallery />
       </StationBundle>
 

@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { WebGLBoundary } from "@/components/gl/WebGLBoundary";
 import {
   addMediaQueryChangeListener,
+  getHeroBootSnapshot,
+  subscribeHeroBoot,
 } from "@/components/home/hero-boot";
 import { useUIOverlay } from "@/components/ui-overlay";
 import { getBoot, markWorldSkipped, noteMotion, stillFor, subscribeBoot } from "./boot";
@@ -153,9 +155,13 @@ export function WalkthroughWorld() {
     let warmTimer = 0;
     let warmNear = false;
     let warmLatched = false;
+    let heroSettled = (() => {
+      const boot = getHeroBootSnapshot();
+      return boot.sceneReady || boot.failed;
+    })();
     const mountWhenIdle = () => {
       if (warmLatched || !warmNear) return;
-      if (stillFor() >= 900) {
+      if (heroSettled && stillFor() >= 900) {
         warmLatched = true;
         setMounted(true);
         warm.disconnect();
@@ -163,6 +169,14 @@ export function WalkthroughWorld() {
       }
       warmTimer = window.setTimeout(mountWhenIdle, 150);
     };
+    const unsubscribeHero = subscribeHeroBoot(() => {
+      const boot = getHeroBootSnapshot();
+      heroSettled = boot.sceneReady || boot.failed;
+      if (heroSettled && warmNear && !warmLatched) {
+        window.clearTimeout(warmTimer);
+        warmTimer = window.setTimeout(mountWhenIdle, 150);
+      }
+    });
     const warm = new IntersectionObserver(
       ([entry]) => {
         warmNear = entry.isIntersecting;
@@ -225,6 +239,7 @@ export function WalkthroughWorld() {
     observer.observe(runway);
 
     return () => {
+      unsubscribeHero();
       warm.disconnect();
       window.clearTimeout(warmTimer);
       draw.disconnect();
@@ -240,6 +255,7 @@ export function WalkthroughWorld() {
   return (
     <div
       ref={host}
+      data-shop-ready={worldReady ? "world" : "poster"}
       aria-hidden="true"
       role="presentation"
       className="pointer-events-none fixed inset-0 z-[5]"
