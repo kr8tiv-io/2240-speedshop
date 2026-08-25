@@ -237,6 +237,12 @@ async function auditMenu(page, size) {
       position: style.position,
       opacity: Number(style.opacity),
       visibility: style.visibility,
+      dialog: menu.getAttribute("role") === "dialog",
+      modal: menu.getAttribute("aria-modal") === "true",
+      overlay: document.documentElement.getAttribute("data-ui-overlay"),
+      shellInert: document.getElementById("site-shell")?.inert === true,
+      shellHidden: document.getElementById("site-shell")?.getAttribute("aria-hidden") === "true",
+      focusInside: menu.contains(document.activeElement),
     };
   });
   const alpha = colourAlpha(layer?.background);
@@ -253,7 +259,13 @@ async function auditMenu(page, size) {
     layer.visibility === "visible" &&
     layer.opacity >= 0.99 &&
     alpha >= 0.995 &&
-    layer.isolation === "isolate";
+    layer.isolation === "isolate" &&
+    layer.dialog &&
+    layer.modal &&
+    layer.overlay === "menu" &&
+    layer.shellInert &&
+    layer.shellHidden &&
+    layer.focusInside;
   check(
     size.name,
     "mobile menu is a viewport-covering opaque isolated layer",
@@ -261,6 +273,7 @@ async function auditMenu(page, size) {
     layer
       ? `rect ${layer.rect.left.toFixed(0)},${layer.rect.top.toFixed(0)}→${layer.rect.right.toFixed(0)},${layer.rect.bottom.toFixed(0)} ` +
           `vs ${layer.viewport.width}×${layer.viewport.height}; bg ${layer.background} (alpha ${alpha}); isolation ${layer.isolation}`
+          + `; dialog=${layer.dialog}/${layer.modal}; overlay=${layer.overlay}; shell inert=${layer.shellInert}; focus inside=${layer.focusInside}`
       : "#mobile-nav missing after trigger opened",
   );
 
@@ -284,8 +297,31 @@ async function auditMenu(page, size) {
     `overflow html=${before.htmlOverflow}, body=${before.bodyOverflow}; wheel delta moved scroll ${delta.toFixed(1)}px`,
   );
 
-  await page.click('button[aria-controls="mobile-nav"]').catch(() => {});
+  await page.keyboard.press("Escape");
   await sleep(350);
+  const restored = await page.evaluate(() => {
+    const toggle = document.querySelector('button[aria-controls="mobile-nav"]');
+    const shell = document.getElementById("site-shell");
+    return {
+      closed: toggle?.getAttribute("aria-expanded") === "false",
+      focusReturned: document.activeElement === toggle,
+      overlay: document.documentElement.getAttribute("data-ui-overlay"),
+      shellInert: shell?.inert === true,
+      shellHidden: shell?.getAttribute("aria-hidden"),
+      bodyPosition: document.body.style.position,
+    };
+  });
+  check(
+    size.name,
+    "Escape closes the modal and restores the page shell",
+    restored.closed &&
+      restored.focusReturned &&
+      restored.overlay === null &&
+      !restored.shellInert &&
+      restored.shellHidden === null &&
+      restored.bodyPosition !== "fixed",
+    `closed=${restored.closed}; focus returned=${restored.focusReturned}; overlay=${restored.overlay ?? "none"}; shell inert=${restored.shellInert}; shell aria-hidden=${restored.shellHidden ?? "none"}; body position=${restored.bodyPosition || "default"}`,
+  );
 }
 
 async function auditDesktopScroll(page) {
@@ -942,14 +978,19 @@ async function auditSize(browserContext, size) {
     const reachedExpectedAct = await page
       .waitForFunction(
         (expectedAct) => window.__film?.stage?.act === expectedAct,
-        { timeout: 4_000 },
+        { polling: 50, timeout: 4_000 },
         beat.expectedAct,
       )
       .then(() => true)
       .catch(() => false);
+    // A long shader task can complete at the same boundary as Puppeteer's
+    // timeout. Sample once more after the polling promise settles so an act
+    // that is demonstrably current is not reported as stale.
+    const actAtBoundary = await page.evaluate(() => window.__film?.stage?.act ?? null);
+    const observedExpectedAct = reachedExpectedAct || actAtBoundary === beat.expectedAct;
     // Preserve the original camera-damping settle after the act identity is
     // correct; identity prevents staleness, settle time keeps the edge honest.
-    if (reachedExpectedAct) await sleep(1_500);
+    if (observedExpectedAct) await sleep(1_500);
     const film = await page.evaluate(() => {
       const edge = window.__film?.edge;
       const act = window.__film?.stage?.act;
@@ -959,7 +1000,7 @@ async function auditSize(browserContext, size) {
         edge: Number.isFinite(edge) ? Number(edge) : null,
       };
     });
-    const actMatches = reachedExpectedAct && film.act === beat.expectedAct;
+    const actMatches = observedExpectedAct && film.act === beat.expectedAct;
     check(
       size.name,
       `${beat.name} publishes expected act index ${beat.expectedAct}`,
@@ -1025,9 +1066,16 @@ try {
       "--no-first-run",
     ],
   });
-  if (FOCUS !== "shop") await auditHeroBoot(browser);
+  if (FOCUS !== "shop" && !FOCUS.startsWith("phone")) await auditHeroBoot(browser);
   if (FOCUS !== "boot") {
-    const sizes = FOCUS === "desktop" || FOCUS === "shop" ? SIZES.slice(0, 1) : SIZES;
+    const sizes =
+      FOCUS === "desktop" || FOCUS === "shop"
+        ? SIZES.slice(0, 1)
+        : FOCUS === "mobile"
+          ? SIZES.filter((size) => size.mobile)
+          : FOCUS.startsWith("phone")
+            ? SIZES.filter((size) => size.name.toLowerCase() === FOCUS)
+          : SIZES;
     for (const size of sizes) {
       let browserContext;
       try {

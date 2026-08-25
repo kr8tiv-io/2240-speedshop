@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { WebGLBoundary } from "@/components/gl/WebGLBoundary";
 import { addMediaQueryChangeListener } from "@/components/home/hero-boot";
+import { useUIOverlay } from "@/components/ui-overlay";
 import { markWorldSkipped, noteMotion } from "./boot";
 import {
   RUNWAY_ID,
@@ -76,6 +77,7 @@ export function WalkthroughWorld() {
   /** True while the runway is within ~1 viewport: the only time frames are
       actually drawn. */
   const [active, setActive] = useState(false);
+  const uiOverlay = useUIOverlay();
   const host = useRef<HTMLDivElement>(null);
   const opacityWritten = useRef(-1);
 
@@ -224,7 +226,10 @@ export function WalkthroughWorld() {
       {/* The building. Mounted early (warm gate), drawn late (draw gate). */}
       {run && mounted ? (
         <WebGLBoundary onFailure={markWorldSkipped}>
-          <ShopWorld tier={verdict === "run-full" ? "full" : "lite"} active={active} />
+          <ShopWorld
+            tier={verdict === "run-full" ? "full" : "lite"}
+            active={active && uiOverlay === null}
+          />
         </WebGLBoundary>
       ) : null}
 

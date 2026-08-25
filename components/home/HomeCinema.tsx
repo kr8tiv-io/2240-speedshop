@@ -9,6 +9,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { site } from "@/lib/site";
 import { splitChars } from "@/lib/split";
+import { useUIOverlay } from "@/components/ui-overlay";
 import { Preloader } from "./Preloader";
 import type { Shot } from "./HeroScene";
 import { addMediaQueryChangeListener, resetHeroBoot } from "./hero-boot";
@@ -75,6 +76,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
   const [runtimeProfile, setRuntimeProfile] = useState<RuntimeProfile>(null);
   const [ready, setReady] = useState(false);
   const [heroActive, setHeroActive] = useState(true);
+  const uiOverlay = useUIOverlay();
   const flared = useRef(false);
   const motionEnabled =
     runtimeProfile !== null && !runtimeProfile.reduced && runtimeProfile.webgl2;
@@ -394,7 +396,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
           <LazyHeroRuntime
             shot={shot}
             mobile={runtimeProfile.mobile}
-            active={heroActive}
+            active={heroActive && uiOverlay === null}
           />
         ) : null}
       </div>

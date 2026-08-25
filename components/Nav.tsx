@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { site } from "@/lib/site";
 import { Roll } from "@/components/fx/Roll";
+import { setUIOverlay } from "@/components/ui-overlay";
 
 const links = [
   { href: "/services", label: "Services", n: "01" },
@@ -24,6 +25,8 @@ const links = [
 export function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -35,15 +38,96 @@ export function Nav() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.style.overflow = open ? "hidden" : "";
+    if (!open) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const shell = document.getElementById("site-shell");
+    const trigger = triggerRef.current;
+    const scrollY = window.scrollY;
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+      bodyOverscroll: body.style.overscrollBehavior,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      shellInert: shell?.inert ?? false,
+      shellAriaHidden: shell?.getAttribute("aria-hidden") ?? null,
+    };
+
+    setUIOverlay("menu");
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    // iOS Safari can keep moving an overflow-hidden root. Fix the body at the
+    // exact scroll offset and restore that offset when the modal closes.
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    if (shell) {
+      shell.inert = true;
+      shell.setAttribute("aria-hidden", "true");
+    }
+
+    const focusable = () =>
+      [...(panelRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [])].filter((element) => !element.hasAttribute("hidden"));
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) {
+        event.preventDefault();
+        panelRef.current?.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    const focusFrame = window.requestAnimationFrame(() => focusable()[0]?.focus());
+
     return () => {
-      document.documentElement.style.overflow = "";
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", onKeyDown);
+      html.style.overflow = previous.htmlOverflow;
+      html.style.overscrollBehavior = previous.htmlOverscroll;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.overscrollBehavior = previous.bodyOverscroll;
+      body.style.position = previous.bodyPosition;
+      body.style.top = previous.bodyTop;
+      body.style.width = previous.bodyWidth;
+      if (shell) {
+        shell.inert = previous.shellInert;
+        if (previous.shellAriaHidden === null) shell.removeAttribute("aria-hidden");
+        else shell.setAttribute("aria-hidden", previous.shellAriaHidden);
+      }
+      window.scrollTo(0, scrollY);
+      window.__lenis2240?.scrollTo(scrollY, { immediate: true, force: true });
+      setUIOverlay(null);
+      trigger?.focus({ preventScroll: true });
     };
   }, [open]);
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color] duration-500 ${
+      className={`fixed inset-x-0 top-0 z-[100] pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-500 ${
         scrolled || open
           ? "border-b border-bone/[0.07] bg-bay-black/90 backdrop-blur-md"
           : "border-b border-transparent bg-transparent"
@@ -89,12 +173,13 @@ export function Nav() {
         </nav>
 
         <button
+          ref={triggerRef}
           type="button"
           aria-expanded={open}
           aria-controls="mobile-nav"
           aria-label={open ? "Close menu" : "Open menu"}
           onClick={() => setOpen((v) => !v)}
-          className="flex h-10 w-10 flex-col items-center justify-center gap-[6px] lg:hidden"
+          className="flex h-12 w-12 flex-col items-center justify-center gap-[6px] rounded-full outline-none transition-colors hover:bg-bone/[0.06] focus-visible:ring-2 focus-visible:ring-tungsten focus-visible:ring-offset-2 focus-visible:ring-offset-bay-black lg:hidden"
         >
           <span
             className={`h-px w-6 bg-bone transition-transform duration-300 ${open ? "translate-y-[7px] rotate-45" : ""}`}
@@ -106,48 +191,76 @@ export function Nav() {
         </button>
       </div>
 
-      {/* Full-screen mobile panel — the menu is a room, not a dropdown. */}
-      <nav
-        id="mobile-nav"
-        aria-label="Mobile"
-        className={`fixed inset-0 top-[57px] flex flex-col justify-between bg-bay-black/97 px-6 pb-8 pt-10 backdrop-blur-lg transition-opacity duration-300 lg:hidden ${
-          open ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      >
-        <ul>
-          {links.map((l, i) => (
-            <li key={l.href} className="border-b border-rust/50">
-              <Link
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className="flex items-baseline gap-4 py-4"
-              >
-                <span className="font-mono text-[10px] text-tungsten/70">{l.n}</span>
-                <span
-                  className="font-display text-4xl uppercase leading-none tracking-wide text-bone"
-                  style={{ transitionDelay: `${i * 30}ms` }}
-                >
-                  {l.label}
+      {/* Full-screen mobile panel — an isolated room, never a transparent dropdown. */}
+      {open ? (
+        <div
+          ref={panelRef}
+          id="mobile-nav"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Main navigation"
+          tabIndex={-1}
+          className="mobile-menu-panel fixed inset-0 z-[110] isolate min-h-screen h-[100dvh] overflow-y-auto bg-[#070708] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] outline-none lg:hidden"
+        >
+          <div className="mx-auto flex min-h-full w-full max-w-[42rem] flex-col">
+            <div className="flex min-h-16 items-center justify-between border-b border-bone/10">
+              <Link href="/" onClick={() => setOpen(false)} className="flex min-h-12 items-center">
+                <span className="font-display text-[26px] leading-none tracking-[0.02em] text-bone">2240</span>
+                <span className="ml-3 font-mono text-[9px] uppercase tracking-[0.24em] text-steel">
+                  Edmonton AB
                 </span>
               </Link>
-            </li>
-          ))}
-        </ul>
+              <button
+                type="button"
+                aria-label="Close menu"
+                onClick={() => setOpen(false)}
+                className="relative flex h-12 w-12 items-center justify-center rounded-full outline-none hover:bg-bone/[0.06] focus-visible:ring-2 focus-visible:ring-tungsten"
+              >
+                <span className="absolute h-px w-6 rotate-45 bg-bone" />
+                <span className="absolute h-px w-6 -rotate-45 bg-bone" />
+              </button>
+            </div>
 
-        <div className="space-y-4">
-          <div className="flex gap-3">
-            <Link href="/quote" onClick={() => setOpen(false)} className="cta flex-1 text-center">
-              Start your build
-            </Link>
-            <a href={`tel:${site.phone}`} className="cta cta-ghost flex-1 text-center">
-              Call the shop
-            </a>
+            <nav aria-label="Mobile" className="flex-1 py-2 min-[380px]:py-4">
+              <ul>
+                {links.map((link, index) => (
+                  <li key={link.href} className="border-b border-rust/50">
+                    <Link
+                      href={link.href}
+                      onClick={() => setOpen(false)}
+                      className="mobile-menu-link flex min-h-12 items-center gap-4 py-2.5 outline-none focus-visible:bg-bone/[0.05]"
+                      style={{ animationDelay: `${index * 28}ms` }}
+                    >
+                      <span className="w-5 font-mono text-[9px] text-tungsten/75">{link.n}</span>
+                      <span className="font-display text-[clamp(1.75rem,8.5vw,2.5rem)] uppercase leading-none tracking-[0.035em] text-bone">
+                        {link.label}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            <div className="space-y-3 border-t border-bone/10 pt-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Link href="/quote" onClick={() => setOpen(false)} className="cta min-h-12 text-center">
+                  Start your build
+                </Link>
+                <a
+                  href={`tel:${site.phone}`}
+                  onClick={() => setOpen(false)}
+                  className="cta cta-ghost min-h-12 text-center"
+                >
+                  Call the shop
+                </a>
+              </div>
+              <p className="corner-note pb-1">
+                {site.street} · {site.city} {site.region} · Mon–Fri 9–5
+              </p>
+            </div>
           </div>
-          <p className="corner-note">
-            {site.street} · {site.city} {site.region} · Mon–Fri 9–5
-          </p>
         </div>
-      </nav>
+      ) : null}
     </header>
   );
 }

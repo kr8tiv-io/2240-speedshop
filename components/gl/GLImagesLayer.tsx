@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useUIOverlay } from "@/components/ui-overlay";
 import { getImageEntries, subscribeImages } from "./registry";
 
 const LazyGLImagesRuntime = dynamic(
@@ -17,14 +18,18 @@ export function GLImagesLayer() {
   const [enabled, setEnabled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [active, setActive] = useState(false);
+  const uiOverlay = useUIOverlay();
 
   useEffect(() => {
-    const fine = window.matchMedia("(pointer: fine)").matches;
-    const wide = window.matchMedia("(min-width: 1024px)").matches;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
-    const lowEnd = memory !== undefined && memory <= 4;
-    if (fine && wide && !reduced && !lowEnd) setEnabled(true);
+    const frame = window.requestAnimationFrame(() => {
+      const fine = window.matchMedia("(pointer: fine)").matches;
+      const wide = window.matchMedia("(min-width: 1024px)").matches;
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+      const lowEnd = memory !== undefined && memory <= 4;
+      if (fine && wide && !reduced && !lowEnd) setEnabled(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
@@ -64,7 +69,12 @@ export function GLImagesLayer() {
   }, [enabled]);
 
   if (!enabled || !mounted) return null;
-  return <LazyGLImagesRuntime active={active} onContextLost={() => setEnabled(false)} />;
+  return (
+    <LazyGLImagesRuntime
+      active={active && uiOverlay === null}
+      onContextLost={() => setEnabled(false)}
+    />
+  );
 }
 
 export default GLImagesLayer;

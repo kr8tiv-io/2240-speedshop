@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Anton, Archivo, Bodoni_Moda, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { site } from "@/lib/site";
@@ -60,6 +60,13 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#070708",
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
@@ -82,12 +89,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
         <SmoothScroll>
           <Nav />
-          {/* Clearance for the fixed nav; the homepage film pulls itself back
-              up with a negative margin so the canvas stays full-bleed. */}
-          <main id="main" className="relative flex-1 pt-[76px]">
-            {children}
-          </main>
-          <Footer />
+          <div id="site-shell" className="contents">
+            {/* Clearance for the fixed nav; the homepage film pulls itself back
+                up with a negative margin so the canvas stays full-bleed. */}
+            <main id="main" className="relative flex-1 pt-[76px]">
+              {children}
+            </main>
+            <Footer />
+          </div>
         </SmoothScroll>
 
         {/* ONE shared WebGL canvas for the whole site: DOM-synced image

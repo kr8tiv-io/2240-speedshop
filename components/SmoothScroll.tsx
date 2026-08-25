@@ -5,6 +5,7 @@ import Lenis from "lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { addMediaQueryChangeListener } from "@/components/home/hero-boot";
+import { getUIOverlay, subscribeUIOverlay } from "@/components/ui-overlay";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -31,6 +32,12 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
 
     let lenis: Lenis | null = null;
     let onTick: ((time: number) => void) | null = null;
+
+    const syncOverlay = () => {
+      if (!lenis) return;
+      if (getUIOverlay()) lenis.stop();
+      else lenis.start();
+    };
 
     const start = () => {
       if (lenis) return;
@@ -59,6 +66,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       };
       gsap.ticker.add(onTick);
       gsap.ticker.lagSmoothing(0);
+      syncOverlay();
     };
 
     const stop = () => {
@@ -78,8 +86,10 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
     };
 
     const removePreferenceListener = addMediaQueryChangeListener(query, onPreferenceChange);
+    const removeOverlayListener = subscribeUIOverlay(syncOverlay);
     return () => {
       removePreferenceListener();
+      removeOverlayListener();
       stop();
     };
   }, []);
