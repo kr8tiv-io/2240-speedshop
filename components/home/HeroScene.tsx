@@ -525,7 +525,11 @@ function ActStage({
   rich: boolean;
   shot: Shot;
 }) {
-  const { scene } = useGLTF(act.url, DRACO);
+  const { scene: sourceScene } = useGLTF(act.url, DRACO);
+  /* drei caches the GLTF root across route visits. Material replacement and
+     matrix freezing belong to this mount, so own a fresh object graph while
+     continuing to share the immutable geometry buffers underneath it. */
+  const scene = useMemo(() => sourceScene.clone(true), [sourceScene]);
   const group = useRef<THREE.Group>(null);
   const ghostRef = useRef<THREE.Group>(null);
   const cloudRef = useRef<THREE.Points>(null);
@@ -892,6 +896,7 @@ function ActStage({
       built.geometry.dispose();
       built.cloudMaterial.dispose();
       built.ghostMaterial.dispose();
+      for (const material of built.dissMats) material.dispose();
     },
     [built],
   );

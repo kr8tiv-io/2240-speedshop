@@ -19,6 +19,8 @@
     "test:hero-model-version": "node scripts/hero-model-version-contract.mjs",
     "audit:export-hero": "node scripts/export-hero-check.mjs",
     "serve:export": "node scripts/serve-export.mjs",
+    "test:hero-scene-ownership": "node scripts/hero-scene-ownership-contract.mjs",
+    "audit:hero-remount": "node scripts/hero-remount-check.mjs",
     "shots:combined": "node scripts/combined-shots.js"
   },
   "dependencies": {
