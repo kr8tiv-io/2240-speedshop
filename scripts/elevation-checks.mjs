@@ -333,34 +333,64 @@ async function auditSize(browserContext, size) {
     window.__elevationWebGLErrors = [];
     window.__elevationPreloader = {
       seen: false,
-      normalReady: false,
+      sceneReady: false,
       readyReason: null,
       domState: null,
       emergency: false,
+      emergencyReason: null,
+      inlineEscape: false,
+      cssDeadManFired: false,
+      goneObserved: false,
+      genericGone: false,
       removed: false,
-      removedAfterNormalReady: false,
+      removedAfterScene: false,
+      goneAfterScene: false,
     };
 
     /* A computed opacity of zero proves only that the CSS dead-man timer ran.
-       Record explicit runtime provenance instead. A normal handoff must expose
-       data-ready-reason="scene" or data-state="gone" before the veil leaves;
-       timeout / escape / emergency markers explicitly invalidate readiness. */
+       Record explicit runtime provenance instead. ONLY data-ready-reason=
+       "scene" establishes a normal origin; data-state="gone" or DOM removal
+       can confirm clearance only after that origin. Emergency is monotonic. */
     const preloaderSelector = ".preloader-veil, [data-preloader]";
     const instrumentation = window.__elevationPreloader;
     const isEmergency = (value) =>
       /(?:emergency|escape|timeout|hard[-_ ]?cap|css|dead[-_ ]?man)/i.test(value || "");
-    const inspectPreloader = (veil) => {
+    const markEmergency = (reason) => {
+      if (!instrumentation.emergencyReason) instrumentation.emergencyReason = reason;
+      instrumentation.emergency = true;
+    };
+    const inspectPreloader = (veil, changedAttribute = null) => {
       instrumentation.seen = true;
-      const reason = (veil.getAttribute("data-ready-reason") || "").trim().toLowerCase();
-      const domState = (veil.getAttribute("data-state") || "").trim().toLowerCase();
-      if (reason) instrumentation.readyReason = reason;
-      if (domState) instrumentation.domState = domState;
-      if (isEmergency(reason) || isEmergency(domState)) {
-        instrumentation.emergency = true;
-        instrumentation.normalReady = false;
-        return;
+      if (changedAttribute === null || changedAttribute === "data-ready-reason") {
+        const reason = (veil.getAttribute("data-ready-reason") || "").trim().toLowerCase();
+        if (reason) instrumentation.readyReason = reason;
+        if (isEmergency(reason)) markEmergency(`marker:${reason}`);
+        // Once an emergency was observed, a late scene marker cannot rewrite
+        // history and turn the emergency path into a normal handoff.
+        if (reason === "scene" && !instrumentation.emergency) {
+          instrumentation.sceneReady = true;
+        }
       }
-      if (reason === "scene" || domState === "gone") instrumentation.normalReady = true;
+      if (changedAttribute === null || changedAttribute === "data-state") {
+        const domState = (veil.getAttribute("data-state") || "").trim().toLowerCase();
+        if (domState) instrumentation.domState = domState;
+        if (isEmergency(domState)) markEmergency(`marker:${domState}`);
+        if (domState === "gone" && !instrumentation.goneObserved) {
+          instrumentation.goneObserved = true;
+          if (instrumentation.sceneReady && !instrumentation.emergency) {
+            instrumentation.goneAfterScene = true;
+          } else {
+            instrumentation.genericGone = true;
+          }
+        }
+      }
+      if (
+        (changedAttribute === null || changedAttribute === "style") &&
+        veil.style.display === "none"
+      ) {
+        instrumentation.inlineEscape = true;
+        markEmergency("inline-display-none");
+      }
     };
     const visitPreloaders = (node, removed = false) => {
       if (!(node instanceof Element)) return;
@@ -372,15 +402,25 @@ async function auditSize(browserContext, size) {
         inspectPreloader(veil);
         if (removed) {
           instrumentation.removed = true;
-          if (instrumentation.normalReady && !instrumentation.emergency) {
-            instrumentation.removedAfterNormalReady = true;
+          if (
+            instrumentation.sceneReady &&
+            !instrumentation.emergency &&
+            !instrumentation.genericGone
+          ) {
+            instrumentation.removedAfterScene = true;
           }
         }
       }
     };
     const preloaderObserver = new MutationObserver((records) => {
       for (const record of records) {
-        if (record.type === "attributes") inspectPreloader(record.target);
+        if (
+          record.type === "attributes" &&
+          record.target instanceof Element &&
+          record.target.matches(preloaderSelector)
+        ) {
+          inspectPreloader(record.target, record.attributeName);
+        }
         for (const node of record.addedNodes) visitPreloaders(node);
         for (const node of record.removedNodes) visitPreloaders(node, true);
       }
@@ -389,9 +429,30 @@ async function auditSize(browserContext, size) {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-ready-reason", "data-state"],
+      attributeFilter: ["data-ready-reason", "data-state", "style"],
     });
     if (document.documentElement) visitPreloaders(document.documentElement);
+
+    // globals.css attaches this exact animation to `.preloader-veil` as the
+    // 6.5 s CSS dead-man. If it fires before scene provenance, the visit was
+    // already an emergency; a later scene marker must never rehabilitate it.
+    document.addEventListener(
+      "animationstart",
+      (event) => {
+        const veil = event.target;
+        if (
+          veil instanceof Element &&
+          veil.matches(preloaderSelector) &&
+          event.animationName === "preloader-failsafe"
+        ) {
+          instrumentation.cssDeadManFired = true;
+          if (!instrumentation.sceneReady) {
+            markEmergency("css-animation:preloader-failsafe");
+          }
+        }
+      },
+      true,
+    );
 
     window.addEventListener(
       "webglcontextlost",
@@ -417,32 +478,16 @@ async function auditSize(browserContext, size) {
     .waitForFunction(
       () => {
         const state = window.__elevationPreloader;
-        return !!state &&
-          !state.emergency &&
-          (state.normalReady || state.removedAfterNormalReady);
+        if (!state) return false;
+        const sceneCleared =
+          state.sceneReady && (state.goneAfterScene || state.removedAfterScene);
+        return !state.emergency && sceneCleared;
       },
       { timeout: budgetRemaining },
     )
     .then(() => true)
     .catch(() => false);
   const preloaderElapsed = Date.now() - navigationStarted;
-  const preloaderState = await page.evaluate(() => {
-    const state = window.__elevationPreloader;
-    return state ? { ...state } : null;
-  });
-  check(
-    size.name,
-    `preloader reports normal scene readiness within ${PRELOADER_BUDGET_MS}ms`,
-    preloaderReady &&
-      !!preloaderState &&
-      !preloaderState.emergency &&
-      preloaderElapsed <= PRELOADER_BUDGET_MS + 50,
-    preloaderReady
-      ? `normal marker after ${preloaderElapsed}ms; reason=${preloaderState?.readyReason || "none"}, state=${preloaderState?.domState || "none"}, removed=${preloaderState?.removed || false}`
-      : preloaderState
-        ? `no explicit normal-ready marker by ${preloaderElapsed}ms; seen=${preloaderState.seen}, removed=${preloaderState.removed}, reason=${preloaderState.readyReason || "none"}, state=${preloaderState.domState || "none"}, emergency=${preloaderState.emergency}`
-        : `preloader readiness instrumentation missing at ${preloaderElapsed}ms`,
-  );
   // Budget already decided from explicit provenance above. Wait separately
   // for React to remove the node or for the imperative emergency escape to
   // set inline display:none, so the preloader's scroll lock cannot make later
@@ -451,6 +496,8 @@ async function auditSize(browserContext, size) {
   await page
     .waitForFunction(
       () => {
+        const state = window.__elevationPreloader;
+        if (state?.sceneReady && !state.emergency && state.goneAfterScene) return true;
         const veil = document.querySelector(".preloader-veil, [data-preloader]");
         if (!veil) return true;
         return veil.style.display === "none";
@@ -458,6 +505,33 @@ async function auditSize(browserContext, size) {
       { timeout: remaining },
     )
     .catch(() => {});
+  const preloaderState = await page.evaluate(() => {
+    const state = window.__elevationPreloader;
+    if (!state) return null;
+    // MutationObserver normally records this first. Repeat synchronously so
+    // an inline escape and this DevTools poll cannot race by one microtask.
+    const veil = document.querySelector(".preloader-veil, [data-preloader]");
+    if (veil?.style.display === "none") {
+      state.inlineEscape = true;
+      state.emergency = true;
+      state.emergencyReason ||= "inline-display-none";
+    }
+    return { ...state };
+  });
+  const normalSceneClearance =
+    !!preloaderState &&
+    preloaderState.sceneReady &&
+    (preloaderState.goneAfterScene || preloaderState.removedAfterScene) &&
+    !preloaderState.genericGone &&
+    !preloaderState.emergency;
+  check(
+    size.name,
+    `preloader proves scene-ready clearance within ${PRELOADER_BUDGET_MS}ms`,
+    preloaderReady && normalSceneClearance && preloaderElapsed <= PRELOADER_BUDGET_MS + 50,
+    preloaderState
+      ? `elapsed=${preloaderElapsed}ms; scene=${preloaderState.sceneReady}, gone-after-scene=${preloaderState.goneAfterScene}, removed-after-scene=${preloaderState.removedAfterScene}, generic-gone=${preloaderState.genericGone}, emergency=${preloaderState.emergency}${preloaderState.emergencyReason ? ` (${preloaderState.emergencyReason})` : ""}`
+      : `preloader readiness instrumentation missing at ${preloaderElapsed}ms`,
+  );
   await sleep(450);
   await seek(page, "[data-runway-a]", 0);
   await sleep(250);
