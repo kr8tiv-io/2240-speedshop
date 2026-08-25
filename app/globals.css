@@ -807,10 +807,10 @@ body {
 /* ─────────────────────────────────────────────────────────────────────────────
    PRELOADER DEAD-MAN FAILSAFE — pure CSS, no JS required.
    The preloader overlay ships in the static HTML; if the app never hydrates
-   (hung chunk through a bad tunnel), this animation lifts the veil at ~6.5 s
-   all by itself. In every healthy path React removes the node long before the
-   delay expires, so this never shows. Keep the delay ABOVE the worst healthy
-   path (4 s wall-clock cap + 1.3 s flicker + 0.6 s exit ≈ 5.9 s).
+   (hung chunk through a bad tunnel), this animation lifts the veil at 19 s
+   all by itself. In every hydrated path the 14 s hard cap plus 1.9 s branded
+   handoff finishes first, and the raw-DOM escape fires at 18 s if React is
+   wedged. The later CSS path exists only when neither JavaScript backstop can.
    ──────────────────────────────────────────────────────────────────────────── */
 @keyframes preloader-failsafe {
   to {
@@ -819,7 +819,7 @@ body {
   }
 }
 .preloader-veil {
-  animation: preloader-failsafe 0.5s ease 6.5s forwards;
+  animation: preloader-failsafe 0.5s ease 19s forwards;
 }
 
 /* Same dead-man for the route veil (app/template.tsx). Its SSR markup ships in
@@ -1282,4 +1282,3 @@ body {
 .journal-illo > .grain {
   position: absolute;
 }
-

@@ -86,7 +86,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
   useLayoutEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const phone = window.matchMedia("(max-width: 767px)");
-    let previousKey: string | null = null;
+    let previousProfile: Exclude<RuntimeProfile, null> | null = null;
 
     const decide = () => {
       const next = {
@@ -97,9 +97,20 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
         webgl2: motion.matches ? false : supportsWebGL2(),
       };
       const key = `${Number(next.mobile)}${Number(next.reduced)}${Number(next.webgl2)}`;
+      const previousKey = previousProfile
+        ? `${Number(previousProfile.mobile)}${Number(previousProfile.reduced)}${Number(previousProfile.webgl2)}`
+        : null;
       if (key === previousKey) return;
-      previousKey = key;
-      resetHeroBoot();
+      const previouslyRunning =
+        previousProfile !== null && !previousProfile.reduced && previousProfile.webgl2;
+      const willRun = !next.reduced && next.webgl2;
+      // Reset only when this decision will create a new heavy runtime. A live
+      // runtime survives the 767px breakpoint and owns monotonic load/compile
+      // state across that prop change.
+      if (previousProfile === null || (!previouslyRunning && willRun)) {
+        resetHeroBoot();
+      }
+      previousProfile = next;
       setRuntimeProfile(next);
     };
 

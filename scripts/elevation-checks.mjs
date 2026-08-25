@@ -25,6 +25,7 @@ const EDITORIAL_NEAR_PX = 280;
 const MAX_CANVASES = 2;
 const MAX_CAR_EDGE = 1;
 const MAX_RAF_GAP_MS = 250;
+const HERO_RUNTIME_CHUNK_MARKER = "2240-hero-runtime-chunk";
 
 const SIZES = [
   { name: "desktop", width: 1440, height: 900, dsf: 1 },
@@ -72,6 +73,37 @@ function percentile(values, fraction) {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))];
+}
+
+async function inspectRequestedJavaScript(requestUrls) {
+  const urls = [...new Set(requestUrls)].filter((requestUrl) => {
+    try {
+      return /\.js$/i.test(new globalThis.URL(requestUrl).pathname);
+    } catch {
+      return /\.js(?:[?#]|$)/i.test(requestUrl);
+    }
+  });
+  const inspected = await Promise.all(
+    urls.map(async (requestUrl) => {
+      try {
+        const response = await fetch(requestUrl, { signal: AbortSignal.timeout(15_000) });
+        if (!response.ok) return { requestUrl, error: `HTTP ${response.status}` };
+        const source = await response.text();
+        const hero =
+          source.includes(HERO_RUNTIME_CHUNK_MARKER) ||
+          source.includes("/models/hero/challenger.glb") ||
+          source.includes("data-hero-runtime");
+        return { requestUrl, hero };
+      } catch (error) {
+        return { requestUrl, error: error.message };
+      }
+    }),
+  );
+  return {
+    requested: urls,
+    hero: inspected.filter((entry) => entry.hero).map((entry) => entry.requestUrl),
+    failed: inspected.filter((entry) => entry.error),
+  };
 }
 
 async function seek(page, selector, progress) {
@@ -313,10 +345,12 @@ async function auditHeroBoot(browser) {
     { name: "boot-phone390", reduced: false },
     { name: "boot-reduced390", reduced: true },
   ];
+  let knownHeroRuntimeScripts = [];
 
   for (const scenario of scenarios) {
     let browserContext;
     let page;
+    let releaseHeldHeroRequest = null;
     try {
       browserContext = await browser.createBrowserContext();
       page = await browserContext.newPage();
@@ -338,6 +372,15 @@ async function auditHeroBoot(browser) {
       const pageErrors = [];
       const hydrationErrors = [];
       const requests = [];
+      let heldHeroRequestSeen = false;
+      let signalHeldHeroRequest;
+      const heldHeroRequestReady = new Promise((resolve) => {
+        signalHeldHeroRequest = resolve;
+      });
+      let releaseHeldRequest;
+      const heldRequestReleased = new Promise((resolve) => {
+        releaseHeldRequest = resolve;
+      });
       page.on("pageerror", (error) => pageErrors.push(error.message));
       page.on("console", (message) => {
         const value = message.text();
@@ -348,7 +391,22 @@ async function auditHeroBoot(browser) {
           hydrationErrors.push(value);
         }
       });
-      page.on("request", (request) => requests.push(request.url()));
+      if (!scenario.reduced) await page.setRequestInterception(true);
+      page.on("request", async (request) => {
+        requests.push(request.url());
+        if (!scenario.reduced) {
+          const hold =
+            !heldHeroRequestSeen &&
+            /\/models\/hero(?:-[^/]+)?\/charger\.glb(?:[?#]|$)/i.test(request.url());
+          if (hold) {
+            heldHeroRequestSeen = true;
+            signalHeldHeroRequest();
+            releaseHeldHeroRequest = releaseHeldRequest;
+            await heldRequestReleased;
+          }
+          await request.continue().catch(() => {});
+        }
+      });
 
       await page.evaluateOnNewDocument(() => {
         window.__elevationHeroBoot = { firstProfile: null, mounts: [] };
@@ -390,6 +448,59 @@ async function auditHeroBoot(browser) {
             { timeout: 15_000 },
           )
           .catch(() => {});
+
+        const held = await Promise.race([
+          heldHeroRequestReady.then(() => true),
+          sleep(8_000).then(() => false),
+        ]);
+        const beforeResize = await page.evaluate(() => {
+          const preloader = document.querySelector("[data-preloader]");
+          const progress = preloader?.getAttribute("data-progress");
+          const generation = preloader?.getAttribute("data-boot-generation");
+          return {
+            progress: progress === null || progress === undefined ? null : Number(progress),
+            generation:
+              generation === null || generation === undefined ? null : Number(generation),
+          };
+        });
+        await page.setViewport({
+          width: 900,
+          height: 844,
+          deviceScaleFactor: 1,
+          isMobile: true,
+          hasTouch: true,
+        });
+        await page
+          .waitForFunction(
+            () =>
+              document.querySelector("[data-hero-runtime]")?.getAttribute("data-runtime-profile") ===
+              "desktop",
+            { timeout: 4_000 },
+          )
+          .catch(() => {});
+        await sleep(250);
+        const afterResize = await page.evaluate(() => {
+          const preloader = document.querySelector("[data-preloader]");
+          const progress = preloader?.getAttribute("data-progress");
+          const generation = preloader?.getAttribute("data-boot-generation");
+          return {
+            progress: progress === null || progress === undefined ? null : Number(progress),
+            generation:
+              generation === null || generation === undefined ? null : Number(generation),
+          };
+        });
+        check(
+          scenario.name,
+          "active mobile-breakpoint resize preserves in-flight hero readiness",
+          held &&
+            Number.isFinite(beforeResize.progress) &&
+            Number.isFinite(afterResize.progress) &&
+            Number.isFinite(beforeResize.generation) &&
+            beforeResize.generation === afterResize.generation &&
+            afterResize.progress >= beforeResize.progress,
+          `held charger=${held}; generation ${beforeResize.generation ?? "missing"}→${afterResize.generation ?? "missing"}; progress ${beforeResize.progress ?? "missing"}→${afterResize.progress ?? "missing"}`,
+        );
+        releaseHeldHeroRequest?.();
       }
 
       const state = await page.evaluate(() => ({
@@ -408,6 +519,7 @@ async function auditHeroBoot(browser) {
           return /\/models\/hero(?:-[^/]+)?\/[^?#]+\.glb(?:[?#]|$)/i.test(requestUrl);
         }
       });
+      const scripts = await inspectRequestedJavaScript(requests);
 
       if (scenario.reduced) {
         check(
@@ -431,6 +543,19 @@ async function auditHeroBoot(browser) {
           bootErrors.length === 0,
           bootErrors.length ? `${bootErrors.length} error(s): ${bootErrors.join(" | ")}` : "0 errors",
         );
+        const knownRequested = knownHeroRuntimeScripts.filter((known) =>
+          scripts.requested.includes(known),
+        );
+        check(
+          scenario.name,
+          "reduced motion never requests the HeroRuntime JavaScript chunk",
+          knownHeroRuntimeScripts.length > 0 &&
+            scripts.hero.length === 0 &&
+            knownRequested.length === 0,
+          knownHeroRuntimeScripts.length === 0
+            ? `hero chunk diagnostics unavailable; inspected ${scripts.requested.length} reduced JS response(s)`
+            : `known hero chunk(s) ${knownHeroRuntimeScripts.join(", ")}; reduced marker hits ${scripts.hero.length}; direct URL hits ${knownRequested.length}; ${scripts.failed.length} JS inspection failure(s)`,
+        );
       } else {
         check(
           scenario.name,
@@ -438,12 +563,22 @@ async function auditHeroBoot(browser) {
           state.firstProfile === "mobile" && state.runtimeCanvasCount === 1,
           `first profile ${state.firstProfile ?? "missing"}; mounts ${JSON.stringify(state.mounts)}; runtime canvases ${state.runtimeCanvasCount}`,
         );
+        knownHeroRuntimeScripts = scripts.hero;
+        check(
+          scenario.name,
+          "HeroRuntime JavaScript chunk diagnostics resolve dynamically",
+          knownHeroRuntimeScripts.length > 0,
+          knownHeroRuntimeScripts.length
+            ? `${knownHeroRuntimeScripts.length} hero-marked JS response(s): ${knownHeroRuntimeScripts.join(", ")}`
+            : `no hero marker in ${scripts.requested.length} inspected JS response(s); ${scripts.failed.length} inspection failure(s)`,
+        );
       }
     } catch (error) {
       const message = `${scenario.name} · boot audit execution — ${error.stack || error.message}`;
       failures.push(message);
       console.error(`FAIL ${message}`);
     } finally {
+      releaseHeldHeroRequest?.();
       await page?.close().catch(() => {});
       await browserContext?.close().catch(() => {});
     }
@@ -584,7 +719,7 @@ async function auditSize(browserContext, size) {
     if (document.documentElement) visitPreloaders(document.documentElement);
 
     // globals.css attaches this exact animation to `.preloader-veil` as the
-    // 6.5 s CSS dead-man. If it starts on an existing veil, the fallback has
+    // final 19 s CSS dead-man. If it starts on an existing veil, the fallback has
     // visibly taken control: always mark emergency. A healthy scene-ready path
     // must cancel/disable this animation before it starts, then finish its own
     // exit; an earlier scene marker does not excuse a fallback-owned exit.

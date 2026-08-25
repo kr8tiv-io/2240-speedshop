@@ -15,6 +15,7 @@ const INITIAL_SNAPSHOT: HeroBootSnapshot = Object.freeze({
 });
 
 let snapshot = INITIAL_SNAPSHOT;
+let resetGeneration = 0;
 const listeners = new Set<() => void>();
 
 export function getHeroBootSnapshot() {
@@ -26,12 +27,18 @@ export function subscribeHeroBoot(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
+/** Test/tuning provenance: changes only when a new runtime boot is declared. */
+export function getHeroBootGeneration() {
+  return resetGeneration;
+}
+
 function emit() {
   for (const listener of listeners) listener();
 }
 
 /** Reset before a newly selected renderer profile is allowed to mount. */
 export function resetHeroBoot() {
+  resetGeneration += 1;
   if (snapshot === INITIAL_SNAPSHOT) return;
   snapshot = INITIAL_SNAPSHOT;
   emit();

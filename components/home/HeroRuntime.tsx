@@ -30,6 +30,7 @@ export function HeroRuntime({
     <div
       data-hero-runtime
       data-runtime-profile={mobile ? "mobile" : "desktop"}
+      data-runtime-chunk="2240-hero-runtime-chunk"
       className="absolute inset-0 h-full w-full"
     >
       <HeroProgressBridge />

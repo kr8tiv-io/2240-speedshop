@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/Logo";
-import { useHeroBootSnapshot } from "./hero-boot";
+import { getHeroBootGeneration, useHeroBootSnapshot } from "./hero-boot";
 
 /**
  * A lightweight brand plate in front of the lazy Three runtime. Progress and
@@ -121,6 +121,8 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
       data-preloader
       data-state={state}
       data-ready-reason={loader.reason ?? undefined}
+      data-progress={Math.round(boot.progress)}
+      data-boot-generation={getHeroBootGeneration()}
       className={`preloader-veil fixed inset-0 z-[80] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[600ms] ease-out ${
         loader.phase === "exit" ? "-translate-y-6 opacity-0" : ""
       }`}
