@@ -434,8 +434,10 @@ async function auditSize(browserContext, size) {
     if (document.documentElement) visitPreloaders(document.documentElement);
 
     // globals.css attaches this exact animation to `.preloader-veil` as the
-    // 6.5 s CSS dead-man. If it fires before scene provenance, the visit was
-    // already an emergency; a later scene marker must never rehabilitate it.
+    // 6.5 s CSS dead-man. If it starts on an existing veil, the fallback has
+    // visibly taken control: always mark emergency. A healthy scene-ready path
+    // must cancel/disable this animation before it starts, then finish its own
+    // exit; an earlier scene marker does not excuse a fallback-owned exit.
     document.addEventListener(
       "animationstart",
       (event) => {
@@ -446,9 +448,7 @@ async function auditSize(browserContext, size) {
           event.animationName === "preloader-failsafe"
         ) {
           instrumentation.cssDeadManFired = true;
-          if (!instrumentation.sceneReady) {
-            markEmergency("css-animation:preloader-failsafe");
-          }
+          markEmergency("css-animation:preloader-failsafe");
         }
       },
       true,
