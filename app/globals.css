@@ -61,9 +61,14 @@ body {
    ──────────────────────────────────────────────────────────────────────────── */
 .grain {
   position: fixed;
-  inset: -50%;
-  width: 200%;
-  height: 200%;
+  /* The old 200% square allocated four viewports of blend surface (roughly
+     45 MiB at iPhone DPR3) even though the largest visual shift is 2.4vw.
+     Twelve percent overscan covers that exact movement with a wide safety
+     margin. The turbulence, density, blend, opacity, cadence, and absolute
+     pixel travel below are unchanged. */
+  inset: -12%;
+  width: 124%;
+  height: 124%;
   z-index: 60;
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
@@ -75,9 +80,11 @@ body {
 
 @keyframes grain-shift {
   0% { transform: translate(0, 0); }
-  25% { transform: translate(-1.2%, 0.8%); }
-  50% { transform: translate(0.9%, -1.1%); }
-  75% { transform: translate(-0.6%, -0.5%); }
+  /* Percentages scale with the smaller 124% surface: e.g. 1.94% × 124%
+     equals the old 1.2% × 200%, so the visible grain jumps the same pixels. */
+  25% { transform: translate(-1.94%, 1.29%); }
+  50% { transform: translate(1.45%, -1.77%); }
+  75% { transform: translate(-0.97%, -0.81%); }
   100% { transform: translate(0, 0); }
 }
 

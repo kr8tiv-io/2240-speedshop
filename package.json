@@ -15,6 +15,7 @@
     "test:mobile-menu": "node scripts/mobile-menu-contract.mjs",
     "test:hero-runtime": "node scripts/hero-runtime-contract.mjs",
     "test:home-copy": "node scripts/home-copy-contract.mjs",
+    "test:grain-budget": "node scripts/grain-budget.mjs",
     "shots:combined": "node scripts/combined-shots.js"
   },
   "dependencies": {

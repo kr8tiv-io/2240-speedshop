@@ -76,6 +76,38 @@ async function auditSize(browser, size) {
     .catch(() => {});
   await sleep(600);
 
+  const grain = await page.evaluate(() => {
+    const element = document.querySelector("body > .grain");
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      surfaceRatio: (rect.width * rect.height) / (innerWidth * innerHeight),
+      opacity: style.opacity,
+      blend: style.mixBlendMode,
+      animation: style.animationName,
+      viewport: { width: innerWidth, height: innerHeight },
+    };
+  });
+  const grainCoversViewport =
+    !!grain && grain.left <= 0 && grain.top <= 0 && grain.right >= grain.viewport.width && grain.bottom >= grain.viewport.height;
+  check(
+    size.name,
+    "film grain keeps its look within the compositor budget",
+    grainCoversViewport &&
+      grain.surfaceRatio <= 1.6 &&
+      grain.opacity === "0.055" &&
+      grain.blend === "overlay" &&
+      grain.animation === "grain-shift",
+    grain
+      ? `${grain.surfaceRatio.toFixed(2)}× viewport; covers=${grainCoversViewport}; opacity=${grain.opacity}; blend=${grain.blend}; animation=${grain.animation}`
+      : "global grain layer missing",
+  );
+
   let actThreeReady = false;
   for (let attempt = 0; attempt < 3 && !actThreeReady; attempt += 1) {
     await seek(page, "[data-runway-c]", 0.7);
