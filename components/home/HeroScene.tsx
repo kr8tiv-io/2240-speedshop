@@ -1652,30 +1652,24 @@ function Rig({ mobile }: { mobile: boolean }) {
     desired.x += pointer.x * 0.18;
     desired.y += pointer.y * 0.1;
 
-    // A cut is a cut: on the frame the act changes the stage is empty, so the
-    // camera teleports rather than swinging through the void.
-    if (stage.cut || !armed.current) {
-      armed.current = true;
-      camera.position.copy(desired);
-      currentLook.copy(desiredLook);
-    } else {
-      const damp = 1 - Math.exp(-delta * 7);
-      camera.position.lerp(desired, damp);
-      currentLook.lerp(desiredLook, damp);
-    }
+    /* THE FRAMING GUARANTEE — ratchet-free form, ported from the two-version
+       line where the failure was measured. The original applied the fit ONLY
+       to the damped camera, pushing it outward whenever it sat inside `need`
+       and never pulling it back: damping pulled inward along the ray, the
+       push cancelled it, perpendicular drift rotated the ray, and distance
+       could only ever GROW. On phones — where `need` exceeds most keys — the
+       camera ratcheted to 30 m out and 28 m HIGH, and the turntable makes it
+       worse here: `need` swells and shrinks with every spin cycle, so each
+       rotation pumped the ratchet again. The fix is ORDER: clamp the DESIRED
+       offset before the damping sees it, so the lerp converges to a fixed
+       point that already satisfies the fit. The post-lerp clamp below remains
+       only as a transient guard while the camera is travelling.
 
-    /* THE FRAMING GUARANTEE. Rather than three hand-tuned phone constants,
-       solve for the distance that provably contains this act's eight box
-       corners at the live FOV and aspect, and push the camera out to it if it
-       sits closer. Applied to the DAMPED position, not the target: clamping
-       the target still lets the eased camera cut the corner and clip the nose
-       mid-move, which is exactly the frame a phone screenshots. Whole car, in
-       frame, every viewport, all three models, every frame. */
-    fitPoint.set(0, CENTRE_Y[stage.act], 0);
-    /* Act I rotates: feed the analytic pass the rotated box's axis-aligned
+       Act I rotates: feed the analytic pass the rotated box's axis-aligned
        bounds for THIS frame's turntable angle (|cos|·x + |sin|·z per axis) —
        tighter than the swept cylinder, exact enough for the first pass, and
-       the corner check below finishes the job against the true corners. */
+       the corner check that follows finishes the job against true corners. */
+    fitPoint.set(0, CENTRE_Y[stage.act], 0);
     const spin = stage.act === 0 ? TURNTABLE.angle : 0;
     let fitHalf = HALF[stage.act];
     if (spin !== 0) {
@@ -1696,6 +1690,24 @@ function Rig({ mobile }: { mobile: boolean }) {
       camera.aspect,
       mobile ? 1.03 : 1.05,
     );
+    fitOffset.copy(desired).sub(fitPoint);
+    const dDesired = fitOffset.length();
+    if (dDesired < need) {
+      desired.copy(fitPoint).addScaledVector(fitOffset, need / Math.max(dDesired, 0.001));
+    }
+
+    // A cut is a cut: on the frame the act changes the stage is empty, so the
+    // camera teleports rather than swinging through the void.
+    if (stage.cut || !armed.current) {
+      armed.current = true;
+      camera.position.copy(desired);
+      currentLook.copy(desiredLook);
+    } else {
+      const damp = 1 - Math.exp(-delta * 7);
+      camera.position.lerp(desired, damp);
+      currentLook.lerp(desiredLook, damp);
+    }
+
     fitOffset.copy(camera.position).sub(fitPoint);
     const d = fitOffset.length();
     if (d < need) {

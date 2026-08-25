@@ -1360,32 +1360,22 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
   drawables.push(...mirrors);
   if (drawables.length === 0) return;
 
-  /* THE PARKED FAST PATH. Hiding-and-slicing exists to keep shader
-     translation out of LIVE frames — but while the walk-through's frameloop
-     is parked ("never": the reader is still up in the film and the canvas is
-     faded out) there ARE no live frames. The only frames are the ones this
-     routine advances by hand, and nobody can see them — so the whole subtree
-     is drawn in ONE manual frame, the entire translation bill paid at once,
-     invisibly, and the slicing is saved for bays that stream in while the
-     reader is actually walking the shop. */
-  const live = root?.get ? root.get() : undefined;
-  if (live && live.frameloop === "never") {
-    const parkedGroup = node.visible;
-    node.visible = true;
-    const started = performance.now();
-    try {
-      advance(performance.now(), true, root);
-    } catch {
-      /* the loop is not mounted yet; the shell warm will cover this */
-    }
-    node.visible = parkedGroup;
-    if (DEBUG) {
-      console.log(
-        `[shop]   ${label || "warm"} parked fast-path ${Math.round(performance.now() - started)} ms`,
-      );
-    }
-    return;
-  }
+  /* NO PARKED FAST PATH — it was the page's biggest freeze. The old shortcut
+     drew the whole subtree in ONE manual frame while the frameloop was
+     parked, on the theory that "nobody can see" those frames. True for the
+     shop canvas — but the frame was drawn on the MAIN THREAD, and the reader
+     was mid-FILM on that same thread: the profile caught it as a 9.5-second
+     dead stop at the film→walk-through handoff on desktop, and as the 1-2.3 s
+     hitches sprinkled through the phone film (the shell and opening bays
+     paying their bill during act I). Parked warms now run through the same
+     self-tuning slicer as live ones. Two parked-specific rules apply inside
+     the loop: motion is IGNORED (an invisible canvas cannot jank, so waiting
+     for scroll-stillness only starves the warm), and every slice yields a
+     real animation frame so the film renders between slices. */
+  const parkedNow = () => {
+    const live = root?.get ? root.get() : undefined;
+    return !!live && live.frameloop === "never";
+  };
 
   const was = drawables.map((object) => object.visible);
   const wasGroup = node.visible;
@@ -1405,8 +1395,12 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
      while the reader may already be walking the runway, and a deadline break
      is benign now — everything is restored and shown, and what has not been
      translated yet compiles on live frames. Populated-but-momentarily-janky
-     beats a bay that is still invisible when the camera arrives. */
-  const deadline = performance.now() + (phoneTier ? 2500 : 3000);
+     beats a bay that is still invisible when the camera arrives.
+     PARKED warms get a long leash instead: the reader is still up in the film,
+     nothing is waiting on this bay, and breaking early would only move the
+     untranslated remainder onto the reader's arrival frame — the exact stall
+     this file exists to prevent. */
+  const deadline = performance.now() + (parkedNow() ? 20000 : phoneTier ? 2500 : 3000);
   const restore = () => {
     for (let k = 0; k < drawables.length; k++) {
       drawables[k].visible = was[k];
@@ -1481,10 +1475,13 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
       break;
     }
 
-    // Wait for the reader to stop. If they never do — a long uninterrupted
-    // flick down the page — the work still has to happen, so it goes ahead one
-    // mesh at a time: thin enough that a forced slice costs a frame.
-    const idle = await untilIdle();
+    // Wait for the reader to stop — unless the canvas is PARKED, where an
+    // invisible scene cannot jank and waiting for scroll-stillness only
+    // starves the warm (the film scroll never goes quiet). If the reader
+    // never stops on a LIVE canvas, the work still has to happen, so it goes
+    // ahead one mesh at a time: thin enough that a forced slice costs a frame.
+    const parked = parkedNow();
+    const idle = parked ? true : await untilIdle();
     const take = idle ? size : 1;
     for (let k = i; k < Math.min(i + take, drawables.length); k++) {
       drawables[k].visible = was[k];
@@ -1498,13 +1495,21 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
     const cost = performance.now() - started;
 
     if (idle) {
-      if (cost > BUDGET) size = Math.max(1, Math.floor(size / 2));
-      else if (cost < BUDGET / 3) size = Math.min(12, size + 2);
+      /* Parked slices share the thread with the FILM's render loop, so they
+         tune against a tighter budget: ~60 ms keeps the film above 15fps in
+         the worst slice and typically far better, where 120 ms would read as
+         visible film stutter. */
+      const budget = parked ? 60 : BUDGET;
+      if (cost > budget) size = Math.max(1, Math.floor(size / 2));
+      else if (cost < budget / 3) size = Math.min(12, size + 2);
     }
     if (DEBUG && cost > 400) {
       console.log(`[shop]   ${label || "warm"} slice ${Math.round(cost)} ms → batch ${size}`);
     }
-    await wait(idle ? 0 : 16);
+    /* Parked: hand the thread a real animation frame so the film renders
+       between slices — that yield IS the fix for the 9.5 s handoff freeze. */
+    if (parked) await nextFrame();
+    else await wait(idle ? 0 : 16);
   }
 
   restore();
