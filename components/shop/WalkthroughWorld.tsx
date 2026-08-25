@@ -29,10 +29,8 @@ import {
  *   · The world no longer owns the document. The canvas mounts only once the
  *     `#walkthrough-runway` element is within ~2 viewports (warm silently in
  *     the background — the film's preloader already ran; there is no second
- *     plate), renders only while it is within ~1 viewport (frameloop parks
- *     otherwise, so the hero film's canvas owns the GPU at both ends of the
- *     page), and fades in/out over ~40vh at the runway edges so the film
- *     canvas hands off cinematically.
+ *     plate), renders only around its runway (frameloop parks elsewhere), and
+ *     overlaps the film across each doorway so neither world drops to black.
  *
  *   · z-index: the canvas sits at z-[5] with the graded veil above it; the
  *     page's DOM copy (the runway itself is `relative z-10`) reads over both.
@@ -74,7 +72,7 @@ export function WalkthroughWorld() {
       film above. Never unlatches — recompiling the shop is the single most
       expensive thing this page can do, so once built it only ever parks. */
   const [mounted, setMounted] = useState(false);
-  /** True while the runway is within ~1 viewport: the only time frames are
+  /** True around the runway and its crossfades: the only time frames are
       actually drawn. */
   const [active, setActive] = useState(false);
   const uiOverlay = useUIOverlay();
@@ -155,16 +153,18 @@ export function WalkthroughWorld() {
     );
     warm.observe(runway);
 
-    /* Draw gate: ~1 viewport out. Toggles — the frameloop parks beyond it. */
+    /* Draw gate: cover the 1.5-viewport dissolve with a little compile-safe
+       margin. Outside that corridor the expensive frameloop still parks. */
     const draw = new IntersectionObserver(
       ([entry]) => setActive(entry.isIntersecting),
-      { rootMargin: "100% 0px 100% 0px" },
+      { rootMargin: "170% 0px 170% 0px" },
     );
     draw.observe(runway);
 
-    /* THE HANDOFF FADE — the world rises over the last ~40vh before the
-       runway owns the viewport and dissolves over the ~40vh after it lets
-       go, so the hero film rolls into the shop instead of jump-cutting.
+    /* THE HANDOFF FADE — the shop starts rising half a viewport before the
+       outgoing film releases its sticky room and remains present half a
+       viewport into the finale. The 1.5-viewport envelope deliberately
+       overlaps both canvases; their ambient light can never both be zero.
        Driven from the same capture-phase scroll read the camera rig uses;
        writes are quantised so idle frames cost nothing. */
     const fade = () => {
@@ -180,7 +180,7 @@ export function WalkthroughWorld() {
       if (!m.measured) return;
       const y = runwayScrollY();
       const vh = Math.max(window.innerHeight, 1);
-      const edge = vh * 0.4;
+      const edge = vh * 1.5;
       const fadeIn = clamp01((y - (m.top - edge)) / edge);
       const fadeOut = clamp01((m.top + m.height - vh + edge - y) / edge);
       const opacity = Math.round(Math.min(fadeIn, fadeOut) * 200) / 200;

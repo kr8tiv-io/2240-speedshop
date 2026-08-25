@@ -143,7 +143,9 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
         }
         setHeroActive(near.size > 0);
       },
-      { rootMargin: "160px 0px" },
+      // Keep the film warm for the full doorway dissolve on both sides of
+      // the shop. It still parks throughout the long interior runway.
+      { rootMargin: "110% 0px" },
     );
     runways.forEach((r) => io.observe(r));
     return () => io.disconnect();

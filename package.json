@@ -8,6 +8,7 @@
     "start": "next start -p 3117",
     "lint": "eslint",
     "audit:elevation": "node scripts/elevation-checks.mjs",
+    "audit:handoffs": "node scripts/handoff-checks.mjs",
     "test:gl-images": "node scripts/gl-images-contract.mjs",
     "test:loader-ownership": "node scripts/loader-ownership-contract.mjs",
     "test:mobile-menu": "node scripts/mobile-menu-contract.mjs",
