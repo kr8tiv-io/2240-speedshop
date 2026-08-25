@@ -1016,6 +1016,41 @@ async function auditSize(browserContext, size) {
         ? `edge ${film.edge.toFixed(3)} at y=${location.y}px; threshold ${MAX_CAR_EDGE}`
         : `window.__film.edge missing or non-finite at y=${location.y}px`,
     );
+    const exhaustedEffects = await page.evaluate(() => {
+      const scene = window.__film?.three?.scene;
+      if (!scene) return null;
+      const effectivelyVisible = (object) => {
+        for (let cursor = object; cursor; cursor = cursor.parent) {
+          if (!cursor.visible) return false;
+          if (cursor === scene) break;
+        }
+        return true;
+      };
+      let visibleGhostMeshes = 0;
+      let visibleClouds = 0;
+      scene.traverse((object) => {
+        if (!effectivelyVisible(object)) return;
+        if (object.isPoints && object.material?.isShaderMaterial) visibleClouds += 1;
+        if (!object.isMesh) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        if (materials.some((material) => material?.isShaderMaterial && material.wireframe)) {
+          visibleGhostMeshes += 1;
+        }
+      });
+      return { visibleGhostMeshes, visibleClouds };
+    });
+    check(
+      size.name,
+      `${beat.name} parks exhausted lattice and particle submissions`,
+      exhaustedEffects !== null &&
+        !exhaustedEffects.error &&
+        exhaustedEffects.visibleGhostMeshes === 0 &&
+        exhaustedEffects.visibleClouds === 0,
+      exhaustedEffects
+        ? exhaustedEffects.error ||
+          `${exhaustedEffects.visibleGhostMeshes} visible ghost mesh(es); ${exhaustedEffects.visibleClouds} visible cloud(s)`
+        : "window.__film.three diagnostics missing",
+    );
   }
 
   const webgl = await page.evaluate(() => {

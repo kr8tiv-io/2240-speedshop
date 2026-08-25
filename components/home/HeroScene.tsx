@@ -1,6 +1,14 @@
 "use client";
 
-import { Component, useEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
@@ -283,6 +291,10 @@ const TUNGSTEN = new THREE.Color("#ffb066");
  */
 const stage = { act: 0, local: 0, reveal: 0, t: 0, cut: false };
 
+/* The preloader's one warm draw must see every normally gated object. This
+   module flag is active only inside ScenePrimer's compile/upload pass. */
+const SCENE_PRIMER = { active: false };
+
 /* Live turntable angle (act I only) — the rig frames against the box the car
    is ACTUALLY at, corner-rotated by this, rather than a swept cylinder. */
 const TURNTABLE = { angle: 0 };
@@ -511,6 +523,8 @@ function ActStage({
 }) {
   const { scene } = useGLTF(act.url, DRACO);
   const group = useRef<THREE.Group>(null);
+  const ghostRef = useRef<THREE.Group>(null);
+  const cloudRef = useRef<THREE.Points>(null);
   const pool = useRef<THREE.MeshBasicMaterial>(null);
   const headlights = useRef<THREE.MeshStandardMaterial[]>([]);
   const taillights = useRef<THREE.MeshStandardMaterial[]>([]);
@@ -881,8 +895,19 @@ function ActStage({
   useFrame((state, delta) => {
     const on = stage.act === index;
     const reveal = on ? stage.reveal : 0;
+    const primerActive = SCENE_PRIMER.active;
     const g = group.current;
-    if (g) g.visible = reveal > 0.002;
+    if (g) g.visible = primerActive || reveal > 0.002;
+    /* The shaders already envelope these effects to mathematical zero. Stop
+       submitting their 18–49 ghost draws and 7k/24k cloud vertices once that
+       envelope is below its discard/alpha threshold. The solid car, paint,
+       reflections and lighting remain untouched. */
+    if (ghostRef.current) {
+      ghostRef.current.visible = primerActive || (reveal > 0.002 && reveal < 0.995);
+    }
+    if (cloudRef.current) {
+      cloudRef.current.visible = primerActive || (reveal > 0.002 && reveal < 0.997);
+    }
 
     /* The turntable. Speed eases in once the reveal has finished building
        the car (reveal completes at local 0.26), then holds a steady
@@ -931,8 +956,9 @@ function ActStage({
         <group ref={spinRef} rotation={[0, built.fit.rotY, 0]}>
           <primitive object={scene} />
           {/* the lattice the car is built out of */}
-          <primitive object={built.ghost} />
+          <primitive ref={ghostRef} object={built.ghost} />
           <points
+            ref={cloudRef}
             geometry={built.geometry}
             material={built.cloudMaterial}
             frustumCulled={false}
@@ -1589,7 +1615,10 @@ function ScenePrimer({ onReady }: { onReady?: () => void }) {
           c.traverse((o) => {
             if ((o as THREE.Mesh).isMesh) n++;
           });
-          return n > 20;
+          /* The three hero roots contain 44, 49 and 18 primitives. The old
+             >20 heuristic could never count the Charger, so every cold load
+             waited the full 240-frame timeout after all assets were ready. */
+          return n >= 10;
         }).length;
       for (let i = 0; i < 240 && built() < ACTS.length; i++) {
         await new Promise((r) => requestAnimationFrame(r));
@@ -1597,6 +1626,7 @@ function ScenePrimer({ onReady }: { onReady?: () => void }) {
       }
 
       const hidden: THREE.Object3D[] = [];
+      SCENE_PRIMER.active = true;
       scene.traverse((o) => {
         if (!o.visible) {
           hidden.push(o);
@@ -1617,8 +1647,10 @@ function ScenePrimer({ onReady }: { onReady?: () => void }) {
       } catch {
         // A compile failure must not strand the page behind the loader —
         // the film still plays, it just pays the stall it used to pay.
+      } finally {
+        for (const o of hidden) o.visible = false;
+        SCENE_PRIMER.active = false;
       }
-      for (const o of hidden) o.visible = false;
       if (!cancelled) onReady?.();
     };
 
@@ -1639,6 +1671,19 @@ function Rig({ mobile }: { mobile: boolean }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const armed = useRef(false);
+  const tuning = useRef(
+    typeof window !== "undefined" && window.location.search.includes("tune"),
+  );
+  const diagnostics = useRef<NonNullable<Window["__film"]>>({
+    stage,
+    half: HALF,
+    centreY: CENTRE_Y,
+    camera: [0, 0, 0],
+    calls: 0,
+    triangles: 0,
+    edge: 0,
+    three: { scene, camera, gl },
+  });
 
   useFrame((_, delta) => {
     const keys = ACTS[stage.act].keys;
@@ -1745,14 +1790,13 @@ function Rig({ mobile }: { mobile: boolean }) {
       camera.lookAt(lookAim);
     }
 
-    window.__film = {
-      stage,
-      half: HALF,
-      centreY: CENTRE_Y,
-      camera: [camera.position.x, camera.position.y, camera.position.z],
-      calls: gl.info.render.calls,
-      triangles: gl.info.render.triangles,
-      edge: cornerEdge(camera, HALF[stage.act], fitPoint, spin),
+    if (tuning.current) {
+      diagnostics.current.camera[0] = camera.position.x;
+      diagnostics.current.camera[1] = camera.position.y;
+      diagnostics.current.camera[2] = camera.position.z;
+      diagnostics.current.calls = gl.info.render.calls;
+      diagnostics.current.triangles = gl.info.render.triangles;
+      diagnostics.current.edge = cornerEdge(camera, HALF[stage.act], fitPoint, spin);
       /* The scene graph itself. `edge` proves the car is FRAMED, which is not
          the same claim as the car being VISIBLE — act II shipped for weeks with
          a perfect edge score and nothing on screen, and no beat screenshot
@@ -1760,8 +1804,11 @@ function Rig({ mobile }: { mobile: boolean }) {
          Handing out the live objects lets a probe read visibility, materials
          and light intensities instead of inferring them. R3F 9 no longer
          exposes its store on the canvas element, so this is the only handle. */
-      three: { scene, camera, gl },
-    };
+      diagnostics.current.three.scene = scene;
+      diagnostics.current.three.camera = camera;
+      diagnostics.current.three.gl = gl;
+      window.__film = diagnostics.current;
+    }
   });
 
   return null;
@@ -1813,6 +1860,14 @@ export function HeroScene({
     // is invisible next to the smoothness it buys on a slower machine.
     Math.min(typeof window === "undefined" ? 1 : window.devicePixelRatio || 1, 1.15),
   ).current;
+  const [primed, setPrimed] = useState(false);
+  const readyNotified = useRef(false);
+  const finishPrime = useCallback(() => setPrimed(true), []);
+  useEffect(() => {
+    if (!primed || readyNotified.current) return;
+    readyNotified.current = true;
+    onReady?.();
+  }, [onReady, primed]);
   // "Rich" gates the couture extras — flake sparkle, streak sprites, near
   // motes, the densest point clouds: desktop AND the top two levels only.
   const rich = !mobile && quality >= 2;
@@ -1828,7 +1883,7 @@ export function HeroScene({
          Quality still adapts, but only through things that cost frames without
          touching the buffer: reflection resolution and dust counts below. */
       dpr={fixedDpr}
-      frameloop={active ? "always" : "never"}
+      frameloop={active && primed ? "always" : "never"}
       camera={{ fov: mobile ? MOBILE_FOV : 32, near: 0.1, far: 60, position: [5.1, 1.15, 1.7] }}
       gl={{ antialias: false, powerPreference: "high-performance" }}
       className="!absolute !inset-0"
@@ -1870,7 +1925,7 @@ export function HeroScene({
           changes — so there is no smooth version of this. A fixed tier is both
           steadier and, given (3), usually faster. */}
       <Director shot={shot} />
-      <ScenePrimer onReady={onReady} />
+      <ScenePrimer onReady={finishPrime} />
       <color attach="background" args={["#0a0a0b"]} />
       <fog attach="fog" args={["#0a0a0b", 9, 22]} />
 

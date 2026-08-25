@@ -905,6 +905,22 @@ html[data-ui-overlay="menu"] .grain {
     rgb(10 10 11 / 0.06);
 }
 
+/* The shop's compile-safe doorway. This is visible only until boot.ready and
+   gives a fast-scroll phone a photographed room—not an empty black canvas—
+   while its exact same full-quality world finishes linking behind it. */
+.wt-world-boot-light {
+  pointer-events: none;
+  background:
+    /* overhead tungsten pool */
+    radial-gradient(78% 44% at 74% 4%, rgba(255, 157, 78, 0.42), transparent 68%),
+    /* open-door moon across the concrete */
+    radial-gradient(72% 52% at 12% 92%, rgba(90, 133, 204, 0.34), transparent 67%),
+    /* one angled inspection-light streak makes this read as a room, not a fill */
+    linear-gradient(124deg, transparent 30%, rgba(255, 176, 102, 0.14) 43%, transparent 58%),
+    linear-gradient(180deg, rgba(35, 20, 17, 0.78), rgba(16, 18, 25, 0.88)),
+    rgb(20 18 19 / 0.96);
+}
+
 /* ── Station cascade — the content of a revealed plate arrives in beats ─────
    The wrapper (StationReveal) is pulled out of the subject as one plate;
    these rules make its CONTENT land as a cascade — eyebrow, headline, copy,

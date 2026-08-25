@@ -87,4 +87,12 @@ assert.ok(
   !/VisibilityWatchdog|watchdog showed/.test(loaders + shop),
   "A timer may not reveal objects while the paced warm still owns visibility.",
 );
+assert.ok(
+  /subscribeHeroBoot/.test(gate) && /getHeroBootSnapshot/.test(gate),
+  "The shop warm-up must coordinate with the hero's real readiness store.",
+);
+assert.ok(
+  !/setTimeout\(\(\) => setMounted\(true\), 3500\)/.test(gate),
+  "The shop may not start on a fixed clock while the opening film is still compiling.",
+);
 console.log("loader ownership contract: PASS");

@@ -3,9 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { WebGLBoundary } from "@/components/gl/WebGLBoundary";
-import { addMediaQueryChangeListener } from "@/components/home/hero-boot";
+import {
+  addMediaQueryChangeListener,
+  getHeroBootSnapshot,
+  subscribeHeroBoot,
+} from "@/components/home/hero-boot";
 import { useUIOverlay } from "@/components/ui-overlay";
-import { markWorldSkipped, noteMotion } from "./boot";
+import { getBoot, markWorldSkipped, noteMotion, subscribeBoot } from "./boot";
 import {
   RUNWAY_ID,
   measureRunway,
@@ -75,9 +79,18 @@ export function WalkthroughWorld() {
   /** True around the runway and its crossfades: the only time frames are
       actually drawn. */
   const [active, setActive] = useState(false);
+  const [worldReady, setWorldReady] = useState(() => getBoot().ready);
   const uiOverlay = useUIOverlay();
   const host = useRef<HTMLDivElement>(null);
   const opacityWritten = useRef(-1);
+
+  useEffect(
+    () =>
+      subscribeBoot((boot) => {
+        if (boot.ready) setWorldReady(true);
+      }),
+    [],
+  );
 
   /* Tier detection — verbatim from the original mount. */
   useEffect(() => {
@@ -118,18 +131,38 @@ export function WalkthroughWorld() {
     };
   }, []);
 
-  /* EARLY, SILENT WARM — distance is the wrong trigger on this page.
-     The film runway above the walk-through is ~1200vh, so the 2-viewport
-     warm gate only fires near the END of the film — and the world then pays
-     its whole cold start (downloads, parses, shader links) exactly while the
-     reader is walking into it, which the probe caught as an empty blurred
-     room. The film's preloader owns the page for the first seconds; after
-     that the GPU is idle enough to warm a PARKED world behind it. So the
-     canvas mounts on a short clock as well as on approach — whichever comes
-     first — and stays parked until the runway is actually near. */
+  /* EARLY, SILENT WARM — distance is the wrong trigger on this page, but a
+     fixed 3.5-second clock was worse: it linked the shop's large shader graph
+     while ScenePrimer still owned the opening film, repeatedly pushing phone
+     preloads against the 12-second budget. Start only after the hero reports
+     real scene readiness, then leave its handoff choreography 2.2 seconds of
+     clear main thread. pacedWarm still yields whenever the reader moves. */
   useEffect(() => {
-    const timer = window.setTimeout(() => setMounted(true), 3500);
-    return () => window.clearTimeout(timer);
+    let mountTimer = 0;
+    let queued = false;
+    let unsubscribe = () => {};
+    const queueMount = () => {
+      const boot = getHeroBootSnapshot();
+      if (queued || (!boot.sceneReady && !boot.failed)) return;
+      queued = true;
+      unsubscribe();
+      mountTimer = window.setTimeout(() => setMounted(true), 2_200);
+    };
+    unsubscribe = subscribeHeroBoot(queueMount);
+    queueMount();
+    // A broken renderer must not permanently suppress the optional world.
+    // By 20 seconds every hero escape path has already revealed the page.
+    const escapeTimer = window.setTimeout(() => {
+      if (queued) return;
+      queued = true;
+      unsubscribe();
+      setMounted(true);
+    }, 20_000);
+    return () => {
+      unsubscribe();
+      window.clearTimeout(mountTimer);
+      window.clearTimeout(escapeTimer);
+    };
   }, []);
 
   /* Runway gating + the edge fade. This effect also owns the shared runway
@@ -237,6 +270,12 @@ export function WalkthroughWorld() {
           whole show on machines that never mount WebGL: its gradients paint
           unconditionally, so the station copy always sits in a lit room. */}
       <div className="wt-world-veil absolute inset-0" />
+      {/* A fast scroller can reach the doorway before a slow mobile GPU has
+          finished linking the shop. Hold a real tungsten/cool room there,
+          then dissolve it away once the full world is ready. */}
+      <div
+        className={`wt-world-boot-light absolute inset-0 transition-opacity duration-1000 ${worldReady ? "opacity-0" : "opacity-100"}`}
+      />
     </div>
   );
 }

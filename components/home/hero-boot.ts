@@ -24,7 +24,9 @@ export function getHeroBootSnapshot() {
 
 export function subscribeHeroBoot(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 /** Test/tuning provenance: changes only when a new runtime boot is declared. */

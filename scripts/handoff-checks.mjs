@@ -18,8 +18,9 @@ const CHROME =
 const BASE = (process.env.BASE_URL || "http://localhost:3117").replace(/\/+$/, "");
 const OUT = path.resolve(process.env.HANDOFF_SHOT_DIR || "shots-handoffs");
 const MIN_SHOP_OPACITY = 0.25;
-const MIN_LUMA = 4;
-const MIN_LIT_COVERAGE = 0.03;
+const MIN_LUMA = 12;
+const MIN_LIT_COVERAGE = 0.2;
+const FOCUS = (process.env.HANDOFF_FOCUS || "").trim().toLowerCase();
 
 const SIZES = [
   { name: "desktop", width: 1440, height: 900, dsf: 1 },
@@ -154,7 +155,8 @@ const browser = await puppeteer.launch({
 });
 
 try {
-  for (const size of SIZES) await auditSize(browser, size);
+  const sizes = FOCUS ? SIZES.filter((size) => size.name.toLowerCase() === FOCUS) : SIZES;
+  for (const size of sizes) await auditSize(browser, size);
 } finally {
   await browser.close().catch(() => {});
 }

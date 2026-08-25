@@ -12,6 +12,7 @@
     "test:gl-images": "node scripts/gl-images-contract.mjs",
     "test:loader-ownership": "node scripts/loader-ownership-contract.mjs",
     "test:mobile-menu": "node scripts/mobile-menu-contract.mjs",
+    "test:hero-runtime": "node scripts/hero-runtime-contract.mjs",
     "shots:combined": "node scripts/combined-shots.js"
   },
   "dependencies": {

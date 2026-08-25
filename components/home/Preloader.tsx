@@ -12,6 +12,10 @@ import { getHeroBootGeneration, useHeroBootSnapshot } from "./hero-boot";
 const HARD_CAP_MS = 14_000;
 const ESCAPE_MS = 18_000;
 const MIN_BRAND_MS = 1_200;
+/* The compile wait already gives the mark a long hold. A 650 ms ignition is
+   enough to read as a deliberate tube flicker without making a ready scene
+   sit behind branding for another 1.3 seconds. */
+const FLICKER_MS = 650;
 
 type Phase = "loading" | "flicker" | "exit" | "gone";
 type ReadyReason = "scene" | "emergency-failed" | "emergency-hard-cap" | "emergency-css-failsafe";
@@ -84,7 +88,7 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
           current.phase === "flicker" ? { ...current, phase: "exit" } : current,
         );
         doneRef.current?.();
-      }, 1_300);
+      }, FLICKER_MS);
       return () => window.clearTimeout(timer);
     }
     if (loader.phase === "exit") {
