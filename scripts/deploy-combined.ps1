@@ -62,9 +62,64 @@ $size = (Get-ChildItem $out -Recurse -File | Measure-Object Length -Sum).Sum
 Write-Host ("   export {0:N1} MB" -f ($size / 1MB))
 
 Write-Host "== mirroring into $Repo"
-Get-ChildItem $Repo -Force | Where-Object { $_.Name -ne ".git" } | Remove-Item -Recurse -Force
-Copy-Item (Join-Path $out "*") $Repo -Recurse -Force
-Set-Content (Join-Path $Repo ".gitattributes") "* -text`n*.glb binary`n*.br binary`n" -NoNewline
+$staticMarker = Join-Path $Repo ".deploy-current-static.txt"
+$repoStatic = [System.IO.Path]::GetFullPath((Join-Path $Repo "_next\static"))
+$repoStaticPrefix = $repoStatic.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$overlapRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("2240-static-overlap-" + [guid]::NewGuid().ToString("N"))
+$overlapResolved = [System.IO.Path]::GetFullPath($overlapRoot)
+$tempPrefix = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+if (-not $overlapResolved.StartsWith($tempPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+  throw "static overlap directory escaped the system temp directory"
+}
+New-Item -ItemType Directory -Path $overlapResolved -Force | Out-Null
+
+try {
+  # Hostinger/CDN propagation is not atomic at the individual object edge. A
+  # fresh HTML/runtime once arrived before its matching 5963 garage chunk and
+  # the real 3D tour fell back to the photograph. Preserve exactly the static
+  # files referenced by ONE previous deployment so either runtime remains
+  # complete throughout propagation, without accumulating every old build.
+  $previousStatic = if (Test-Path -LiteralPath $staticMarker) {
+    @(Get-Content -LiteralPath $staticMarker | Where-Object { $_.Trim().Length -gt 0 })
+  } elseif (Test-Path -LiteralPath $repoStatic) {
+    @(Get-ChildItem -LiteralPath $repoStatic -Recurse -File | ForEach-Object {
+      [System.IO.Path]::GetRelativePath($Repo, $_.FullName).Replace("\", "/")
+    })
+  } else {
+    @()
+  }
+
+  Write-Host "== preserving previous immutable static generation ($($previousStatic.Count) files)"
+  foreach ($relativePath in $previousStatic) {
+    $source = [System.IO.Path]::GetFullPath((Join-Path $Repo $relativePath.Replace("/", "\")))
+    if (-not $source.StartsWith($repoStaticPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "static overlap marker escaped _next/static: $relativePath"
+    }
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
+    $target = Join-Path $overlapResolved $relativePath.Replace("/", "\")
+    New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
+    Copy-Item -LiteralPath $source -Destination $target -Force
+  }
+
+  Get-ChildItem $Repo -Force | Where-Object { $_.Name -ne ".git" } | Remove-Item -Recurse -Force
+  Copy-Item (Join-Path $out "*") $Repo -Recurse -Force
+
+  if ($previousStatic.Count -gt 0) {
+    Write-Host "== restoring previous immutable static generation"
+    Copy-Item (Join-Path $overlapResolved "*") $Repo -Recurse -Force
+  }
+
+  $outStatic = Join-Path $out "_next\static"
+  $currentStatic = @(Get-ChildItem -LiteralPath $outStatic -Recurse -File | ForEach-Object {
+    [System.IO.Path]::GetRelativePath($out, $_.FullName).Replace("\", "/")
+  } | Sort-Object)
+  Set-Content -LiteralPath (Join-Path $Repo ".deploy-current-static.txt") -Value $currentStatic
+  Set-Content (Join-Path $Repo ".gitattributes") "* -text`n*.glb binary`n*.br binary`n" -NoNewline
+} finally {
+  if (Test-Path -LiteralPath $overlapResolved) {
+    Remove-Item -LiteralPath $overlapResolved -Recurse -Force
+  }
+}
 
 Write-Host "== committing"
 $noHooks = Join-Path ([System.IO.Path]::GetTempPath()) "git-nohooks"
