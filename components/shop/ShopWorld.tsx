@@ -44,6 +44,7 @@ import {
   DetailCull,
   StationBundle,
   WarmScene,
+  highestContiguousWarmStation,
   primeLoaders,
   setWorldTier,
   setWorldParked,
@@ -1746,6 +1747,7 @@ function ShopEnvironment({ tier }: { tier: WorldTier }) {
 /* ── Camera rig ─────────────────────────────────────────────────────────── */
 
 function CameraRig() {
+  const desired = useRef(0);
   const target = useRef(0);
   const eased = useRef(0);
   const previous = useRef(0);
@@ -1782,7 +1784,7 @@ function CameraRig() {
       // / body.scrollTop — the wrong ones read 0) and clamps 0..1, so the
       // camera parks at the doorway before the runway arrives and at the
       // roll-up door after it leaves.
-      target.current = runwayProgress();
+      desired.current = runwayProgress();
       // The moment this rig is running, the shop IS the hero of its runway.
       heroTarget.current = 0;
     };
@@ -1844,6 +1846,17 @@ function CameraRig() {
     const elapsed = state.clock.elapsedTime;
     const eye = position.current;
     const focus = lookAt.current;
+
+    /* A FAST SCROLL MAY OUTRUN A COLD BAY.
+       Keep the rail on the last contiguous station whose models and exact
+       composer first-use are complete. The requested scroll position stays in
+       desired; as each station reports warm, this limit advances and the
+       existing 400-lb camera damping turns the catch-up into a dolly move.
+       No placeholder, missing model, jump cut, or quality tier is involved. */
+    const warmStation = highestContiguousWarmStation();
+    const warmLimit =
+      warmStation >= SEGMENTS ? 1 : Math.max(0, (warmStation + 0.42) / SEGMENTS);
+    target.current = Math.min(desired.current, warmLimit);
 
     // The renderer is parked while the shop compiles, and the reader is free
     // to scroll the page in the meantime. The first frame therefore has to

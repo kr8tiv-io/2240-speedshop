@@ -404,8 +404,15 @@ const WARM_KEYS = [
 const REVEAL_WARM_KEYS = ["shell"];
 const PENDING = new Set<string>(WARM_KEYS);
 const REVEAL_PENDING = new Set<string>(REVEAL_WARM_KEYS);
+const WARMED = new Set<string>();
+let contiguousWarmStation = -1;
 let worldFinalizer: (() => Promise<void>) | null = null;
 let finalizingWorld = false;
+
+/** The furthest station the camera can enter without aiming at an empty bay. */
+export function highestContiguousWarmStation() {
+  return contiguousWarmStation;
+}
 
 async function finalizeWorld() {
   if (finalizingWorld || REVEAL_PENDING.size !== 0 || !worldFinalizer) return;
@@ -435,6 +442,14 @@ function setWorldFinalizer(finalizer: (() => Promise<void>) | null) {
 
 function reportWarm(key: string) {
   if (PENDING.delete(key)) {
+    WARMED.add(key);
+    while (
+      contiguousWarmStation + 1 < STATION_COUNT &&
+      WARMED.has(String(contiguousWarmStation + 1)) &&
+      (contiguousWarmStation + 1 !== 5 || WARMED.has("5-gallery"))
+    ) {
+      contiguousWarmStation += 1;
+    }
     REVEAL_PENDING.delete(key);
     reportBootProgress(0.75 + 0.25 * ((WARM_KEYS.length - PENDING.size) / WARM_KEYS.length));
     if (REVEAL_PENDING.size === 0) void finalizeWorld();
@@ -466,18 +481,20 @@ function reportWarm(key: string) {
  * time-based path to `ready`.
  */
 if (typeof window !== "undefined") {
-  /* THE STREAM NO LONGER WAITS TO BE EARNED. The original gate chain — each
-     bay opens the next only once it is warm — assumed the reader started at
-     station 0 and scrolled linearly behind a preloader. On the combined page
-     the walk-through sits mid-document and a reader (or a verification probe)
-     can land anywhere in it: a bay four gates deep must not be forty seconds
-     away. Once the opening is genuinely ready, the remaining gates open on a
-     short clock; the serialized warm queue keeps the bays orderly, and the
-     chain still opens gates on its own wherever it runs ahead of this. */
+  /* THE STREAM STARTS AS THE DOORWAY OPENS. The original gate chain — each bay
+     opens the next only once it is warm — assumed the reader started at
+     station 0 and scrolled linearly. The readiness-aware camera now makes
+     that assumption unnecessary: a fast reader holds on the last complete bay
+     instead of seeing an empty one. Starting every owner behind the photograph
+     overlapped GLB parsing badly enough to create a measured 34-second desktop
+     task. Start the next bay immediately at reveal, then pace the rest; the
+     serialized warm queue and camera frontier keep both work and pictures
+     honest. */
   let streaming = false;
   subscribeBoot((s) => {
     if (!s.ready || streaming) return;
     streaming = true;
+    openGate(unlocked + 1);
     const stream = window.setInterval(() => {
       if (unlocked >= STATION_COUNT) {
         window.clearInterval(stream);
@@ -1448,6 +1465,11 @@ async function warmComposerPrograms(
   }
 }
 
+async function waitForWarmKey(key: string, patience = 12000) {
+  const deadline = performance.now() + patience;
+  while (!WARMED.has(key) && performance.now() < deadline) await wait(50);
+}
+
 /**
  * Let drei's one-frame procedural Environment capture its lightformers before
  * any shop material is compiled.
@@ -1698,12 +1720,18 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
         });
         COMPOSER_OVENS.set(root.gl, oven);
       }
-      /* Upload/bind in self-tuning slices. A single submission of the engine
-         room still asked ANGLE to create hundreds of VAOs in one 21-second
-         task. Starting at one makes the first bill bounded; cheap shapes earn
-         larger batches, expensive imported primitives immediately contract
-         back to one. The rAF yield lets the hero film paint between slices. */
-      let size = 1;
+      /* Upload/bind in self-tuning slices. Shader programs have already
+         completed through compileAsync; this pass is primarily geometry
+         bindings plus a tiny 24px draw. Starting at one forced WebKit to pay
+         its browser-frame overhead 121 times for the shell. Cold Apple-like
+         runs measured twelve as both faster (27.4s → 18.6–23.0s) and gentler
+         on the worst slice (2.9s → 1.2–1.6s). The controller still contracts
+         immediately after any expensive batch, and every slice still yields
+         so the hero film can paint between them. Full desktop keeps the
+         conservative single-object start: its richer material/light graph
+         made a twelve-object first batch several seconds long. */
+      const OVEN_START_BATCH = phoneTier ? 12 : 1;
+      let size = OVEN_START_BATCH;
       let index = 0;
       while (index < representatives.length) {
         await waitForReaderQuiet();
@@ -2137,6 +2165,11 @@ function WarmStation({
     const finish = async () => {
       if (dead || finishing || warm.current) return;
       finishing = true;
+      // Station 1's smaller compile often finishes first. Letting it claim the
+      // one private composer queue left the doorway car hidden behind hundreds
+      // of station-1 bindings when the photograph opened. The doorway subject
+      // is the first picture, so its exact first-use owns the first slot.
+      if (station === 1) await waitForWarmKey("0");
       await firstUse();
       if (dead) return;
       warm.current = true;
@@ -2270,9 +2303,13 @@ function WarmStation({
       }
     }
 
+    // Suspense can replace the Three group while this component's refs
+    // survive. The new group starts visible=false even when our cached draw
+    // decision is still true, so reconcile the real object before the cheap
+    // early return or a fully warm bay can remain invisible forever.
+    if (node.visible !== show) node.visible = show;
     if (show === drawn.current) return;
     drawn.current = show;
-    node.visible = show;
     // Same frame, same call stack: the pad compensates before anything is
     // drawn, so the renderer never sees a different number of lights than the
     // one it compiled against.

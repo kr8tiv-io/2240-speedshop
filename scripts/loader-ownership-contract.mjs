@@ -113,4 +113,32 @@ assert.ok(
   !/finalizingWorld \|\| PENDING\.size !== 0 \|\| !worldFinalizer/.test(loaders),
   "Full-tour readiness may not hold the already-warm 3D entrance behind a static photograph.",
 );
+assert.ok(
+  /const OVEN_START_BATCH = phoneTier \? 12 : 1/.test(pacedWarm) &&
+    /let size = OVEN_START_BATCH/.test(pacedWarm),
+  "The private 24px oven must amortize WebKit mobile overhead without giving full desktop an oversized first batch.",
+);
+assert.ok(
+  /if \(!s\.ready \|\| streaming\) return/.test(loaders) &&
+    /openGate\(unlocked \+ 1\);[\s\S]*}, 2500\)/.test(loaders),
+  "After reveal, start one next-bay owner immediately and pace the rest to prevent a parse stampede.",
+);
+assert.ok(
+  /export function highestContiguousWarmStation\(\)/.test(loaders) &&
+    /highestContiguousWarmStation/.test(shop),
+  "The camera rail must consume the contiguous per-station readiness frontier.",
+);
+assert.ok(
+  /const desired = useRef\(0\)/.test(shop) &&
+    /target\.current = Math\.min\(desired\.current, warmLimit\)/.test(shop),
+  "A cold fast-scroll must hold on the last complete bay, then release through the existing camera damping.",
+);
+assert.ok(
+  /if \(node\.visible !== show\) node\.visible = show;[\s\S]*if \(show === drawn\.current\) return/.test(loaders),
+  "A re-suspended bay group must reconcile its real Three visibility before trusting the cached drawn flag.",
+);
+assert.ok(
+  /if \(station === 1\) await waitForWarmKey\("0"\)/.test(loaders),
+  "The second opening bay may not win the private first-use queue ahead of the doorway subject.",
+);
 console.log("loader ownership contract: PASS");
