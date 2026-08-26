@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { WebGLBoundary } from "@/components/gl/WebGLBoundary";
+import { supportsWebGL2 } from "@/lib/webgl-capability";
 import {
   addMediaQueryChangeListener,
   getHeroBootSnapshot,
@@ -55,17 +56,6 @@ const ShopWorld = dynamic(() => import("./ShopWorld").then((m) => m.ShopWorld), 
 
 type Verdict = "idle" | "run-full" | "run-lite" | "skip";
 
-function hasWebGL2() {
-  try {
-    const canvas = document.createElement("canvas");
-    // Three r185 is WebGL2-only. Letting a WebGL1-only browser through this
-    // gate merely defers the failure until Canvas construction.
-    return Boolean(canvas.getContext("webgl2"));
-  } catch {
-    return false;
-  }
-}
-
 type CapableNavigator = Navigator & { deviceMemory?: number };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -113,7 +103,7 @@ export function WalkthroughWorld() {
       // Phones and tablets run the shop too. The only machines that keep the
       // graded veil are the ones that genuinely cannot run it (no WebGL, 2 GB
       // budget phones) or asked not to (prefers-reduced-motion).
-      const capable = !motion.matches && cores >= 3 && memory >= 2 && hasWebGL2();
+      const capable = !motion.matches && cores >= 3 && memory >= 2 && supportsWebGL2();
 
       // Everything under a desktop viewport — every phone, every tablet —
       // gets the LITE tier: same shop, same models, same rail, minus the

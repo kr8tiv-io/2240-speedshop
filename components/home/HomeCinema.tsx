@@ -9,6 +9,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { site } from "@/lib/site";
 import { splitChars } from "@/lib/split";
+import { supportsWebGL2 } from "@/lib/webgl-capability";
 import { useUIOverlay } from "@/components/ui-overlay";
 import { Preloader } from "./Preloader";
 import type { Shot } from "./HeroScene";
@@ -26,15 +27,6 @@ type RuntimeProfile = null | {
   reduced: boolean;
   webgl2: boolean;
 };
-
-function supportsWebGL2() {
-  try {
-    const canvas = document.createElement("canvas");
-    return Boolean(window.WebGL2RenderingContext && canvas.getContext("webgl2"));
-  } catch {
-    return false;
-  }
-}
 
 /**
  * The film, in three acts — SPLIT AROUND THE SHOP.

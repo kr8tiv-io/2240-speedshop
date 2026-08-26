@@ -19,6 +19,7 @@
     "test:hero-model-version": "node scripts/hero-model-version-contract.mjs",
     "test:route-veil": "node scripts/route-veil-contract.mjs",
     "test:bundle-mode": "node scripts/bundle-mode-contract.mjs",
+    "test:webgl-capability": "node scripts/webgl-capability-contract.mjs",
     "test:model-pipeline": "node scripts/model-pipeline-contract.mjs",
     "audit:model-shelves": "node scripts/model-shelf-audit.cjs",
     "audit:export-hero": "node scripts/export-hero-check.mjs",
