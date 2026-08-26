@@ -2,11 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { useDeferredGSAP } from "@/components/fx/useDeferredGSAP";
 
 /**
  * Horizontal pinned process timeline (Hispano Suiza pattern): the shop's four
@@ -49,8 +45,8 @@ export function ProcessRail() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
-  useGSAP(
-    () => {
+  useDeferredGSAP(
+    (gsap) => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       // Below md the steps stack vertically and just scroll — no pin, no track.
       if (!window.matchMedia("(min-width: 768px)").matches) return;

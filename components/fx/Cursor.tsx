@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
+import { useRef } from "react";
+import { useDeferredGSAP } from "./useDeferredGSAP";
 
 /**
  * Custom cursor, couture grade: the bone difference-dot, plus a tungsten
@@ -16,7 +16,7 @@ export function Cursor() {
   const ringRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
 
-  useEffect(() => {
+  useDeferredGSAP((gsap) => {
     if (!window.matchMedia("(pointer: fine)").matches) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
@@ -126,7 +126,7 @@ export function Cursor() {
         m.y(0);
       }
     };
-  }, []);
+  }, { dependencies: [] });
 
   return (
     <>

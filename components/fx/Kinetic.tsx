@@ -1,12 +1,8 @@
 "use client";
 
 import { createElement, useRef, type ElementType, type ReactNode } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
 import { splitChars } from "@/lib/split";
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { useDeferredGSAP } from "./useDeferredGSAP";
 
 type KineticProps = {
   as?: ElementType;
@@ -40,8 +36,8 @@ export function Kinetic({
 }: KineticProps) {
   const ref = useRef<HTMLElement>(null);
 
-  useGSAP(
-    () => {
+  useDeferredGSAP(
+    (gsap, ScrollTrigger) => {
       const el = ref.current;
       if (!el) return;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -70,11 +66,10 @@ export function Kinetic({
     { scope: ref },
   );
 
-  return createElement(
-    Tag as string,
-    { ref, id, className, "data-accent-word": accent },
-    children,
-  );
+  // React accepts this object ref on both intrinsic and forwarded element
+  // types; the hook rule cannot infer that through createElement's dynamic tag.
+  // eslint-disable-next-line react-hooks/refs
+  return createElement(Tag as string, { ref, id, className, "data-accent-word": accent }, children);
 }
 
 export default Kinetic;

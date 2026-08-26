@@ -4,18 +4,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
 import { site } from "@/lib/site";
 import { splitChars } from "@/lib/split";
 import { supportsWebGL2 } from "@/lib/webgl-capability";
+import { useDeferredGSAP } from "@/components/fx/useDeferredGSAP";
 import { useUIOverlay } from "@/components/ui-overlay";
 import { Preloader } from "./Preloader";
 import type { Shot } from "./HeroScene";
 import { addMediaQueryChangeListener, resetHeroBoot } from "./hero-boot";
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 const LazyHeroRuntime = dynamic(
   () => import("./HeroRuntime").then((module) => module.HeroRuntime),
@@ -143,8 +139,8 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
     return () => io.disconnect();
   }, [motionEnabled]);
 
-  useGSAP(
-    () => {
+  useDeferredGSAP(
+    (gsap) => {
       if (!motionEnabled) return;
       const wrap = wrapRef.current;
       if (!wrap) return;

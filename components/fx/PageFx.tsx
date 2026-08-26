@@ -1,11 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { useDeferredGSAP } from "./useDeferredGSAP";
 
 /**
  * The interior-page choreography, mounted once per route from template.tsx.
@@ -19,7 +15,7 @@ gsap.registerPlugin(ScrollTrigger, useGSAP);
 export function PageFx() {
   const ref = useRef<HTMLDivElement>(null);
 
-  useGSAP(() => {
+  useDeferredGSAP((gsap) => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const ctx = gsap.context(() => {
@@ -115,7 +111,7 @@ export function PageFx() {
     return () => {
       ctx.revert();
     };
-  }, []);
+  }, { dependencies: [] });
 
   return <div ref={ref} className="hidden" aria-hidden="true" />;
 }

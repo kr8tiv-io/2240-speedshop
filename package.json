@@ -20,6 +20,7 @@
     "test:route-veil": "node scripts/route-veil-contract.mjs",
     "test:bundle-mode": "node scripts/bundle-mode-contract.mjs",
     "test:webgl-capability": "node scripts/webgl-capability-contract.mjs",
+    "test:deferred-motion": "node scripts/deferred-motion-contract.mjs",
     "test:model-pipeline": "node scripts/model-pipeline-contract.mjs",
     "audit:model-shelves": "node scripts/model-shelf-audit.cjs",
     "audit:export-hero": "node scripts/export-hero-check.mjs",
@@ -30,7 +31,6 @@
     "shots:combined": "node scripts/combined-shots.js"
   },
   "dependencies": {
-    "@gsap/react": "^2.1.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.7.0",
     "@react-three/postprocessing": "^3.0.4",

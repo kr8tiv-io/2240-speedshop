@@ -6,6 +6,10 @@ const gate = await readFile(
   new URL("../components/shop/WalkthroughWorld.tsx", import.meta.url),
   "utf8",
 );
+const webglCapability = await readFile(
+  new URL("../lib/webgl-capability.ts", import.meta.url),
+  "utf8",
+);
 const heroRuntime = await readFile(
   new URL("../components/home/HeroRuntime.tsx", import.meta.url),
   "utf8",
@@ -48,11 +52,11 @@ assert.ok(
   "ShopWorld cleanup may not replace the shared callback with a no-op.",
 );
 assert.ok(
-  /canvas\.getContext\("webgl2"[^)]*\)/.test(gate),
+  /supportsWebGL2\(\)/.test(gate) && /canvas\.getContext\("webgl2"[^)]*\)/.test(webglCapability),
   "The capability gate must require WebGL2.",
 );
 assert.ok(
-  !/canvas\.getContext\("webgl"\)/.test(gate),
+  !/canvas\.getContext\("webgl"\)/.test(gate) && !/canvas\.getContext\("webgl"\)/.test(webglCapability),
   "Three r185 cannot use a WebGL1 fallback.",
 );
 assert.ok(

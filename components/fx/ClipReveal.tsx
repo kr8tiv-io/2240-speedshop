@@ -1,11 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { useDeferredGSAP } from "./useDeferredGSAP";
 
 /**
  * Zentry-style clip-path choreography: the child (usually an image figure)
@@ -21,8 +17,8 @@ export function ClipReveal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  useGSAP(
-    () => {
+  useDeferredGSAP(
+    (gsap) => {
       const el = ref.current;
       if (!el) return;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;

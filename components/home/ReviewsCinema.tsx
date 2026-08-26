@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { useDeferredGSAP } from "@/components/fx/useDeferredGSAP";
 
 export type Quote = { text: string; when: string };
 
@@ -23,11 +19,14 @@ export function ReviewsCinema({ quotes }: { quotes: Quote[] }) {
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 768px)").matches;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (wide && !reduced) setCinema(true);
+    const frame = window.requestAnimationFrame(() => {
+      if (wide && !reduced) setCinema(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  useGSAP(
-    () => {
+  useDeferredGSAP(
+    (gsap) => {
       if (!cinema) return;
       const wrap = wrapRef.current;
       if (!wrap) return;

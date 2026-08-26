@@ -1,11 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { useDeferredGSAP } from "@/components/fx/useDeferredGSAP";
 
 declare global {
   interface Window {
@@ -30,7 +26,7 @@ const BASE_TONE = "#0a0a0b";
 export function HomeFx() {
   const ref = useRef<HTMLDivElement>(null);
 
-  useGSAP(() => {
+  useDeferredGSAP((gsap, ScrollTrigger) => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const ctx = gsap.context(() => {
@@ -122,7 +118,7 @@ export function HomeFx() {
       document.documentElement.style.removeProperty("--tone");
       ctx.revert();
     };
-  }, []);
+  }, { dependencies: [] });
 
   return <div ref={ref} className="hidden" aria-hidden="true" />;
 }
