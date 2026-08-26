@@ -15,5 +15,10 @@ assert.match(
   /pnpm exec next build --webpack/,
   "The Hostinger export must use the measured shared-chunk build too.",
 );
+assert.match(
+  deploy,
+  /NODE_OPTIONS[\s\S]*--use-system-ca[\s\S]*pnpm exec next build --webpack/,
+  "The Windows export must keep TLS verification while trusting its system CA store.",
+);
 
 console.log("bundle mode contract: PASS");

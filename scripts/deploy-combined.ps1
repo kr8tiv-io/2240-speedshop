@@ -28,6 +28,11 @@ if ($LASTEXITCODE -ne 0) { throw "precompress failed" }
 
 Write-Host "== building static export"
 $env:EXPORT = "1"
+# Webpack resolves next/font during the build. Honour the Windows trust store
+# instead of weakening TLS when the machine sits behind an HTTPS inspector.
+if ($env:NODE_OPTIONS -notmatch "(?:^|\s)--use-system-ca(?:\s|$)") {
+  $env:NODE_OPTIONS = ($env:NODE_OPTIONS + " --use-system-ca").Trim()
+}
 pnpm exec next build --webpack
 if ($LASTEXITCODE -ne 0) { throw "next build failed" }
 
