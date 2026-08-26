@@ -401,17 +401,21 @@ const WARM_KEYS = [
   ...Array.from({ length: STATION_COUNT }, (_, i) => String(i)),
   "5-gallery",
 ];
+const REVEAL_WARM_KEYS = ["shell"];
 const PENDING = new Set<string>(WARM_KEYS);
+const REVEAL_PENDING = new Set<string>(REVEAL_WARM_KEYS);
 let worldFinalizer: (() => Promise<void>) | null = null;
 let finalizingWorld = false;
 
 async function finalizeWorld() {
-  if (finalizingWorld || PENDING.size !== 0 || !worldFinalizer) return;
+  if (finalizingWorld || REVEAL_PENDING.size !== 0 || !worldFinalizer) return;
   finalizingWorld = true;
-  restoreComposerOvens();
   try {
-    // The finalizer renders the ACTUAL full composer behind the photograph.
-    // Only a completed composed frame is allowed to unlock the dissolve.
+    // The building and the ACTUAL full composer are ready. Bay shaders compile
+    // concurrently, then their hundreds of per-geometry GPU bindings continue
+    // through the existing paced queue ahead of the camera. Making those
+    // first draws block this frame left WebKit on the photograph even though
+    // a lit, moving garage already existed below.
     await worldFinalizer();
     markShellWarm();
     markWorldReady();
@@ -426,13 +430,17 @@ async function finalizeWorld() {
 
 function setWorldFinalizer(finalizer: (() => Promise<void>) | null) {
   worldFinalizer = finalizer;
-  if (finalizer && PENDING.size === 0) void finalizeWorld();
+  if (finalizer && REVEAL_PENDING.size === 0) void finalizeWorld();
 }
 
 function reportWarm(key: string) {
   if (PENDING.delete(key)) {
+    REVEAL_PENDING.delete(key);
     reportBootProgress(0.75 + 0.25 * ((WARM_KEYS.length - PENDING.size) / WARM_KEYS.length));
-    if (PENDING.size === 0) void finalizeWorld();
+    if (REVEAL_PENDING.size === 0) void finalizeWorld();
+    // Keep the postage-stamp compositor oven for the later bays. They can
+    // still first-use the exact HDR target cheaply while the world is parked.
+    if (PENDING.size === 0) restoreComposerOvens();
   }
 }
 
@@ -451,9 +459,11 @@ function reportWarm(key: string) {
  * 15-second timer. The timer started when this chunk was imported, not when
  * the renderer mounted; on a slower GPU it could therefore lift the doorway
  * photograph while the shell was still compiling and every bay was hidden.
- * A permanent, fully graded photograph is the honest failure mode. It is much
- * better than a white composer target or an empty garage, so there is no
- * time-based path to `ready` anymore.
+ * The photograph now waits for the complete building and a verified
+ * full-composer frame. Every bay still compiles and first-uses every object
+ * before handing that object to the camera, but those paced GPU bindings no
+ * longer hold an already-finished moving garage hostage. There is still no
+ * time-based path to `ready`.
  */
 if (typeof window !== "undefined") {
   /* THE STREAM NO LONGER WAITS TO BE EARNED. The original gate chain — each

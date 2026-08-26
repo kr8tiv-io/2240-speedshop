@@ -458,10 +458,10 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
                   data-echo-film
                   className="echo-outline text-balance font-display text-[clamp(2.05rem,8.2vw,6.5rem)] uppercase leading-[0.95] tracking-[0.005em] sm:leading-[0.86]"
                 >
-                  One car. One <em className="accent-serif">standard.</em>
+                  Parked, it still <em className="accent-serif">stops</em> people.
                 </p>
                 <h2 className="text-balance font-display text-[clamp(2.05rem,8.2vw,6.5rem)] uppercase leading-[0.95] tracking-[0.005em] text-bone sm:leading-[0.86]">
-                  One car. One <em className="accent-serif">standard.</em>
+                  Parked, it still <em className="accent-serif">stops</em> people.
                 </h2>
               </div>
               <p className="mt-5 max-w-md font-body text-[15px] leading-[1.7] text-steel sm:mt-6 sm:text-base">

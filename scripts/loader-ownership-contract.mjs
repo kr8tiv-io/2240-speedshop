@@ -95,4 +95,22 @@ assert.ok(
   !/setTimeout\(\(\) => setMounted\(true\), 3500\)/.test(gate),
   "The shop may not start on a fixed clock while the opening film is still compiling.",
 );
+assert.ok(
+  /const REVEAL_WARM_KEYS = \["shell"\]/.test(loaders) &&
+    /const REVEAL_PENDING = new Set<string>\(REVEAL_WARM_KEYS\)/.test(loaders),
+  "The photographic doorway must wait for the verified 3D building, not every bay object's first draw.",
+);
+assert.ok(
+  /REVEAL_PENDING\.delete\(key\)/.test(loaders) &&
+    /if \(REVEAL_PENDING\.size === 0\) void finalizeWorld\(\)/.test(loaders),
+  "Building readiness must trigger the verified composed-frame finalizer while bays continue paced first-use.",
+);
+assert.ok(
+  /if \(PENDING\.size === 0\) restoreComposerOvens\(\)/.test(loaders),
+  "The full-tour warm tracker must retain the cheap composer oven until every later bay is first-used.",
+);
+assert.ok(
+  !/finalizingWorld \|\| PENDING\.size !== 0 \|\| !worldFinalizer/.test(loaders),
+  "Full-tour readiness may not hold the already-warm 3D entrance behind a static photograph.",
+);
 console.log("loader ownership contract: PASS");

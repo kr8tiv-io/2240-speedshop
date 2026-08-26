@@ -31,6 +31,7 @@ const retired = [
   "reviews with words in them",
   "Leave a review with words in it.",
   "A shop that flinches",
+  "One car. One",
 ];
 
 for (const phrase of retired) {
@@ -45,7 +46,7 @@ for (const proof of [
   "The work is the showroom.",
   "The work gets remembered.",
   "Right on the Sherwood Park line.",
-  "One car. One",
+  "Parked, it still",
   "Before the first cut,",
   "Finished paint under honest light.",
   "Put the car in the review.",
