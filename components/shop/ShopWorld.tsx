@@ -139,6 +139,25 @@ const CHROMATIC_BASE_X = 0.00016;
 const CHROMATIC_BASE_Y = 0.00024;
 const CHROMATIC_OFFSET = new THREE.Vector2(CHROMATIC_BASE_X, CHROMATIC_BASE_Y);
 
+/* Canonical primitive buffers for the procedural room.
+   A BoxGeometry's dimensions live entirely in its vertex positions; applying
+   the same dimensions through Object3D.scale produces the identical surface,
+   normals and UVs. Sharing these small unit buffers therefore changes no
+   pixels, but it stops WebGL from uploading and binding the same cube/plane
+   dozens of times during the cold garage reveal. They are deliberately
+   module-lifetime, bounded objects. Each WebGL context owns and releases its
+   own GPU copy while the tiny CPU-side arrays remain reusable on route return. */
+const UNIT_BOX_GEOMETRY = new THREE.BoxGeometry(1, 1, 1);
+const UNIT_PLANE_GEOMETRY = new THREE.PlaneGeometry(1, 1);
+const UNIT_CIRCLE_18_GEOMETRY = new THREE.CircleGeometry(1, 18);
+const UNIT_CIRCLE_24_GEOMETRY = new THREE.CircleGeometry(1, 24);
+const UNIT_CIRCLE_28_GEOMETRY = new THREE.CircleGeometry(1, 28);
+const UNIT_CYLINDER_6_GEOMETRY = new THREE.CylinderGeometry(1, 1, 1, 6);
+const LOT_POLE_GEOMETRY = new THREE.CylinderGeometry(0.07, 0.09, 1, 8);
+const UNIT_CONE_18_OPEN_GEOMETRY = new THREE.ConeGeometry(1, 1, 18, 1, true);
+const UNIT_CONE_22_OPEN_GEOMETRY = new THREE.ConeGeometry(1, 1, 22, 1, true);
+const UNIT_SPHERE_8_GEOMETRY = new THREE.SphereGeometry(1, 8, 8);
+
 /* ── The photographs ────────────────────────────────────────────────────────
    The freestanding lightbox prints that used to stand in for cars are gone —
    there are real cars in the bays now. What survives is the office wall, which
@@ -183,8 +202,12 @@ function Shell({ tier }: { tier: WorldTier }) {
           rink. The reflector renders the whole scene a second time, which a
           phone GPU cannot afford: the lite floor is plain sealed concrete that
           takes its sheen from the environment map instead. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, MID_Z]}>
-        <planeGeometry args={[HALF_W * 2 + 1, LENGTH]} />
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0, MID_Z]}
+        scale={[HALF_W * 2 + 1, LENGTH, 1]}
+      >
+        <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
         {tier === "full" ? (
           <MeshReflectorMaterial
             /* Back up to 256 in the premium pass: with MSAA and the higher
@@ -220,15 +243,23 @@ function Shell({ tier }: { tier: WorldTier }) {
 
       {/* Side walls */}
       {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * (HALF_W + 0.2), CEIL / 2, MID_Z]}>
-          <boxGeometry args={[0.4, CEIL, LENGTH]} />
+        <mesh
+          key={side}
+          position={[side * (HALF_W + 0.2), CEIL / 2, MID_Z]}
+          scale={[0.4, CEIL, LENGTH]}
+        >
+          <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
           <meshStandardMaterial color="#2b2f36" roughness={0.92} metalness={0.08} />
         </mesh>
       ))}
 
       {/* Ceiling — catches just enough tungsten to read as a lid, not a void. */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, CEIL, MID_Z]}>
-        <planeGeometry args={[HALF_W * 2 + 0.4, LENGTH]} />
+      <mesh
+        rotation={[Math.PI / 2, 0, 0]}
+        position={[0, CEIL, MID_Z]}
+        scale={[HALF_W * 2 + 0.4, LENGTH, 1]}
+      >
+        <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#1f2229" roughness={1} metalness={0} />
       </mesh>
 
@@ -238,8 +269,9 @@ function Shell({ tier }: { tier: WorldTier }) {
           key={`band-${side}`}
           position={[side * (HALF_W - 0.01), 1.05, MID_Z]}
           rotation={[0, -side * (Math.PI / 2), 0]}
+          scale={[LENGTH, 1.5, 1]}
         >
-          <planeGeometry args={[LENGTH, 1.5]} />
+          <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
           {/* Only a shade under the wall. At a wider gap its top edge cut a hard
               horizontal line clean across the frame at bumper-height camera
               stations, which read as a rendering seam, not as grime. */}
@@ -248,8 +280,11 @@ function Shell({ tier }: { tier: WorldTier }) {
       ))}
 
       {/* Front wall, behind the establishing shot */}
-      <mesh position={[0, CEIL / 2, FRONT_Z]}>
-        <boxGeometry args={[HALF_W * 2 + 0.4, CEIL, 0.4]} />
+      <mesh
+        position={[0, CEIL / 2, FRONT_Z]}
+        scale={[HALF_W * 2 + 0.4, CEIL, 0.4]}
+      >
+        <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#272a32" roughness={0.94} metalness={0.08} />
       </mesh>
 
@@ -258,13 +293,17 @@ function Shell({ tier }: { tier: WorldTier }) {
         <mesh
           key={`pier-${side}`}
           position={[side * ((HALF_W + 0.2 + DOOR_HALF) / 2), CEIL / 2, DOOR_Z]}
+          scale={[HALF_W + 0.2 - DOOR_HALF, CEIL, 0.5]}
         >
-          <boxGeometry args={[HALF_W + 0.2 - DOOR_HALF, CEIL, 0.5]} />
+          <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
           <meshStandardMaterial color="#272a32" roughness={0.92} metalness={0.09} />
         </mesh>
       ))}
-      <mesh position={[0, (DOOR_H + CEIL) / 2, DOOR_Z]}>
-        <boxGeometry args={[DOOR_HALF * 2, CEIL - DOOR_H, 0.5]} />
+      <mesh
+        position={[0, (DOOR_H + CEIL) / 2, DOOR_Z]}
+        scale={[DOOR_HALF * 2, CEIL - DOOR_H, 0.5]}
+      >
+        <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#272a32" roughness={0.92} metalness={0.09} />
       </mesh>
 
@@ -274,8 +313,13 @@ function Shell({ tier }: { tier: WorldTier }) {
           as constant-brightness scan lines ruled across the floor rather than
           as paint. A standard material lets them fall off into the dark. */}
       {[-7.2, -19.5, -30.5, -44].map((z) => (
-        <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, z]}>
-          <planeGeometry args={[13, 0.09]} />
+        <mesh
+          key={z}
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0.012, z]}
+          scale={[13, 0.09, 1]}
+        >
+          <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
           <meshStandardMaterial color="#7d6a41" roughness={0.92} metalness={0.02} />
         </mesh>
       ))}
@@ -391,9 +435,10 @@ function FloorGrime() {
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, 0.006, MID_Z]}
+      scale={[HALF_W * 2, LENGTH, 1]}
       renderOrder={1}
     >
-      <planeGeometry args={[HALF_W * 2, LENGTH]} />
+      <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
       <primitive object={material} attach="material" />
     </mesh>
   );
@@ -743,13 +788,13 @@ function ShopLight({
     <group>
       <group position={position}>
         {/* Drop rod */}
-        <mesh position={[0, drop / 2, 0]}>
-          <cylinderGeometry args={[0.022, 0.022, drop, 6]} />
+        <mesh position={[0, drop / 2, 0]} scale={[0.022, drop, 0.022]}>
+          <primitive object={UNIT_CYLINDER_6_GEOMETRY} attach="geometry" />
           <meshStandardMaterial color="#3a3c43" roughness={0.6} metalness={0.32} />
         </mesh>
         {/* Shade */}
-        <mesh>
-          <coneGeometry args={[0.56, 0.44, 18, 1, true]} />
+        <mesh scale={[0.56, 0.44, 0.56]}>
+          <primitive object={UNIT_CONE_18_OPEN_GEOMETRY} attach="geometry" />
           <meshStandardMaterial
             color="#5a5e67"
             side={THREE.DoubleSide}
@@ -758,8 +803,12 @@ function ShopLight({
           />
         </mesh>
         {/* Emissive face — the only thing bloom is allowed to see up here */}
-        <mesh position={[0, -0.19, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.47, 18]} />
+        <mesh
+          position={[0, -0.19, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+          scale={[0.47, 0.47, 1]}
+        >
+          <primitive object={UNIT_CIRCLE_18_GEOMETRY} attach="geometry" />
           <meshStandardMaterial
             ref={disc}
             color="#000000"
@@ -778,8 +827,12 @@ function ShopLight({
           position={[0, -0.3, 0]}
         />
         {/* The beam itself, as the dust would show it */}
-        <mesh ref={beam} position={[0, -height / 2 - 0.2, 0]}>
-          <coneGeometry args={[spread, height, 22, 1, true]} />
+        <mesh
+          ref={beam}
+          position={[0, -height / 2 - 0.2, 0]}
+          scale={[spread, height, spread]}
+        >
+          <primitive object={UNIT_CONE_22_OPEN_GEOMETRY} attach="geometry" />
           <primitive object={beamMaterial} attach="material" />
         </mesh>
       </group>
@@ -789,8 +842,9 @@ function ShopLight({
         ref={pool}
         rotation={[-Math.PI / 2, 0, 0]}
         position={[position[0], 0.014, position[2]]}
+        scale={[spread * 1.4, spread * 1.4, 1]}
       >
-        <circleGeometry args={[spread * 1.4, 28]} />
+        <primitive object={UNIT_CIRCLE_28_GEOMETRY} attach="geometry" />
         <primitive object={poolMaterial} attach="material" />
       </mesh>
     </group>
@@ -972,12 +1026,12 @@ function NeonSign() {
   return (
     <group position={[HALF_W - 0.35, 4.5, -10.5]} rotation={[0, -Math.PI / 2 + 0.62, 0]}>
       {/* Rust first, neon second (concept §2.3) */}
-      <mesh position={[0, 0, -0.14]}>
-        <boxGeometry args={[4.6, 2.5, 0.1]} />
+      <mesh position={[0, 0, -0.14]} scale={[4.6, 2.5, 0.1]}>
+        <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#6b4b31" roughness={0.86} metalness={0.26} />
       </mesh>
-      <mesh position={[0, 0, -0.08]}>
-        <boxGeometry args={[4.32, 2.24, 0.03]} />
+      <mesh position={[0, 0, -0.08]} scale={[4.32, 2.24, 0.03]}>
+        <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#2a231d" roughness={0.95} metalness={0.1} />
       </mesh>
 
@@ -1041,8 +1095,8 @@ function TuningNeon() {
 
   return (
     <group position={[HALF_W - 0.4, 3.5, -36.6]} rotation={[0, -Math.PI / 2, 0]}>
-      <mesh position={[0, 0, -0.12]}>
-        <boxGeometry args={[3.6, 1.4, 0.08]} />
+      <mesh position={[0, 0, -0.12]} scale={[3.6, 1.4, 0.08]}>
+        <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#63462d" roughness={0.88} metalness={0.24} />
       </mesh>
       {TUNING_BARS.map((bar, i) => (
@@ -1313,15 +1367,23 @@ function RollUpDoor() {
     <group>
       {/* The curtain, rolled up above the opening */}
       {Array.from({ length: 6 }, (_, i) => (
-        <mesh key={i} position={[0, DOOR_H + 0.16 + i * 0.15, DOOR_Z + 0.42]}>
-          <boxGeometry args={[DOOR_HALF * 2 - 0.3, 0.12, 0.44 - i * 0.05]} />
+        <mesh
+          key={i}
+          position={[0, DOOR_H + 0.16 + i * 0.15, DOOR_Z + 0.42]}
+          scale={[DOOR_HALF * 2 - 0.3, 0.12, 0.44 - i * 0.05]}
+        >
+          <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
           <meshStandardMaterial color="#43474f" roughness={0.6} metalness={0.34} />
         </mesh>
       ))}
       {/* Guide rails */}
       {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * (DOOR_HALF - 0.1), DOOR_H / 2, DOOR_Z + 0.42]}>
-          <boxGeometry args={[0.18, DOOR_H, 0.3]} />
+        <mesh
+          key={side}
+          position={[side * (DOOR_HALF - 0.1), DOOR_H / 2, DOOR_Z + 0.42]}
+          scale={[0.18, DOOR_H, 0.3]}
+        >
+          <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
           <meshStandardMaterial color="#43474f" roughness={0.58} metalness={0.36} />
         </mesh>
       ))}
@@ -1397,8 +1459,8 @@ function NightOutside() {
   return (
     <group>
       {/* Sky */}
-      <mesh position={[0, 26, -136]}>
-        <planeGeometry args={[260, 120]} />
+      <mesh position={[0, 26, -136]} scale={[260, 120, 1]}>
+        <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
         <primitive object={sky} attach="material" />
       </mesh>
 
@@ -1406,21 +1468,24 @@ function NightOutside() {
       {WAREHOUSES.map((b) => (
         <group key={`${b.x}:${b.z}`} position={[b.x, 0, b.z]}>
           {/* Body and parapet cap */}
-          <mesh position={[0, b.h / 2, 0]}>
-            <boxGeometry args={[b.w, b.h, b.d]} />
+          <mesh position={[0, b.h / 2, 0]} scale={[b.w, b.h, b.d]}>
+            <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
             <meshStandardMaterial color="#161b25" roughness={0.92} metalness={0.06} fog={false} />
           </mesh>
-          <mesh position={[0, b.h + 0.22, 0]}>
-            <boxGeometry args={[b.w + 0.5, 0.45, b.d + 0.5]} />
+          <mesh
+            position={[0, b.h + 0.22, 0]}
+            scale={[b.w + 0.5, 0.45, b.d + 0.5]}
+          >
+            <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
             <meshStandardMaterial color="#2c3442" roughness={0.85} metalness={0.1} fog={false} />
           </mesh>
           {/* Rooftop units */}
-          <mesh position={[-b.w * 0.22, b.h + 0.85, -1]}>
-            <boxGeometry args={[2.2, 1.3, 1.8]} />
+          <mesh position={[-b.w * 0.22, b.h + 0.85, -1]} scale={[2.2, 1.3, 1.8]}>
+            <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
             <meshStandardMaterial color="#232a36" roughness={0.9} metalness={0.12} fog={false} />
           </mesh>
-          <mesh position={[b.w * 0.28, b.h + 0.6, 1.2]}>
-            <boxGeometry args={[1.4, 0.85, 1.4]} />
+          <mesh position={[b.w * 0.28, b.h + 0.6, 1.2]} scale={[1.4, 0.85, 1.4]}>
+            <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
             <meshStandardMaterial color="#1d232e" roughness={0.9} metalness={0.12} fog={false} />
           </mesh>
           {/* Office strip windows, lit warm, tone mapped — glow, not bloom */}
@@ -1432,8 +1497,9 @@ function NightOutside() {
                 b.h * 0.42,
                 b.d / 2 + 0.02,
               ]}
+              scale={[b.w / (b.windows + 1.6), 1.15, 1]}
             >
-              <planeGeometry args={[b.w / (b.windows + 1.6), 1.15]} />
+              <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
               <meshStandardMaterial
                 color="#241d12"
                 emissive="#e3c18f"
@@ -1444,8 +1510,8 @@ function NightOutside() {
             </mesh>
           ))}
           {/* One lit loading door */}
-          <mesh position={[b.door * b.w, 1.7, b.d / 2 + 0.02]}>
-            <planeGeometry args={[2.9, 3.4]} />
+          <mesh position={[b.door * b.w, 1.7, b.d / 2 + 0.02]} scale={[2.9, 3.4, 1]}>
+            <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
             <meshStandardMaterial
               color="#131720"
               emissive="#9fb6dc"
@@ -1459,8 +1525,12 @@ function NightOutside() {
 
       {/* Far rank — silhouettes only, holding the horizon */}
       {FAR_BLOCKS.map((t) => (
-        <mesh key={`${t.x}:${t.z}`} position={[t.x, t.h / 2, t.z]}>
-          <boxGeometry args={[t.w, t.h, 10]} />
+        <mesh
+          key={`${t.x}:${t.z}`}
+          position={[t.x, t.h / 2, t.z]}
+          scale={[t.w, t.h, 10]}
+        >
+          <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
           <meshStandardMaterial color="#0c101a" roughness={1} metalness={0} fog={false} />
         </mesh>
       ))}
@@ -1471,15 +1541,24 @@ function NightOutside() {
       ))}
 
       {/* Wet asphalt out back, a step lighter so the lot reads under its lamps */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, -92]}>
-        <planeGeometry args={[220, 70]} />
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.01, -92]}
+        scale={[220, 70, 1]}
+      >
+        <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#181d27" roughness={0.36} metalness={0.22} fog={false} />
       </mesh>
 
       {/* Stall lines painted on the lot */}
       {[-16, -11.6, -7.2, 6.4, 10.8, 15.2].map((x) => (
-        <mesh key={x} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.004, -66]}>
-          <planeGeometry args={[0.14, 5.6]} />
+        <mesh
+          key={x}
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[x, 0.004, -66]}
+          scale={[0.14, 5.6, 1]}
+        >
+          <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
           <meshStandardMaterial color="#525a68" roughness={0.8} metalness={0.02} fog={false} />
         </mesh>
       ))}
@@ -1506,16 +1585,20 @@ function LotLight({ position }: { position: [number, number, number] }) {
 
   return (
     <group position={position}>
-      <mesh position={[0, 3.3, 0]}>
-        <cylinderGeometry args={[0.07, 0.09, 6.6, 8]} />
+      <mesh position={[0, 3.3, 0]} scale={[1, 6.6, 1]}>
+        <primitive object={LOT_POLE_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#2c3037" roughness={0.7} metalness={0.4} fog={false} />
       </mesh>
-      <mesh position={[0, 6.6, 0.34]}>
-        <boxGeometry args={[0.5, 0.22, 1.0]} />
+      <mesh position={[0, 6.6, 0.34]} scale={[0.5, 0.22, 1]}>
+        <primitive object={UNIT_BOX_GEOMETRY} attach="geometry" />
         <meshStandardMaterial color="#33383f" roughness={0.6} metalness={0.42} fog={false} />
       </mesh>
-      <mesh position={[0, 6.48, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.4, 0.7]} />
+      <mesh
+        position={[0, 6.48, 0.5]}
+        rotation={[Math.PI / 2, 0, 0]}
+        scale={[0.4, 0.7, 1]}
+      >
+        <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
         <meshStandardMaterial
           ref={head}
           color="#000000"
@@ -1534,8 +1617,13 @@ function LotLight({ position }: { position: [number, number, number] }) {
         decay={2}
         position={[0, 6.2, 0.5]}
       />
-      <mesh ref={pool} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0.5]}>
-        <circleGeometry args={[5.2, 24]} />
+      <mesh
+        ref={pool}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.02, 0.5]}
+        scale={[5.2, 5.2, 1]}
+      >
+        <primitive object={UNIT_CIRCLE_24_GEOMETRY} attach="geometry" />
         <primitive object={poolMaterial} attach="material" />
       </mesh>
     </group>
@@ -1557,8 +1645,8 @@ function Headlights({ offset, speed }: { offset: number; speed: number }) {
   return (
     <group ref={rig} position={[0, 0.62, -66]}>
       {[-0.7, 0.7].map((x) => (
-        <mesh key={x} position={[x, 0, 0]}>
-          <sphereGeometry args={[0.11, 8, 8]} />
+        <mesh key={x} position={[x, 0, 0]} scale={0.11}>
+          <primitive object={UNIT_SPHERE_8_GEOMETRY} attach="geometry" />
           <meshStandardMaterial
             color="#000000"
             emissive="#fff2d8"
@@ -1567,8 +1655,8 @@ function Headlights({ offset, speed }: { offset: number; speed: number }) {
           />
         </mesh>
       ))}
-      <mesh position={[0, 0.05, 0.2]}>
-        <planeGeometry args={[4.2, 2.2]} />
+      <mesh position={[0, 0.05, 0.2]} scale={[4.2, 2.2, 1]}>
+        <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
         <primitive object={glow} attach="material" />
       </mesh>
     </group>
@@ -1593,8 +1681,12 @@ function Haze() {
           large slice of the frame at the door stations, and the third was worth
           almost nothing visually for a third of the haze bill. */}
       {[0, 1].map((i) => (
-        <mesh key={i} position={[i * 2.2 - 1.6, 1.8 + i * 0.5, -i * 3.0]}>
-          <planeGeometry args={[16, 7]} />
+        <mesh
+          key={i}
+          position={[i * 2.2 - 1.6, 1.8 + i * 0.5, -i * 3.0]}
+          scale={[16, 7, 1]}
+        >
+          <primitive object={UNIT_PLANE_GEOMETRY} attach="geometry" />
           <primitive object={material} attach="material" />
         </mesh>
       ))}

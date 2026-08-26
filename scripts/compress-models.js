@@ -6,15 +6,13 @@
  * Every model the shop actually mounts (the list is read straight out of
  * `components/shop/Loaders.tsx`, so it can never drift) gets:
  *
- *   textures   resized to a per-slot budget, then encoded to KTX2/Basis
- *              (ETC1S, normal-mode on normal maps). This is the fix that
- *              matters most: a 1024² RGBA texture is 5.5 MB of VRAM with mips,
- *              the same texture as ETC1S is 0.7 MB and uploads without a
- *              decode or a mipmap-generation pass on the main thread.
+ *   textures   resized to a per-slot budget, then encoded to high-quality
+ *              WebP. This keeps the stable browser decode path while avoiding
+ *              the Radeon KTX2/transcoder crash documented below.
  *   geometry   EXT_meshopt_compression — chosen over Draco because decode is
  *              ~10x cheaper, and decode cost is exactly what shows up as a
  *              dropped frame while the reader is scrolling.
- *   graph      dedup + prune + resample: the free bytes.
+ *   graph      dedup + prune + resample + lossless opaque primitive joining.
  *
  * Originals are never touched: they stay in `public/models/`, the optimised
  * copies land in `public/models-opt/` (what the site fetches, what ships).
@@ -22,8 +20,6 @@
 
 const fs = require("fs");
 const path = require("path");
-const os = require("os");
-const { execFileSync } = require("child_process");
 
 /* Build-only dependencies, resolved from the first place that has them.
    They live outside the app's dependency tree on purpose: nothing the site
@@ -53,6 +49,8 @@ const { NodeIO } = req("@gltf-transform/core");
 const { ALL_EXTENSIONS, EXTTextureWebP } = req("@gltf-transform/extensions");
 const {
   dedup,
+  flatten,
+  join,
   prune,
   resample,
   meshopt,
@@ -85,8 +83,6 @@ const sourceOf = (file) => {
 };
 const MOBILE = process.argv.includes("--mobile");
 const OUT = path.join(ROOT, "public", MOBILE ? "models-mobile" : "models-opt");
-const KTX = "C:\\Users\\lucid\\tools\\ktx\\bin\\ktx.exe";
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "ktx2240-"));
 
 /* ── What the shop actually mounts ──────────────────────────────────────── */
 
@@ -114,6 +110,20 @@ const HERO = new Set([
   "prop-toolbox-metal.glb", "prop-bench-vice.glb", "prop-storage-cart-industrial.glb",
 ]);
 
+/* Joining compatible opaque primitives bakes their existing node transforms
+   into fewer buffers and draw submissions. No vertex, normal, UV, material or
+   texture is removed. Transparent objects stay separate because object-level
+   sorting is part of their appearance; the lone morph asset stays separate so
+   its target layout remains untouched. */
+const JOIN_EXCLUDED = new Set([
+  // Its authored index topology is not preserved by join(); keep the exact mesh.
+  "car-camaro.glb",
+  "prop-droplight-pendant.glb",
+  "car-prewar-hotrod-donor.glb",
+  "prop-welding-cart.glb",
+  "prop-wheel-rim-rusted-a.glb",
+]);
+
 const budget = (file, slot) => {
   const hero = HERO.has(file);
   const half = MOBILE ? 2 : 1;
@@ -129,6 +139,44 @@ function slotOf(document, texture) {
   if (/baseColor|emissive|sheenColor|specularColor/.test(s)) return "color";
   if (/normal/.test(s)) return "normal";
   return "linear";
+}
+
+function surfaceContract(document) {
+  let triangleElements = 0;
+  let primitives = 0;
+  for (const mesh of document.getRoot().listMeshes()) {
+    for (const primitive of mesh.listPrimitives()) {
+      if (primitive.getMode() !== 4) {
+        throw new Error("join contract only supports triangle primitives");
+      }
+      triangleElements +=
+        primitive.getIndices()?.getCount()
+        ?? primitive.getAttribute("POSITION")?.getCount()
+        ?? 0;
+      primitives += 1;
+    }
+  }
+  return {
+    triangleElements,
+    primitives,
+    materials: new Set(document.getRoot().listMaterials()),
+  };
+}
+
+function assertLosslessJoin(before, document, file) {
+  const after = surfaceContract(document);
+  if (after.triangleElements !== before.triangleElements) {
+    throw new Error(`${file}: join changed triangle elements`);
+  }
+  if (after.primitives > before.primitives) {
+    throw new Error(`${file}: join added primitives`);
+  }
+  if (
+    after.materials.size !== before.materials.size
+    || [...before.materials].some((material) => !after.materials.has(material))
+  ) {
+    throw new Error(`${file}: join changed authored material objects`);
+  }
 }
 
 /* ── Texture encode ─────────────────────────────────────────────────────────
@@ -199,6 +247,25 @@ async function convert(file, io) {
     }
   }
   await document.transform(prune({ keepAttributes: false, keepLeaves: false }));
+
+  const staticGraph = document.getRoot().listAnimations().length === 0;
+  const hasMorphTargets = document
+    .getRoot()
+    .listMeshes()
+    .some((mesh) => mesh.listPrimitives().some((primitive) => primitive.listTargets().length > 0));
+  if (staticGraph && !hasMorphTargets && !JOIN_EXCLUDED.has(file)) {
+    /* `flatten` preserves every world transform; `join` combines only
+       compatible primitives (same material/mode/attribute contract). Meshopt
+       runs later against the joined buffers, so transport compression remains
+       the final geometry operation. */
+    const beforeJoin = surfaceContract(document);
+    await document.transform(
+      flatten(),
+      join({ keepNamed: false }),
+      prune({ keepAttributes: false, keepLeaves: false }),
+    );
+    assertLosslessJoin(beforeJoin, document, file);
+  }
 
   let vramBefore = 0;
   let vramAfter = 0;
@@ -312,6 +379,8 @@ async function convert(file, io) {
   console.log(`files      ${list.length - failures.length}/${list.length}`);
   console.log(`payload    ${(before / 1048576).toFixed(1)} MB → ${(after / 1048576).toFixed(1)} MB`);
   console.log(`texture VRAM ${(vramB / 1048576).toFixed(0)} MB → ${(vramA / 1048576).toFixed(0)} MB`);
-  if (failures.length) console.log("FAILED: " + failures.join(", "));
-  fs.rmSync(TMP, { recursive: true, force: true });
+  if (failures.length) {
+    console.log("FAILED: " + failures.join(", "));
+    process.exitCode = 1;
+  }
 })();

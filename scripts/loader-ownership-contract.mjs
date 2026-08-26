@@ -141,4 +141,33 @@ assert.ok(
   /if \(station === 1\) await waitForWarmKey\("0"\)/.test(loaders),
   "The second opening bay may not win the private first-use queue ahead of the doorway subject.",
 );
+assert.ok(
+  /const UNIT_BOX_GEOMETRY = new THREE\.BoxGeometry\(1, 1, 1\)/.test(shop) &&
+    /const UNIT_PLANE_GEOMETRY = new THREE\.PlaneGeometry\(1, 1\)/.test(shop),
+  "The garage shell must share canonical primitive buffers instead of uploading duplicate boxes and planes.",
+);
+assert.ok(
+  (shop.match(/object=\{UNIT_BOX_GEOMETRY\}/g) ?? []).length >= 8 &&
+    (shop.match(/object=\{UNIT_PLANE_GEOMETRY\}/g) ?? []).length >= 8,
+  "The repeated shell, light, door and yard primitives must consume the shared unit buffers.",
+);
+assert.ok(
+  /material\?\.isShaderMaterial \? material\.uuid : ""/.test(loaders),
+  "Shared geometry warm keys must keep distinct custom shader sources distinct.",
+);
+assert.ok(
+  /let changed = false;[\s\S]*if \(changed\) material\.needsUpdate = true;/.test(loaders) &&
+    /const unified = new Set<THREE\.MeshStandardMaterial>\(\)/.test(loaders),
+  "Material unification must be idempotent and deduplicate shared clone materials per traversal.",
+);
+assert.ok(
+  /async function waitForReaderQuiet\(patience = 900\)/.test(loaders) &&
+    /performance\.now\(\) < deadline/.test(loaders),
+  "Reader-quiet courtesy waits must be bounded so continuous scroll cannot strand the garage photograph.",
+);
+assert.ok(
+  /maxDistanceSquared: number/.test(loaders) &&
+    /distanceToSquared\(eye\) < item\.maxDistanceSquared/.test(loaders),
+  "Phone detail culling must use the mathematically identical squared-distance test.",
+);
 console.log("loader ownership contract: PASS");

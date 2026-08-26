@@ -532,11 +532,28 @@ const FILL_WHITE = neutral(255, 255, 255);
 const FILL_NORMAL = neutral(128, 128, 255);
 
 function unify(material: THREE.MeshStandardMaterial) {
-  if (!material.map) material.map = FILL_WHITE;
-  if (!material.normalMap) material.normalMap = FILL_NORMAL;
-  if (!material.roughnessMap) material.roughnessMap = FILL_WHITE;
-  if (!material.metalnessMap) material.metalnessMap = FILL_WHITE;
-  material.needsUpdate = true;
+  let changed = false;
+  if (!material.map) {
+    material.map = FILL_WHITE;
+    changed = true;
+  }
+  if (!material.normalMap) {
+    material.normalMap = FILL_NORMAL;
+    changed = true;
+  }
+  if (!material.roughnessMap) {
+    material.roughnessMap = FILL_WHITE;
+    changed = true;
+  }
+  if (!material.metalnessMap) {
+    material.metalnessMap = FILL_WHITE;
+    changed = true;
+  }
+  // Drei clones share source materials. Re-invalidating an already-unified
+  // material increments its Three version and makes another bay throw away a
+  // program the prior bay just compiled. Only feature-slot changes need a new
+  // program; a no-op traversal must remain a no-op at the driver boundary.
+  if (changed) material.needsUpdate = true;
 }
 
 /**
@@ -551,6 +568,7 @@ function unify(material: THREE.MeshStandardMaterial) {
  */
 export function unifyTree(node: THREE.Object3D) {
   const combos = new Map<string, number>();
+  const unified = new Set<THREE.MeshStandardMaterial>();
   node.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -559,7 +577,10 @@ export function unifyTree(node: THREE.Object3D) {
       const material = entry as THREE.MeshStandardMaterial;
       const type = material?.type;
       if (type !== "MeshStandardMaterial" && type !== "MeshPhysicalMaterial") continue;
-      unify(material);
+      if (!unified.has(material)) {
+        unified.add(material);
+        unify(material);
+      }
       if (DEBUG) {
         const geometry = mesh.geometry;
         const combo = [
@@ -1308,9 +1329,11 @@ async function warmSubtree(
   await warmUp(gl, node, camera, scene);
 }
 
-/** Never begin an indivisible driver upload while the reader is moving. */
-async function waitForReaderQuiet() {
-  while (stillFor() < 450) await wait(80);
+/** Prefer stillness before an indivisible driver upload, but never strand the
+ * reveal or warm queue behind a reader who keeps a finger on the page. */
+async function waitForReaderQuiet(patience = 900) {
+  const deadline = performance.now() + patience;
+  while (stillFor() < 450 && performance.now() < deadline) await wait(80);
 }
 
 /** Allocate the base material programs before the paced composer first-use. */
@@ -1602,6 +1625,7 @@ function firstUseKey(object: THREE.Object3D) {
               Object.keys(rawDefines as Record<string, unknown>).sort(),
             )
           : "";
+      const shaderIdentity = material?.isShaderMaterial ? material.uuid : "";
       return [
         material?.type,
         material?.side,
@@ -1613,6 +1637,7 @@ function firstUseKey(object: THREE.Object3D) {
         Number(Boolean(material?.fog)),
         maps,
         defines,
+        shaderIdentity,
       ].join(":");
     })
     .join("+");
@@ -2024,7 +2049,11 @@ class BayBoundary extends Component<
    qualifies; the clutter around it drops out exactly as the camera pulls back
    from it and returns as the camera comes in. */
 
-type Cullable = { object: THREE.Object3D; centre: THREE.Vector3; radius: number };
+type Cullable = {
+  object: THREE.Object3D;
+  centre: THREE.Vector3;
+  maxDistanceSquared: number;
+};
 
 /** Projected radius, as a fraction of the distance. ~2 px on a 390 screen. */
 const CULL_RATIO = 0.006;
@@ -2064,7 +2093,10 @@ async function collectCullables(
       // largest axis so nothing is culled for being thin.
       scale.setFromMatrixScale(mesh.matrixWorld);
       const radius = sphere.radius * Math.max(scale.x, scale.y, scale.z);
-      if (radius > 0) list.push({ object: mesh, centre, radius });
+      if (radius > 0) {
+        const maxDistance = radius / CULL_RATIO;
+        list.push({ object: mesh, centre, maxDistanceSquared: maxDistance * maxDistance });
+      }
     }
     // A slice per tick: forty objects is well under a frame even on a phone.
     if (i % 40 === 39) await wait(0);
@@ -2115,8 +2147,7 @@ export function DetailCull({ target }: { target: React.RefObject<THREE.Object3D 
     for (const item of items.current) {
       // Anything the warm-up is still holding is not ours to show.
       if (PACED_HIDDEN.has(item.object)) continue;
-      const distance = item.centre.distanceTo(eye);
-      item.object.visible = item.radius / Math.max(distance, 0.001) > CULL_RATIO;
+      item.object.visible = item.centre.distanceToSquared(eye) < item.maxDistanceSquared;
     }
   });
 
@@ -2297,8 +2328,7 @@ function WarmStation({
       if (list) {
         const eye = state.camera.position;
         for (const item of list) {
-          const distance = item.centre.distanceTo(eye);
-          item.object.visible = item.radius / Math.max(distance, 0.001) > CULL_RATIO;
+          item.object.visible = item.centre.distanceToSquared(eye) < item.maxDistanceSquared;
         }
       }
     }
