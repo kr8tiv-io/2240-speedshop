@@ -64,6 +64,11 @@ assert.ok(
   "Canvas render failures need a decorative, non-destructive error boundary.",
 );
 assert.ok(
+  /class ModelBoundary extends Component/.test(loaders) &&
+    /<ModelBoundary url=\{props\.url\}>[\s\S]*<PlacedModel \{\.\.\.props\} \/>[\s\S]*<\/ModelBoundary>/.test(loaders),
+  "A failed individual prop must disappear without unmounting the rest of its garage bay.",
+);
+assert.ok(
   /webglcontextlost/.test(contextGuard) && /event\.preventDefault\(\)/.test(contextGuard),
   "A context-loss event must be handled explicitly before the browser destroys the surface.",
 );

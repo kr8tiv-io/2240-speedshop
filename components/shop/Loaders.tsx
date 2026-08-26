@@ -1077,7 +1077,30 @@ function useTint(group: React.RefObject<THREE.Group | null>, tint?: string) {
  * and `Clone` shares the loaded geometry and materials — so eight tyres cost
  * one fetch, one geometry upload and eight matrices.
  */
-export function Placed({
+class ModelBoundary extends Component<
+  { url: string; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    /* A missing wrench is not a missing garage. Keep the larger bay boundary
+       as the final safety net, but contain ordinary asset failures at the one
+       file that caused them so every other full-quality model stays present. */
+    console.warn(`[shop] model ${this.props.url} failed to load — omitting only this prop`, error);
+  }
+
+  render() {
+    if (this.state.failed) return null;
+    return this.props.children;
+  }
+}
+
+function PlacedModel({
   url,
   size,
   axis = "max",
@@ -1167,6 +1190,14 @@ export function Placed({
         />
       )}
     </group>
+  );
+}
+
+export function Placed(props: PlacedProps) {
+  return (
+    <ModelBoundary url={props.url}>
+      <PlacedModel {...props} />
+    </ModelBoundary>
   );
 }
 
