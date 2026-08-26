@@ -28,7 +28,7 @@ if ($LASTEXITCODE -ne 0) { throw "precompress failed" }
 
 Write-Host "== building static export"
 $env:EXPORT = "1"
-pnpm exec next build
+pnpm exec next build --webpack
 if ($LASTEXITCODE -ne 0) { throw "next build failed" }
 
 $out = Join-Path $project "out"

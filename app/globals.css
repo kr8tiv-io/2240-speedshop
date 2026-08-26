@@ -917,13 +917,19 @@ html[data-ui-overlay="menu"] .grain {
   animation: preloader-failsafe 0.5s ease 19s forwards;
 }
 
+@keyframes route-veil-lift {
+  0%, 33.734% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* Same dead-man for the route veil (app/template.tsx). Its SSR markup ships in
-   the covering state and its exits are all React/Framer - measured through a
-   flaky tunnel, a GLB request that suspends the tree wedges React and the veil
-   never lifts. CSS animations outrank Framer's inline styles, so this fades it
-   regardless. Healthy path unmounts the node by ~0.9 s; 3 s never shows. */
+   the covering state; if hydration is ever wedged, the second animation still
+   uncovers the page. The first animation reproduces the previous 280 ms hold
+   plus 550 ms cubic lift exactly and unmounts on animationend. */
 .route-veil {
-  animation: preloader-failsafe 0.5s ease 3s forwards;
+  animation:
+    route-veil-lift 830ms cubic-bezier(0.65, 0, 0.35, 1) both,
+    preloader-failsafe 0.5s ease 3s forwards;
 }
 
 /* Reduced motion: static compositions, no scrub, no grain shimmer. */
