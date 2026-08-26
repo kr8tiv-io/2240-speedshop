@@ -96,9 +96,9 @@ assert.ok(
   "The shop may not start on a fixed clock while the opening film is still compiling.",
 );
 assert.ok(
-  /const REVEAL_WARM_KEYS = \["shell"\]/.test(loaders) &&
+  /const REVEAL_WARM_KEYS = \["shell", "0", "1"\]/.test(loaders) &&
     /const REVEAL_PENDING = new Set<string>\(REVEAL_WARM_KEYS\)/.test(loaders),
-  "The photographic doorway must wait for the verified 3D building, not every bay object's first draw.",
+  "The photographic doorway must wait for the verified 3D building and its two opening subjects, not the later tour.",
 );
 assert.ok(
   /REVEAL_PENDING\.delete\(key\)/.test(loaders) &&
@@ -138,8 +138,8 @@ assert.ok(
   "A re-suspended bay group must reconcile its real Three visibility before trusting the cached drawn flag.",
 );
 assert.ok(
-  /if \(station === 1\) await waitForWarmKey\("0"\)/.test(loaders),
-  "The second opening bay may not win the private first-use queue ahead of the doorway subject.",
+  /if \(station > 0\) await waitForWarmKey\(String\(station - 1\), 30000\)/.test(loaders),
+  "Later compiled bays may preload, but exact first-use must advance in camera order.",
 );
 assert.ok(
   /const UNIT_BOX_GEOMETRY = new THREE\.BoxGeometry\(1, 1, 1\)/.test(shop) &&
@@ -169,5 +169,34 @@ assert.ok(
   /maxDistanceSquared: number/.test(loaders) &&
     /distanceToSquared\(eye\) < item\.maxDistanceSquared/.test(loaders),
   "Phone detail culling must use the mathematically identical squared-distance test.",
+);
+assert.ok(
+  /const UPLOADED_TEXTURES = new WeakMap<THREE\.WebGLRenderer, WeakSet<THREE\.Texture>>/.test(loaders) &&
+    /gl\.initTexture\(texture\)/.test(loaders) &&
+    /await nextUploadFrame\(\)/.test(loaders),
+  "Model textures must upload one paced frame at a time before their first visible draw.",
+);
+assert.ok(
+  /await warmTextures\(gl, node\);[\s\S]*await warmUp\(gl, node, camera, scene\)/.test(loaders),
+  "Texture upload must finish before shader compile and geometry first-use.",
+);
+assert.ok(
+  /function firstUseKey[\s\S]*const rawDefines/.test(loaders) &&
+    !/function firstUseKey[\s\S]*texture\?\.uuid[\s\S]*const rawDefines/.test(loaders),
+  "Texture identity must not multiply geometry/program representatives once uploads are owned separately.",
+);
+assert.ok(
+  /warmSubtree\(gl, node, camera, scene\)\.then\(\(\) => \{[\s\S]*openGate\(station \+ \(phoneTier \? 3 : 2\)\);[\s\S]*finish\(\);/.test(loaders),
+  "A compiled bay must release download credit before its serialized first-use so later copy panels do not outrun their models.",
+);
+assert.ok(
+  /let finalizedWorld: \(\(\) => Promise<void>\) \| null = null/.test(loaders) &&
+    /finalizedWorld === finalizer/.test(loaders) &&
+    /finalizedWorld = finalizer/.test(loaders),
+  "The full-composer readiness proof must run once per mounted WebGL world, not after every bay.",
+);
+assert.ok(
+  /releaseOvenScene\(\);[\s\S]*await new Promise<void>\(\(resolve\) => window\.requestAnimationFrame\(\(\) => resolve\(\)\)\);[\s\S]*if \(!parkedNow\(\)\) break;[\s\S]*isolateOvenScene\(\)/.test(pacedWarm),
+  "A private oven must restore the live scene before every browser frame and abort if the shop activates.",
 );
 console.log("loader ownership contract: PASS");

@@ -401,12 +401,17 @@ const WARM_KEYS = [
   ...Array.from({ length: STATION_COUNT }, (_, i) => String(i)),
   "5-gallery",
 ];
-const REVEAL_WARM_KEYS = ["shell"];
+/* The photograph protects the only dangerous transition: building the first
+   full-size composed frame. Keep it for the shell and the two subjects already
+   visible at the doorway, so neither can submit hundreds of cold bindings on
+   the frame after the dissolve. Later bays continue behind the moving world. */
+const REVEAL_WARM_KEYS = ["shell", "0", "1"];
 const PENDING = new Set<string>(WARM_KEYS);
 const REVEAL_PENDING = new Set<string>(REVEAL_WARM_KEYS);
 const WARMED = new Set<string>();
 let contiguousWarmStation = -1;
 let worldFinalizer: (() => Promise<void>) | null = null;
+let finalizedWorld: (() => Promise<void>) | null = null;
 let finalizingWorld = false;
 
 /** The furthest station the camera can enter without aiming at an empty bay. */
@@ -415,7 +420,13 @@ export function highestContiguousWarmStation() {
 }
 
 async function finalizeWorld() {
-  if (finalizingWorld || REVEAL_PENDING.size !== 0 || !worldFinalizer) return;
+  const finalizer = worldFinalizer;
+  if (
+    finalizingWorld ||
+    REVEAL_PENDING.size !== 0 ||
+    !finalizer ||
+    finalizedWorld === finalizer
+  ) return;
   finalizingWorld = true;
   try {
     // The building and the ACTUAL full composer are ready. Bay shaders compile
@@ -423,7 +434,11 @@ async function finalizeWorld() {
     // through the existing paced queue ahead of the camera. Making those
     // first draws block this frame left WebKit on the photograph even though
     // a lit, moving garage already existed below.
-    await worldFinalizer();
+    await finalizer();
+    // `reportWarm` continues for every streamed bay. Remember the exact
+    // mounted world's proof so those progress events cannot replay two full
+    // composed frames through AO/DOF/bloom after the door is already open.
+    finalizedWorld = finalizer;
     markShellWarm();
     markWorldReady();
   } catch (error) {
@@ -1296,6 +1311,61 @@ function countRenderables(node: THREE.Object3D) {
   return n;
 }
 
+/* Texture decode and texture upload are different bills. The GLTF loader can
+   finish decoding a full-resolution WebP while the driver still has no GPU
+   object for it; without this pass, the first visible draw pays upload plus
+   mip allocation in one frame. Ownership is renderer-specific because one
+   Three texture may be consumed by more than one WebGL context. */
+const UPLOADED_TEXTURES = new WeakMap<THREE.WebGLRenderer, WeakSet<THREE.Texture>>();
+const nextUploadFrame = () =>
+  new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+
+async function warmTextures(gl: THREE.WebGLRenderer, node: THREE.Object3D) {
+  let uploaded = UPLOADED_TEXTURES.get(gl);
+  if (!uploaded) {
+    uploaded = new WeakSet<THREE.Texture>();
+    UPLOADED_TEXTURES.set(gl, uploaded);
+  }
+
+  const textures = new Set<THREE.Texture>();
+  const materials = new Set<THREE.Material>();
+  node.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const material of list) {
+      if (!material || materials.has(material)) continue;
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        const texture = value as THREE.Texture | undefined;
+        if (texture?.isTexture && !uploaded.has(texture)) textures.add(texture);
+      }
+    }
+  });
+
+  const started = performance.now();
+  let count = 0;
+  for (const texture of textures) {
+    if (uploaded.has(texture)) continue;
+    // warmSubtree enters this loop only after its bounded idle courtesy. One
+    // upload per animation frame is the hard pacing contract from here: a
+    // reader who moves again may see at most one texture bill in any frame,
+    // while the bay does not fall seconds behind its matching copy panel.
+    try {
+      gl.initTexture(texture);
+      uploaded.add(texture);
+      count += 1;
+    } catch {
+      // Context loss or an optional texture can defer to Three's ordinary
+      // render path; pre-upload is an acceleration, never a reveal gate.
+    }
+    await nextUploadFrame();
+  }
+  if (DEBUG && count > 0) {
+    console.log(`[shop]   pre-uploaded ${count} textures in ${Math.round(performance.now() - started)} ms`);
+  }
+}
+
 /**
  * Wait for a subtree to stop growing, THEN compile it.
  *
@@ -1326,6 +1396,7 @@ async function warmSubtree(
   // are about to throw away.
   unifyTree(node);
   await untilIdle();
+  await warmTextures(gl, node);
   await warmUp(gl, node, camera, scene);
 }
 
@@ -1599,24 +1670,6 @@ function firstUseKey(object: THREE.Object3D) {
   const materialKey = materials
     .map((entry) => {
       const material = entry as THREE.Material & Record<string, unknown>;
-      const maps = [
-        "map",
-        "normalMap",
-        "roughnessMap",
-        "metalnessMap",
-        "alphaMap",
-        "emissiveMap",
-        "aoMap",
-        "lightMap",
-        "clearcoatMap",
-        "clearcoatNormalMap",
-        "transmissionMap",
-      ]
-        .map((slot) => {
-          const texture = material?.[slot] as THREE.Texture | undefined;
-          return texture?.uuid ?? "-";
-        })
-        .join("");
       const rawDefines = material?.defines;
       const defines =
         rawDefines && typeof rawDefines === "object"
@@ -1635,7 +1688,6 @@ function firstUseKey(object: THREE.Object3D) {
         Number(Boolean(material?.vertexColors)),
         Number(Boolean(material?.toneMapped)),
         Number(Boolean(material?.fog)),
-        maps,
         defines,
         shaderIdentity,
       ].join(":");
@@ -1719,6 +1771,22 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
     const started = performance.now();
     const previousTarget = root.gl.getRenderTarget();
     let worstSlice = 0;
+    const releaseOvenScene = () => {
+      for (const [object, visible] of sceneVisibility) object.visible = visible;
+      for (let i = 0; i < drawables.length; i++) {
+        drawables[i].visible = was[i];
+        drawables[i].frustumCulled = wasCulled[i];
+      }
+      node.visible = wasGroup;
+    };
+    const isolateOvenScene = () => {
+      for (const object of sceneVisibility.keys()) object.visible = false;
+      node.visible = true;
+      for (const drawable of drawables) {
+        drawable.visible = false;
+        drawable.frustumCulled = false;
+      }
+    };
     try {
       // Keep the scene's lights, fog and environment intact, but take every
       // unrelated drawable out of this private first-use submission.
@@ -1728,11 +1796,7 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
         sceneVisibility.set(object, object.visible);
         object.visible = false;
       });
-      node.visible = true;
-      for (let i = 0; i < drawables.length; i++) {
-        drawables[i].visible = false;
-        drawables[i].frustumCulled = false;
-      }
+      isolateOvenScene();
       let oven = COMPOSER_OVENS.get(root.gl);
       if (!oven) {
         oven = new THREE.WebGLRenderTarget(24, 24, {
@@ -1782,16 +1846,18 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
         index = end;
         if (cost > 70) size = Math.max(1, Math.floor(size / 2));
         else if (cost < 18) size = Math.min(12, size + 2);
+        /* The canvas can become active while this queue is yielding. Never
+           leave its real scene hidden across a browser frame: release the
+           snapshot first, then either stop or re-isolate for the next private
+           slice after the frame proves the shop is still parked. */
+        releaseOvenScene();
         await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+        if (!parkedNow()) break;
+        isolateOvenScene();
       }
     } finally {
       root.gl.setRenderTarget(previousTarget);
-      for (const [object, visible] of sceneVisibility) object.visible = visible;
-      for (let i = 0; i < drawables.length; i++) {
-        drawables[i].visible = was[i];
-        drawables[i].frustumCulled = wasCulled[i];
-      }
-      node.visible = wasGroup;
+      releaseOvenScene();
     }
     if (DEBUG) {
       console.log(
@@ -2196,23 +2262,16 @@ function WarmStation({
     const finish = async () => {
       if (dead || finishing || warm.current) return;
       finishing = true;
-      // Station 1's smaller compile often finishes first. Letting it claim the
-      // one private composer queue left the doorway car hidden behind hundreds
-      // of station-1 bindings when the photograph opened. The doorway subject
-      // is the first picture, so its exact first-use owns the first slot.
-      if (station === 1) await waitForWarmKey("0");
+      // Downloads and compile may finish out of order, but exact first-use is
+      // the camera frontier. A later bay claiming the private composer queue
+      // first can keep the camera at station two while copy is already talking
+      // about station five. Advance this final ownership step linearly; the
+      // wait is bounded so one broken bay can never strand the rest.
+      if (station > 0) await waitForWarmKey(String(station - 1), 30000);
       await firstUse();
       if (dead) return;
       warm.current = true;
       reportWarm(warmKey);
-      /* Two bays in flight on a phone, one on a desktop.
-         The phone's warm is cheap — a bay compiles in a couple of hundred
-         milliseconds through the lite composer — so the queue is bound by
-         downloads, and running one at a time left the last bay still arriving
-         forty-five seconds in, which is exactly when a reader is scrolling
-         past it. The desktop stays strictly sequential: there each bay is
-         seconds of shader translation, and two at once is a stall. */
-      openGate(station + (phoneTier ? 3 : 2));
     };
 
     /* THE LAST HIDDEN COST: first USE, as opposed to first compile.
@@ -2289,6 +2348,11 @@ function WarmStation({
             ` · pad ${lightBudget()}`,
         );
       }
+      /* Release only the DOWNLOAD/MOUNT credit now that this bay has finished
+         texture upload and shader compile. Exact geometry first-use remains
+         serialized by finish(), but it must not prevent the next files from
+         crossing the network: two bays ahead on a phone, one on desktop. */
+      openGate(station + (phoneTier ? 3 : 2));
       finish();
     });
     // A driver that never reports back cannot be allowed to stall the queue.

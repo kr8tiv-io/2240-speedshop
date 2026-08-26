@@ -7,7 +7,7 @@ const deploy = await readFile(new URL("scripts/deploy-combined.ps1", root), "utf
 
 assert.match(
   pkg.scripts?.build ?? "",
-  /next build --webpack$/,
+  /node --use-system-ca[\s\S]*next build --webpack$/,
   "Production builds must use webpack's shared chunks until Turbopack deduplicates the three lazy Three.js graphs.",
 );
 assert.match(
