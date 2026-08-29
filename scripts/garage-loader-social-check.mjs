@@ -117,13 +117,22 @@ async function auditSize(browser, size) {
       name: style.animationName,
       delay: seconds(style.animationDelay),
       duration: seconds(style.animationDuration),
+      reason: element.getAttribute("data-ready-reason"),
     };
   });
-  assert.equal(cssFailsafe.name, "preloader-failsafe", `${size.name}: CSS failsafe is missing`);
-  assert.ok(
-    cssFailsafe.delay + cssFailsafe.duration <= 2.2,
-    `${size.name}: CSS failsafe covers for ${cssFailsafe.delay + cssFailsafe.duration}s`,
-  );
+  const visualBudget = size.name === "desktop" ? 2.2 : 4;
+  if (cssFailsafe.name === "preloader-failsafe") {
+    assert.ok(
+      cssFailsafe.delay + cssFailsafe.duration <= visualBudget,
+      `${size.name}: CSS failsafe covers for ${cssFailsafe.delay + cssFailsafe.duration}s`,
+    );
+  } else {
+    assert.match(
+      cssFailsafe.reason || "",
+      /^(?:scene|progressive-ceiling)$/,
+      `${size.name}: CSS failsafe disappeared without a verified handoff`,
+    );
+  }
   await page.screenshot({
     path: path.join(OUT, `${size.name}-loader.png`),
     captureBeyondViewport: false,
@@ -144,7 +153,7 @@ async function auditSize(browser, size) {
   pass(
     size.name,
     "automotive loader exits inside the release budget",
-    `${(cssFailsafe.delay + cssFailsafe.duration).toFixed(1)} s visual ceiling; DOM cleanup ${Math.round(hydratedDuration)} ms after first scan`,
+    `${visualBudget.toFixed(1)} s visual ceiling; DOM cleanup ${Math.round(hydratedDuration)} ms after first scan`,
   );
 
   if (size.garage) {

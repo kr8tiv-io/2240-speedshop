@@ -79,9 +79,10 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
      verified live canvas will crossfade over it when its real first frame is
      ready. The raw-DOM timer remains the separate suspended-tree escape. */
   useEffect(() => {
+    const delay = Math.max(0, PROGRESSIVE_CEILING_MS - performance.now());
     const progressiveCeiling = window.setTimeout(
       () => beginHandoff("progressive-ceiling"),
-      PROGRESSIVE_CEILING_MS,
+      delay,
     );
     const escape = window.setTimeout(() => {
       const veil = rootRef.current;

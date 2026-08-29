@@ -1009,8 +1009,9 @@ html[data-ui-overlay="menu"] .grain {
    The vector car and its turntable cost no request and paint in the static
    HTML. A normal progressive handoff begins at 1.2 s and is gone at ~1.85 s;
    if hydration is late, this pure-CSS path uncovers the already-rendered hero
-   still by 2.2 s without waiting for any script. The raw-DOM escape remains a
-   separate 3 s cleanup path for a mounted tree that later wedges.
+   still by 2.2 s on desktop. A throttled phone gets a 4 s ceiling: long enough
+   to make its first controls interactive before the plate lifts, never long
+   enough to wait for the 3D graph. The raw-DOM escape remains separate.
    ──────────────────────────────────────────────────────────────────────────── */
 @keyframes loader-turntable {
   to { transform: translateX(-50%) scaleY(0.28) rotate(360deg); }
@@ -1148,6 +1149,12 @@ html[data-ui-overlay="menu"] .grain {
 }
 .preloader-veil {
   animation: preloader-failsafe 0.4s ease 1.8s forwards;
+}
+
+@media (max-width: 767px) {
+  .preloader-veil {
+    animation-delay: 3.6s;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -25,9 +25,21 @@ const links = [
 export function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const disclosureRef = useRef<HTMLDetailsElement>(null);
+  const triggerRef = useRef<HTMLElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+
+  const closeMenu = () => {
+    if (disclosureRef.current) disclosureRef.current.open = false;
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    // A tap can open the native disclosure before React hydrates. Adopt that
+    // state on mount, then add the focus trap, iOS body lock, and GPU pause.
+    if (disclosureRef.current?.open) setOpen(true);
+  }, []);
 
   useEffect(() => {
     // 100px: past the first breath of the page, the bar compacts to a hairline.
@@ -138,7 +150,7 @@ export function Nav() {
           scrolled && !open ? "py-2" : "py-3.5"
         }`}
       >
-        <Link href="/" className="group flex items-baseline gap-3" onClick={() => setOpen(false)}>
+        <Link href="/" className="group flex items-baseline gap-3" onClick={closeMenu}>
           <span className="font-display text-[26px] leading-none tracking-[0.02em] text-bone transition-colors group-hover:text-ember">
             2240
           </span>
@@ -172,95 +184,104 @@ export function Nav() {
           </Link>
         </nav>
 
-        <button
-          ref={triggerRef}
-          type="button"
-          aria-expanded={open}
-          aria-controls="mobile-nav"
-          aria-label={open ? "Close menu" : "Open menu"}
-          onClick={() => setOpen((v) => !v)}
-          className="flex h-12 w-12 flex-col items-center justify-center gap-[6px] rounded-full outline-none transition-colors hover:bg-bone/[0.06] focus-visible:ring-2 focus-visible:ring-tungsten focus-visible:ring-offset-2 focus-visible:ring-offset-bay-black lg:hidden"
+        {/* Native disclosure first, React enhancement second. A tap between
+            first paint and hydration opens this immediately; once hydrated,
+            onToggle adds the modal focus/scroll/GPU ownership behavior. */}
+        <details
+          ref={disclosureRef}
+          className="group lg:hidden"
+          onToggle={(event) => setOpen(event.currentTarget.open)}
         >
-          <span
-            className={`h-px w-6 bg-bone transition-transform duration-300 ${open ? "translate-y-[7px] rotate-45" : ""}`}
-          />
-          <span className={`h-px w-6 bg-bone transition-opacity duration-300 ${open ? "opacity-0" : ""}`} />
-          <span
-            className={`h-px w-6 bg-bone transition-transform duration-300 ${open ? "-translate-y-[7px] -rotate-45" : ""}`}
-          />
-        </button>
-      </div>
+          <summary
+            ref={triggerRef}
+            aria-controls="mobile-nav"
+            aria-label="Open main menu"
+            onClick={(event) => {
+              /* If a no-JS tap opened the disclosure while React was still
+                 hydrating, React may replay that same click. Its native
+                 default would close the already-open menu again. The panel
+                 covers this trigger while open, so preserving that state is
+                 both the correct replay behavior and invisible to ordinary
+                 hydrated interaction. */
+              if (disclosureRef.current?.open) event.preventDefault();
+            }}
+            className="flex h-12 w-12 touch-manipulation cursor-pointer list-none flex-col items-center justify-center gap-[6px] rounded-full outline-none transition-colors marker:content-none hover:bg-bone/[0.06] focus-visible:ring-2 focus-visible:ring-tungsten focus-visible:ring-offset-2 focus-visible:ring-offset-bay-black [&::-webkit-details-marker]:hidden"
+          >
+            <span className="h-px w-6 bg-bone transition-transform duration-300 group-open:translate-y-[7px] group-open:rotate-45" />
+            <span className="h-px w-6 bg-bone transition-opacity duration-300 group-open:opacity-0" />
+            <span className="h-px w-6 bg-bone transition-transform duration-300 group-open:-translate-y-[7px] group-open:-rotate-45" />
+          </summary>
 
-      {/* Full-screen mobile panel — an isolated room, never a transparent dropdown. */}
-      {open ? (
-        <div
-          ref={panelRef}
-          id="mobile-nav"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Main navigation"
-          tabIndex={-1}
-          className="mobile-menu-panel fixed inset-0 z-[110] isolate min-h-screen h-[100dvh] overflow-y-auto bg-[#070708] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] outline-none lg:hidden"
-        >
-          <div className="mx-auto flex min-h-full w-full max-w-[42rem] flex-col">
-            <div className="flex min-h-16 items-center justify-between border-b border-bone/10">
-              <Link href="/" onClick={() => setOpen(false)} className="flex min-h-12 items-center">
-                <span className="font-display text-[26px] leading-none tracking-[0.02em] text-bone">2240</span>
-                <span className="ml-3 font-mono text-[9px] uppercase tracking-[0.24em] text-steel">
-                  Edmonton AB
-                </span>
-              </Link>
-              <button
-                type="button"
-                aria-label="Close menu"
-                onClick={() => setOpen(false)}
-                className="relative flex h-12 w-12 items-center justify-center rounded-full outline-none hover:bg-bone/[0.06] focus-visible:ring-2 focus-visible:ring-tungsten"
-              >
-                <span className="absolute h-px w-6 rotate-45 bg-bone" />
-                <span className="absolute h-px w-6 -rotate-45 bg-bone" />
-              </button>
-            </div>
-
-            <nav aria-label="Mobile" className="flex-1 py-2 min-[380px]:py-4">
-              <ul>
-                {links.map((link, index) => (
-                  <li key={link.href} className="border-b border-rust/50">
-                    <Link
-                      href={link.href}
-                      onClick={() => setOpen(false)}
-                      className="mobile-menu-link flex min-h-12 items-center gap-4 py-2.5 outline-none focus-visible:bg-bone/[0.05]"
-                      style={{ animationDelay: `${index * 28}ms` }}
-                    >
-                      <span className="w-5 font-mono text-[9px] text-tungsten/75">{link.n}</span>
-                      <span className="font-display text-[clamp(1.75rem,8.5vw,2.5rem)] uppercase leading-none tracking-[0.035em] text-bone">
-                        {link.label}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            <div className="space-y-3 border-t border-bone/10 pt-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Link href="/quote" onClick={() => setOpen(false)} className="cta min-h-12 text-center">
-                  Start your build
+          {/* Full-screen mobile panel — an isolated room, never a transparent dropdown. */}
+          <div
+            ref={panelRef}
+            id="mobile-nav"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Main navigation"
+            tabIndex={-1}
+            className="mobile-menu-panel fixed inset-0 z-[110] isolate min-h-screen h-[100dvh] overflow-y-auto bg-[#070708] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] outline-none"
+          >
+            <div className="mx-auto flex min-h-full w-full max-w-[42rem] flex-col">
+              <div className="flex min-h-16 items-center justify-between border-b border-bone/10">
+                <Link href="/" onClick={closeMenu} className="flex min-h-12 items-center">
+                  <span className="font-display text-[26px] leading-none tracking-[0.02em] text-bone">2240</span>
+                  <span className="ml-3 font-mono text-[9px] uppercase tracking-[0.24em] text-steel">
+                    Edmonton AB
+                  </span>
                 </Link>
-                <a
-                  href={`tel:${site.phone}`}
-                  onClick={() => setOpen(false)}
-                  className="cta cta-ghost min-h-12 text-center"
+                <button
+                  type="button"
+                  aria-label="Close menu"
+                  onClick={closeMenu}
+                  className="relative flex h-12 w-12 items-center justify-center rounded-full outline-none hover:bg-bone/[0.06] focus-visible:ring-2 focus-visible:ring-tungsten"
                 >
-                  Call the shop
-                </a>
+                  <span className="absolute h-px w-6 rotate-45 bg-bone" />
+                  <span className="absolute h-px w-6 -rotate-45 bg-bone" />
+                </button>
               </div>
-              <p className="corner-note pb-1">
-                {site.street} · {site.city} {site.region} · Mon–Fri 9–5
-              </p>
+
+              <nav aria-label="Mobile" className="flex-1 py-2 min-[380px]:py-4">
+                <ul>
+                  {links.map((link, index) => (
+                    <li key={link.href} className="border-b border-rust/50">
+                      <Link
+                        href={link.href}
+                        onClick={closeMenu}
+                        className="mobile-menu-link flex min-h-12 items-center gap-4 py-2.5 outline-none focus-visible:bg-bone/[0.05]"
+                        style={{ animationDelay: `${index * 28}ms` }}
+                      >
+                        <span className="w-5 font-mono text-[9px] text-tungsten/75">{link.n}</span>
+                        <span className="font-display text-[clamp(1.75rem,8.5vw,2.5rem)] uppercase leading-none tracking-[0.035em] text-bone">
+                          {link.label}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+
+              <div className="space-y-3 border-t border-bone/10 pt-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <Link href="/quote" onClick={closeMenu} className="cta min-h-12 text-center">
+                    Start your build
+                  </Link>
+                  <a
+                    href={`tel:${site.phone}`}
+                    onClick={closeMenu}
+                    className="cta cta-ghost min-h-12 text-center"
+                  >
+                    Call the shop
+                  </a>
+                </div>
+                <p className="corner-note pb-1">
+                  {site.street} · {site.city} {site.region} · Mon–Fri 9–5
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        </details>
+      </div>
     </header>
   );
 }

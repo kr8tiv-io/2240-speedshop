@@ -63,11 +63,38 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [runtimeProfile, setRuntimeProfile] = useState<RuntimeProfile>(null);
   const [ready, setReady] = useState(false);
+  const [runtimeAllowed, setRuntimeAllowed] = useState(false);
   const [heroActive, setHeroActive] = useState(true);
   const uiOverlay = useUIOverlay();
   const flared = useRef(false);
   const motionEnabled =
     runtimeProfile !== null && !runtimeProfile.reduced && runtimeProfile.webgl2;
+
+  useEffect(() => {
+    if (!ready || runtimeAllowed || uiOverlay !== null) return;
+    let graceTimer = 0;
+    let idle = 0;
+    let timer = 0;
+    const scheduleRuntime = () => {
+      if (typeof window.requestIdleCallback === "function") {
+        idle = window.requestIdleCallback(() => setRuntimeAllowed(true), { timeout: 800 });
+      } else {
+        timer = window.setTimeout(() => setRuntimeAllowed(true), 180);
+      }
+    };
+    /* A phone gets one quiet beat after the loader leaves in which navigation
+       is unquestionably immediate. The still underneath is already the same
+       graded composition, so this changes no visual quality; it only keeps
+       model parsing and shader compilation away from the user's first tap.
+       Opening an overlay cancels the beat, and closing it starts a fresh one. */
+    if (runtimeProfile?.mobile) graceTimer = window.setTimeout(scheduleRuntime, 1_800);
+    else scheduleRuntime();
+    return () => {
+      if (graceTimer) window.clearTimeout(graceTimer);
+      if (idle) window.cancelIdleCallback(idle);
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [ready, runtimeAllowed, runtimeProfile?.mobile, uiOverlay]);
 
   /* The server and first client render both stay at `null`. A layout effect
      then chooses the correct renderer before the heavy chunk can mount, so a
@@ -385,7 +412,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
         <div data-hero-still className="absolute inset-0">
           <StaticBackdrop />
         </div>
-        {motionEnabled && runtimeProfile && ready ? (
+        {motionEnabled && runtimeProfile && runtimeAllowed ? (
           <LazyHeroRuntime
             shot={shot}
             mobile={runtimeProfile.mobile}

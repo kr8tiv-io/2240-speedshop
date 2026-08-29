@@ -22,6 +22,20 @@ const images = await readFile(
 
 assert.ok(/h-12 w-12/.test(nav), "The mobile menu control must be at least 48×48 CSS px.");
 assert.ok(
+  /<details[\s\S]*<summary[\s\S]*aria-controls="mobile-nav"/.test(nav),
+  "The mobile menu must use a native server-rendered disclosure before hydration.",
+);
+assert.doesNotMatch(
+  nav,
+  /\{open\s*\?\s*\(/,
+  "The mobile menu panel must exist in the static HTML instead of waiting for React state.",
+);
+assert.match(
+  nav,
+  /disclosureRef\.current\?\.open\) event\.preventDefault\(\)/,
+  "Hydration click replay must not close a disclosure that native HTML already opened.",
+);
+assert.ok(
   /role="dialog"/.test(nav) && /aria-modal="true"/.test(nav),
   "The open mobile navigation must expose modal dialog semantics.",
 );

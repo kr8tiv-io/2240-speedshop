@@ -23,8 +23,18 @@ assert.match(
 assert.match(cinema, /data-hero-still/);
 assert.match(
   cinema,
-  /motionEnabled\s*&&\s*runtimeProfile\s*&&\s*ready/,
+  /motionEnabled\s*&&\s*runtimeProfile\s*&&\s*runtimeAllowed/,
   "The heavy hero runtime must not block the visible loader's exit choreography.",
+);
+assert.match(
+  cinema,
+  /if \(!ready \|\| runtimeAllowed \|\| uiOverlay !== null\) return/,
+  "An early mobile-menu interaction must keep the heavy hero graph parked.",
+);
+assert.match(
+  cinema,
+  /runtimeProfile\?\.mobile\) graceTimer = window\.setTimeout\(scheduleRuntime, 1_800\)/,
+  "Phones need a post-loader interaction window before model parsing and shader compilation.",
 );
 assert.match(css, /@keyframes loader-turntable/);
 assert.match(css, /@keyframes loader-car-idle/);
@@ -32,6 +42,11 @@ assert.match(
   css,
   /preloader-failsafe 0\.4s ease 1\.8s forwards/,
   "The no-hydration CSS path must uncover the static hero within 2.2 seconds.",
+);
+assert.match(
+  css,
+  /@media \(max-width: 767px\)[\s\S]*animation-delay: 3\.6s/,
+  "A throttled phone may retain the useful loader through hydration, but never beyond four seconds.",
 );
 
 console.log("automotive preloader contract: PASS");
