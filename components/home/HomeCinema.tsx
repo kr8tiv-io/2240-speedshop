@@ -385,7 +385,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
         <div data-hero-still className="absolute inset-0">
           <StaticBackdrop />
         </div>
-        {motionEnabled && runtimeProfile ? (
+        {motionEnabled && runtimeProfile && ready ? (
           <LazyHeroRuntime
             shot={shot}
             mobile={runtimeProfile.mobile}

@@ -21,7 +21,17 @@ assert.match(
   "The opaque live canvas must crossfade only after its first verified frame.",
 );
 assert.match(cinema, /data-hero-still/);
+assert.match(
+  cinema,
+  /motionEnabled\s*&&\s*runtimeProfile\s*&&\s*ready/,
+  "The heavy hero runtime must not block the visible loader's exit choreography.",
+);
 assert.match(css, /@keyframes loader-turntable/);
 assert.match(css, /@keyframes loader-car-idle/);
+assert.match(
+  css,
+  /preloader-failsafe 0\.4s ease 1\.8s forwards/,
+  "The no-hydration CSS path must uncover the static hero within 2.2 seconds.",
+);
 
 console.log("automotive preloader contract: PASS");

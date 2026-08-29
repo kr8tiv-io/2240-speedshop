@@ -1008,8 +1008,9 @@ html[data-ui-overlay="menu"] .grain {
    AUTOMOTIVE PRELOADER + DEAD-MAN FAILSAFE.
    The vector car and its turntable cost no request and paint in the static
    HTML. A normal progressive handoff begins at 1.2 s and is gone at ~1.85 s;
-   if React is wedged the raw-DOM escape fires at 3 s, then this pure-CSS path
-   uncovers the already-rendered hero still at 4 s even if no script ran.
+   if hydration is late, this pure-CSS path uncovers the already-rendered hero
+   still by 2.2 s without waiting for any script. The raw-DOM escape remains a
+   separate 3 s cleanup path for a mounted tree that later wedges.
    ──────────────────────────────────────────────────────────────────────────── */
 @keyframes loader-turntable {
   to { transform: translateX(-50%) scaleY(0.28) rotate(360deg); }
@@ -1146,7 +1147,7 @@ html[data-ui-overlay="menu"] .grain {
   }
 }
 .preloader-veil {
-  animation: preloader-failsafe 0.4s ease 4s forwards;
+  animation: preloader-failsafe 0.4s ease 1.8s forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

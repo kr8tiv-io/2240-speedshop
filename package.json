@@ -10,6 +10,7 @@
     "audit:elevation": "node scripts/elevation-checks.mjs",
     "audit:handoffs": "node scripts/handoff-checks.mjs",
     "audit:copy-layout": "node scripts/copy-layout-checks.mjs",
+    "audit:garage-loader-social": "node scripts/garage-loader-social-check.mjs",
     "test:gl-images": "node scripts/gl-images-contract.mjs",
     "test:loader-ownership": "node scripts/loader-ownership-contract.mjs",
     "test:mobile-menu": "node scripts/mobile-menu-contract.mjs",

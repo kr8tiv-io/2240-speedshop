@@ -25,6 +25,7 @@ type LoaderState = { phase: Phase; reason: ReadyReason | null };
 export function Preloader({ onDone }: { onDone?: () => void }) {
   const boot = useHeroBootSnapshot();
   const [loader, setLoader] = useState<LoaderState>({ phase: "loading", reason: null });
+  const [visualProgress, setVisualProgress] = useState(4);
   const mounted = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(onDone);
@@ -36,6 +37,21 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
   useEffect(() => {
     mounted.current = Date.now();
   }, []);
+
+  /* The expensive hero runtime intentionally starts after this overlay has
+     left, so its real asset tracker is still at zero during the brand beat.
+     Give the small readout a smooth warm-up sweep without pretending that it
+     is byte-accurate; genuine boot progress can only move it forward. */
+  useEffect(() => {
+    if (loader.phase !== "loading") return;
+    const started = performance.now();
+    const timer = window.setInterval(() => {
+      const elapsed = performance.now() - started;
+      const warmup = Math.min(92, 4 + 88 * (1 - Math.exp(-elapsed / 430)));
+      setVisualProgress((current) => Math.max(current, warmup));
+    }, 80);
+    return () => window.clearInterval(timer);
+  }, [loader.phase]);
 
   const beginHandoff = useCallback((reason: ReadyReason) => {
     setLoader((current) => {
@@ -89,18 +105,19 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
         setLoader((current) =>
           current.phase === "ignition" ? { ...current, phase: "exit" } : current,
         );
-        doneRef.current?.();
       }, IGNITION_MS);
       return () => window.clearTimeout(timer);
     }
     if (loader.phase === "exit") {
-      const timer = window.setTimeout(
-        () =>
-          setLoader((current) =>
-            current.phase === "exit" ? { ...current, phase: "gone" } : current,
-          ),
-        EXIT_MS,
-      );
+      const timer = window.setTimeout(() => {
+        setLoader((current) =>
+          current.phase === "exit" ? { ...current, phase: "gone" } : current,
+        );
+        /* Release the shader/model graph only after the compositor has
+           finished lifting this plate. That prevents module evaluation and
+           shader compilation from freezing a loader that is still visible. */
+        doneRef.current?.();
+      }, EXIT_MS);
       return () => window.clearTimeout(timer);
     }
   }, [loader.phase]);
@@ -119,7 +136,9 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
 
   const emergency = loader.reason?.startsWith("emergency-") ?? false;
   const state = emergency ? `emergency-${loader.phase}` : loader.phase;
-  const displayedProgress = Math.round(boot.progress);
+  const displayedProgress = Math.round(
+    loader.phase === "loading" ? Math.max(boot.progress, visualProgress) : 100,
+  );
 
   return (
     <div
@@ -127,7 +146,7 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
       data-preloader
       data-state={state}
       data-ready-reason={loader.reason ?? undefined}
-      data-progress={Math.round(boot.progress)}
+      data-progress={displayedProgress}
       data-boot-generation={getHeroBootGeneration()}
       className={`preloader-veil fixed inset-0 z-[80] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[400ms] ease-out ${
         loader.phase === "exit" ? "-translate-y-6 opacity-0" : ""
