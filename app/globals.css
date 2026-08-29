@@ -719,8 +719,113 @@ html[data-ui-overlay="menu"] .grain {
 }
 
 .ig-wall {
-  -webkit-mask-image: radial-gradient(120% 100% at 50% 50%, #000 62%, transparent 100%);
-  mask-image: radial-gradient(120% 100% at 50% 50%, #000 62%, transparent 100%);
+  isolation: isolate;
+  background: rgba(51, 52, 58, 0.45);
+}
+
+.ig-card {
+  isolation: isolate;
+  background: #111114;
+}
+
+.ig-card::after {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  border: 1px solid rgba(255, 176, 102, 0);
+  box-shadow: inset 0 0 0 1px rgba(242, 240, 236, 0);
+  pointer-events: none;
+  transition: border-color 420ms ease, box-shadow 420ms ease;
+}
+
+.ig-card img {
+  filter: brightness(0.78) contrast(1.13) saturate(0.86) sepia(0.06);
+  transform: scale(1.001);
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1), filter 500ms ease;
+}
+
+.ig-card-shade {
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(10, 10, 11, 0.08), rgba(10, 10, 11, 0.34));
+  transition: opacity 420ms ease;
+}
+
+.ig-card-glow {
+  z-index: 2;
+  opacity: 0;
+  background:
+    radial-gradient(72% 62% at 64% 20%, rgba(255, 176, 102, 0.2), transparent 68%),
+    linear-gradient(180deg, rgba(255, 217, 173, 0.04), transparent 48%);
+  mix-blend-mode: screen;
+  transition: opacity 500ms ease;
+}
+
+.ig-card-meta {
+  z-index: 3;
+  padding: 0.75rem 0.8rem;
+  color: rgba(242, 240, 236, 0.9);
+  background: linear-gradient(180deg, transparent, rgba(10, 10, 11, 0.86));
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  opacity: 0;
+  transform: translateY(0.35rem);
+  transition: opacity 380ms ease, transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ig-card-meta span {
+  color: #ffb066;
+}
+
+.ig-card:hover img,
+.ig-card:focus-visible img {
+  filter: brightness(1.04) contrast(1.08) saturate(0.98) sepia(0.03);
+  transform: scale(1.045);
+}
+
+.ig-card:hover .ig-card-shade,
+.ig-card:focus-visible .ig-card-shade {
+  opacity: 0.28;
+}
+
+.ig-card:hover .ig-card-glow,
+.ig-card:focus-visible .ig-card-glow,
+.ig-card:hover .ig-card-meta,
+.ig-card:focus-visible .ig-card-meta {
+  opacity: 1;
+}
+
+.ig-card:hover .ig-card-meta,
+.ig-card:focus-visible .ig-card-meta {
+  transform: translateY(0);
+}
+
+.ig-card:hover::after,
+.ig-card:focus-visible::after {
+  border-color: rgba(255, 176, 102, 0.48);
+  box-shadow: inset 0 0 0 1px rgba(255, 217, 173, 0.06);
+}
+
+@media (hover: none) {
+  .ig-card img {
+    filter: brightness(0.9) contrast(1.1) saturate(0.92) sepia(0.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-card img,
+  .ig-card::after,
+  .ig-card-shade,
+  .ig-card-glow,
+  .ig-card-meta {
+    transition: none;
+  }
+
+  .ig-card:hover img,
+  .ig-card:focus-visible img {
+    transform: none;
+  }
 }
 
 /* The film hands off to the page rather than ending: a tall feather under the

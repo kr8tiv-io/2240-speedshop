@@ -1,64 +1,23 @@
 import Image from "next/image";
 import { site } from "@/lib/site";
+import instagramPosts from "@/lib/instagram-posts.json";
 
-type Thumb = { file: string; alt: string };
+type InstagramPost = {
+  file: string;
+  alt: string;
+  kind: "p" | "reel";
+  shortcode: string;
+  subject: string;
+  position: string;
+};
 
 /**
- * Static grid — every filename verified present in /public/shop.
- * No Instagram API at this stage: the tiles are real ripped thumbnails and
- * every tile links out to the shop's profile, so the section is 100% in the
- * server-rendered HTML that AI crawlers read.
+ * Static, crawlable post wall. Every thumbnail exists in /public/shop and each
+ * shortcode resolves directly to the originating Instagram post. Keeping the
+ * records local makes the section instant and deterministic without an API or
+ * a client-side feed widget.
  */
-const thumbs: Thumb[] = [
-  {
-    file: "ig-2024-01-07_reel_C10w-QarnW8.jpg",
-    alt: "2240 Speed Shop Instagram reel, January 2024 — customs and classics work in Edmonton",
-  },
-  {
-    file: "ig-2024-01-31_photo_C2yORYaviUI.jpg",
-    alt: "2240 Speed Shop Instagram post, January 2024 — classic car build in the Edmonton shop",
-  },
-  {
-    file: "ig-2024-02-03_reel_C26EvF4JPya.jpg",
-    alt: "2240 Speed Shop Instagram reel, February 2024 — custom car work in Edmonton, Alberta",
-  },
-  {
-    file: "ig-2024-03-07_reel_C4PPpGzLyKp.jpg",
-    alt: "2240 Speed Shop Instagram reel, March 2024 — classic restoration progress in Edmonton",
-  },
-  {
-    file: "ig-2024-09-14_reel-a_C_7GCo4R_iK.jpg",
-    alt: "2240 Speed Shop Instagram reel, September 2024 — hot rod and restomod work in Edmonton",
-  },
-  {
-    file: "ig-2024-09-14_reel-b_C_7F1LIpggd.jpg",
-    alt: "2240 Speed Shop Instagram reel, September 2024 — customs and classics shop floor, Edmonton",
-  },
-  {
-    file: "ig-2024-12-23_reel-a_DD8j7EKJnZY.jpg",
-    alt: "2240 Speed Shop Instagram reel, December 2024 — classic truck build in Edmonton, Alberta",
-  },
-  {
-    file: "ig-2024-12-23_reel-b_DD8jkUPpfS6.jpg",
-    alt: "2240 Speed Shop Instagram reel, December 2024 — custom car shop work in Edmonton",
-  },
-  {
-    file: "ig-2024-12-23_reel-c_DD8e1tFp0Em.jpg",
-    alt: "2240 Speed Shop Instagram reel, December 2024 — restoration progress on the Sherwood Park line",
-  },
-  {
-    file: "ig-2024-12-24_reel_DD-OQFOy8Og.jpg",
-    alt: "2240 Speed Shop Instagram reel, December 2024 — classics and customs in the Edmonton garage",
-  },
-  {
-    file: "ig-2024-12-31_reel_DEQGInoPZmO.jpg",
-    alt: "2240 Speed Shop Instagram reel, December 2024 — year-end look at the Edmonton speed shop",
-  },
-  {
-    file: "ig-2025-09-09_natlaj-photo_DOZCypFjzTm.jpg",
-    alt: "2240 Speed Shop Instagram post, September 2025 — photographed classic truck build, Edmonton",
-  },
-];
+const posts = instagramPosts as InstagramPost[];
 
 type InstagramGridProps = {
   heading?: string;
@@ -66,7 +25,7 @@ type InstagramGridProps = {
   intro?: string;
 };
 
-/** Server component. Twelve real posts, one link target: the shop's profile. */
+/** Server component. Ten distinct subjects, ten direct source-post links. */
 export function InstagramGrid({
   heading = "From the shop floor",
   headingId = "instagram-heading",
@@ -94,35 +53,34 @@ export function InstagramGrid({
         </a>
       </div>
 
-      {/* No hairline boxes and no grid of identical squares: the tiles run
-          edge to edge with a 1px seam, alternate between 4:5 and 1:1 so the
-          wall has rhythm, and the outer edges feather into the page instead
-          of stopping at a rectangle. */}
-      <ul className="ig-wall mt-10 grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-6">
-        {thumbs.map((t, i) => (
-          <li key={t.file}>
-            <a
-              href={site.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`group relative block overflow-hidden ${
-                i % 5 === 0 ? "aspect-[4/5]" : "aspect-square"
-              }`}
-            >
-              <Image
-                src={`/shop/${t.file}`}
-                alt={t.alt}
-                fill
-                sizes="(min-width: 1024px) 12rem, (min-width: 640px) 33vw, 50vw"
-                className="graded object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
-              />
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-bay-black/25 transition-opacity duration-500 group-hover:opacity-0"
-              />
-            </a>
-          </li>
-        ))}
+      <ul className="ig-wall mt-10 grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-5">
+        {posts.map((post) => {
+          const href = `https://www.instagram.com/${post.kind}/${post.shortcode}/`;
+          return (
+            <li key={post.shortcode}>
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ig-card group relative block aspect-square overflow-hidden"
+              >
+                <Image
+                  src={`/shop/${post.file}`}
+                  alt={post.alt}
+                  fill
+                  sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
+                  style={{ objectPosition: post.position }}
+                  className="object-cover"
+                />
+                <span aria-hidden="true" className="ig-card-shade pointer-events-none absolute inset-0" />
+                <span aria-hidden="true" className="ig-card-glow pointer-events-none absolute inset-0" />
+                <span aria-hidden="true" className="ig-card-meta pointer-events-none absolute inset-x-0 bottom-0">
+                  {post.kind === "reel" ? "VIEW REEL" : "VIEW POST"} <span>↗</span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
