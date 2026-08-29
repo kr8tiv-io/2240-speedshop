@@ -900,13 +900,140 @@ html[data-ui-overlay="menu"] .grain {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   PRELOADER DEAD-MAN FAILSAFE — pure CSS, no JS required.
-   The preloader overlay ships in the static HTML; if the app never hydrates
-   (hung chunk through a bad tunnel), this animation lifts the veil at 19 s
-   all by itself. In every hydrated path the 14 s hard cap plus 1.9 s branded
-   handoff finishes first, and the raw-DOM escape fires at 18 s if React is
-   wedged. The later CSS path exists only when neither JavaScript backstop can.
+   AUTOMOTIVE PRELOADER + DEAD-MAN FAILSAFE.
+   The vector car and its turntable cost no request and paint in the static
+   HTML. A normal progressive handoff begins at 1.2 s and is gone at ~1.85 s;
+   if React is wedged the raw-DOM escape fires at 3 s, then this pure-CSS path
+   uncovers the already-rendered hero still at 4 s even if no script ran.
    ──────────────────────────────────────────────────────────────────────────── */
+@keyframes loader-turntable {
+  to { transform: translateX(-50%) scaleY(0.28) rotate(360deg); }
+}
+
+@keyframes loader-car-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.loader-car-stage {
+  position: relative;
+  display: grid;
+  width: min(82vw, 34rem);
+  place-items: center;
+  padding: 1.5rem 1rem 2.2rem;
+  isolation: isolate;
+}
+
+.loader-turntable {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: 3.15rem;
+  width: 82%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 176, 102, 0.2);
+  border-top-color: rgba(255, 176, 102, 0.9);
+  border-radius: 999px;
+  transform: translateX(-50%) scaleY(0.28);
+  animation: loader-turntable 4.8s linear infinite;
+  box-shadow: 0 0 34px rgba(255, 139, 49, 0.1);
+}
+
+.loader-car-idle {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  overflow: visible;
+  animation: loader-car-idle 2.8s ease-in-out infinite;
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.7));
+}
+
+.loader-car-body,
+.loader-car-glass,
+.loader-car-detail,
+.loader-wheel,
+.loader-wheel-hub {
+  vector-effect: non-scaling-stroke;
+  transition: fill 250ms ease, stroke 250ms ease, opacity 250ms ease;
+}
+
+.loader-car-body {
+  fill: rgba(242, 240, 236, 0.08);
+  stroke: rgba(242, 240, 236, 0.88);
+  stroke-width: 2.2;
+}
+
+.loader-car-glass {
+  fill: rgba(94, 112, 140, 0.16);
+  stroke: rgba(154, 156, 160, 0.62);
+  stroke-width: 1.4;
+}
+
+.loader-car-detail {
+  fill: none;
+  stroke: rgba(255, 176, 102, 0.72);
+  stroke-linecap: round;
+  stroke-width: 1.6;
+}
+
+.loader-wheel {
+  fill: #0a0a0b;
+  stroke: rgba(242, 240, 236, 0.72);
+  stroke-width: 2.2;
+}
+
+.loader-wheel-hub {
+  fill: rgba(255, 176, 102, 0.24);
+  stroke: rgba(255, 176, 102, 0.88);
+  stroke-width: 1.5;
+}
+
+.loader-igniting .loader-car-body {
+  fill: rgba(255, 139, 49, 0.16);
+  stroke: #ffd9ad;
+}
+
+.loader-igniting .loader-car-detail,
+.loader-igniting .loader-wheel-hub {
+  stroke: #ffb066;
+}
+
+.loader-readout {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.2rem;
+  color: rgba(242, 240, 236, 0.88);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+}
+
+.loader-readout span:last-child {
+  color: rgba(255, 176, 102, 0.66);
+}
+
+.loader-progress-track {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin-top: 0.8rem;
+  overflow: hidden;
+  background: rgba(154, 156, 160, 0.2);
+}
+
+.loader-progress-track > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #c96f32, #ffd9ad);
+  box-shadow: 0 0 12px rgba(255, 176, 102, 0.5);
+  transform-origin: left center;
+  transition: transform 180ms ease-out;
+}
+
 @keyframes preloader-failsafe {
   to {
     opacity: 0;
@@ -914,7 +1041,14 @@ html[data-ui-overlay="menu"] .grain {
   }
 }
 .preloader-veil {
-  animation: preloader-failsafe 0.5s ease 19s forwards;
+  animation: preloader-failsafe 0.4s ease 4s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-turntable,
+  .loader-car-idle {
+    animation: none;
+  }
 }
 
 @keyframes route-veil-lift {

@@ -382,6 +382,9 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
           visible under runway A; the timelines drop the curtain for the
           walk-through and raise it again for the finale. */}
       <div data-film-canvas className="fixed inset-0 z-0">
+        <div data-hero-still className="absolute inset-0">
+          <StaticBackdrop />
+        </div>
         {motionEnabled && runtimeProfile ? (
           <LazyHeroRuntime
             shot={shot}

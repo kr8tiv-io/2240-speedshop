@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/Logo";
 import { getHeroBootGeneration, useHeroBootSnapshot } from "./hero-boot";
 
 /**
@@ -9,16 +8,18 @@ import { getHeroBootGeneration, useHeroBootSnapshot } from "./hero-boot";
  * compile readiness arrive through hero-boot, so importing this component can
  * never evaluate drei, R3F, Three, postprocessing, or the hero model preloads.
  */
-const HARD_CAP_MS = 14_000;
-const ESCAPE_MS = 18_000;
-const MIN_BRAND_MS = 1_200;
-/* The compile wait already gives the mark a long hold. A 650 ms ignition is
-   enough to read as a deliberate tube flicker without making a ready scene
-   sit behind branding for another 1.3 seconds. */
-const FLICKER_MS = 650;
+const PROGRESSIVE_CEILING_MS = 1_200;
+const ESCAPE_MS = 3_000;
+const MIN_BRAND_MS = 500;
+const IGNITION_MS = 250;
+const EXIT_MS = 400;
 
-type Phase = "loading" | "flicker" | "exit" | "gone";
-type ReadyReason = "scene" | "emergency-failed" | "emergency-hard-cap" | "emergency-css-failsafe";
+type Phase = "loading" | "ignition" | "exit" | "gone";
+type ReadyReason =
+  | "scene"
+  | "progressive-ceiling"
+  | "emergency-failed"
+  | "emergency-css-failsafe";
 type LoaderState = { phase: Phase; reason: ReadyReason | null };
 
 export function Preloader({ onDone }: { onDone?: () => void }) {
@@ -39,7 +40,7 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
   const beginHandoff = useCallback((reason: ReadyReason) => {
     setLoader((current) => {
       if (current.phase !== "loading" || current.reason !== null) return current;
-      return { phase: "flicker", reason };
+      return { phase: "ignition", reason };
     });
   }, []);
 
@@ -57,13 +58,14 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
     return () => window.clearTimeout(timer);
   }, [beginHandoff, boot.failed, boot.progress, boot.sceneReady, loader]);
 
-  /* React and raw-DOM backstops remain honest emergency paths. A suspended
-     tree cannot paint state, so the final timer stamps provenance on the node
-     before bypassing React and releasing the document. */
+  /* A short visual ceiling is a normal progressive handoff, not an emergency:
+     the server-rendered hero still is already underneath this plate and the
+     verified live canvas will crossfade over it when its real first frame is
+     ready. The raw-DOM timer remains the separate suspended-tree escape. */
   useEffect(() => {
-    const hardCap = window.setTimeout(
-      () => beginHandoff("emergency-hard-cap"),
-      HARD_CAP_MS,
+    const progressiveCeiling = window.setTimeout(
+      () => beginHandoff("progressive-ceiling"),
+      PROGRESSIVE_CEILING_MS,
     );
     const escape = window.setTimeout(() => {
       const veil = rootRef.current;
@@ -76,19 +78,19 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
       doneRef.current?.();
     }, ESCAPE_MS);
     return () => {
-      window.clearTimeout(hardCap);
+      window.clearTimeout(progressiveCeiling);
       window.clearTimeout(escape);
     };
   }, [beginHandoff]);
 
   useEffect(() => {
-    if (loader.phase === "flicker") {
+    if (loader.phase === "ignition") {
       const timer = window.setTimeout(() => {
         setLoader((current) =>
-          current.phase === "flicker" ? { ...current, phase: "exit" } : current,
+          current.phase === "ignition" ? { ...current, phase: "exit" } : current,
         );
         doneRef.current?.();
-      }, FLICKER_MS);
+      }, IGNITION_MS);
       return () => window.clearTimeout(timer);
     }
     if (loader.phase === "exit") {
@@ -97,7 +99,7 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
           setLoader((current) =>
             current.phase === "exit" ? { ...current, phase: "gone" } : current,
           ),
-        600,
+        EXIT_MS,
       );
       return () => window.clearTimeout(timer);
     }
@@ -115,9 +117,9 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
 
   if (loader.phase === "gone") return null;
 
-  const emergency = loader.reason !== null && loader.reason !== "scene";
+  const emergency = loader.reason?.startsWith("emergency-") ?? false;
   const state = emergency ? `emergency-${loader.phase}` : loader.phase;
-  const displayedProgress = loader.phase === "loading" ? Math.round(boot.progress) : 100;
+  const displayedProgress = Math.round(boot.progress);
 
   return (
     <div
@@ -127,12 +129,12 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
       data-ready-reason={loader.reason ?? undefined}
       data-progress={Math.round(boot.progress)}
       data-boot-generation={getHeroBootGeneration()}
-      className={`preloader-veil fixed inset-0 z-[80] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[600ms] ease-out ${
+      className={`preloader-veil fixed inset-0 z-[80] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[400ms] ease-out ${
         loader.phase === "exit" ? "-translate-y-6 opacity-0" : ""
       }`}
       /* Once genuine scene provenance exists, the CSS dead-man must not win
          a later race during the branded flicker/exit choreography. */
-      style={loader.reason === "scene" ? { animation: "none" } : undefined}
+      style={loader.reason !== null ? { animation: "none" } : undefined}
       onAnimationStart={(event) => {
         if (event.animationName === "preloader-failsafe") {
           beginHandoff("emergency-css-failsafe");
@@ -140,8 +142,35 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
       }}
       aria-hidden="true"
     >
-      <div className={loader.phase === "flicker" ? "tube-on" : "opacity-[0.06]"}>
-        <Badge className="h-28 w-auto sm:h-36" hole="#0a0a0b" title="" />
+      <div
+        data-loader-car
+        className={`loader-car-stage ${loader.phase === "ignition" ? "loader-igniting" : ""}`}
+      >
+        <span className="loader-turntable" aria-hidden="true" />
+        <svg
+          className="loader-car-idle"
+          viewBox="0 0 420 170"
+          role="presentation"
+          aria-hidden="true"
+        >
+          <path
+            className="loader-car-body"
+            d="M35 117 55 96 104 87 137 52c8-9 19-14 32-15h91c14 1 27 7 37 18l30 32 38 10c11 3 18 11 20 22l-2 13h-28c-4-20-18-32-37-32s-34 12-38 32H136c-4-20-19-32-38-32s-34 12-38 32H39l-8-7 4-8Z"
+          />
+          <path className="loader-car-glass" d="m151 57-25 29h76V55h-33c-7 0-13 1-18 2Zm66-2v31h85l-24-25c-5-4-12-6-21-6h-40Z" />
+          <path className="loader-car-detail" d="M43 112h29m248-17 27 8m-185-2h73m-95 0h10" />
+          <circle className="loader-wheel" cx="98" cy="132" r="24" />
+          <circle className="loader-wheel-hub" cx="98" cy="132" r="9" />
+          <circle className="loader-wheel" cx="318" cy="132" r="24" />
+          <circle className="loader-wheel-hub" cx="318" cy="132" r="9" />
+        </svg>
+        <div className="loader-readout">
+          <span>LOADING</span>
+          <span aria-hidden="true">// IGNITION</span>
+        </div>
+        <span className="loader-progress-track" aria-hidden="true">
+          <span style={{ transform: `scaleX(${Math.max(0.04, displayedProgress / 100)})` }} />
+        </span>
       </div>
 
       <div className="absolute bottom-10 left-0 right-0 flex items-end justify-between px-6 sm:px-10">
