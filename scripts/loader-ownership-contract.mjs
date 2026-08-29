@@ -105,14 +105,14 @@ assert.ok(
   "The shop may not start on a fixed clock while the opening film is still compiling.",
 );
 assert.ok(
-  /const REVEAL_WARM_KEYS = \["shell", "0", "1"\]/.test(loaders) &&
+  /const REVEAL_WARM_KEYS = \["shell", "0"\]/.test(loaders) &&
     /const REVEAL_PENDING = new Set<string>\(REVEAL_WARM_KEYS\)/.test(loaders),
-  "The photographic doorway must wait for the verified 3D building and its two opening subjects, not the later tour.",
+  "The final photographic dissolve must wait for the verified building and doorway subject, not the unrelated second bay.",
 );
 assert.ok(
   /REVEAL_PENDING\.delete\(key\)/.test(loaders) &&
-    /if \(REVEAL_PENDING\.size === 0\) void finalizeWorld\(\)/.test(loaders),
-  "Building readiness must trigger the verified composed-frame finalizer while bays continue paced first-use.",
+    /finalizedWorld === worldFinalizer[\s\S]*REVEAL_PENDING\.size === 0[\s\S]*markWorldReady\(\)/.test(loaders),
+  "The doorway may dissolve only after the shell's composed-frame proof and station-zero first-use both exist.",
 );
 assert.ok(
   /if \(PENDING\.size === 0\) restoreComposerOvens\(\)/.test(loaders),
@@ -200,7 +200,7 @@ assert.ok(
 );
 assert.ok(
   /let finalizedWorld: \(\(\) => Promise<void>\) \| null = null/.test(loaders) &&
-    /finalizedWorld === finalizer/.test(loaders) &&
+    /finalizedWorld === worldFinalizer/.test(loaders) &&
     /finalizedWorld = finalizer/.test(loaders),
   "The full-composer readiness proof must run once per mounted WebGL world, not after every bay.",
 );

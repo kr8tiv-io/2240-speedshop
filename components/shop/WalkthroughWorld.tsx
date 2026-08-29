@@ -49,7 +49,10 @@ import {
  * The site behind it is complete without this. Everything the reader — or an
  * answer engine — needs is server-rendered HTML in front of the canvas.
  */
-const ShopWorld = dynamic(() => import("./ShopWorld").then((m) => m.ShopWorld), {
+let shopWorldModule: Promise<typeof import("./ShopWorld")> | null = null;
+const preloadShopWorld = () => (shopWorldModule ??= import("./ShopWorld"));
+
+const ShopWorld = dynamic(() => (shopWorldModule ??= import("./ShopWorld")).then((m) => m.ShopWorld), {
   ssr: false,
   loading: () => null,
 });
@@ -75,6 +78,7 @@ export function WalkthroughWorld() {
   /** True around the runway and its crossfades: the only time frames are
       actually drawn. */
   const [active, setActive] = useState(false);
+  const [worldWarm, setWorldWarm] = useState(() => getBoot().warm);
   const [worldReady, setWorldReady] = useState(() => getBoot().ready);
   const uiOverlay = useUIOverlay();
   const host = useRef<HTMLDivElement>(null);
@@ -83,6 +87,7 @@ export function WalkthroughWorld() {
   useEffect(
     () =>
       subscribeBoot((boot) => {
+        if (boot.warm) setWorldWarm(true);
         if (boot.ready) setWorldReady(true);
       }),
     [],
@@ -127,6 +132,8 @@ export function WalkthroughWorld() {
     };
   }, []);
 
+  const run = verdict === "run-full" || verdict === "run-lite";
+
   /* Runway gating + the edge fade. This effect also owns the shared runway
      measurement, so every consumer (camera rig, reveals, rail) reads fresh
      numbers even on machines where the canvas never mounts. */
@@ -150,7 +157,7 @@ export function WalkthroughWorld() {
       return boot.sceneReady || boot.failed;
     })();
     const mountWhenIdle = () => {
-      if (warmLatched || !warmNear) return;
+      if (!run || warmLatched || !warmNear) return;
       if (heroSettled && stillFor() >= 900) {
         warmLatched = true;
         setMounted(true);
@@ -170,7 +177,10 @@ export function WalkthroughWorld() {
     const warm = new IntersectionObserver(
       ([entry]) => {
         warmNear = entry.isIntersecting;
-        if (warmNear) setDoorwayNear(true);
+        if (warmNear) {
+          setDoorwayNear(true);
+          if (run) void preloadShopWorld();
+        }
         window.clearTimeout(warmTimer);
         if (warmNear) warmTimer = window.setTimeout(mountWhenIdle, 150);
       },
@@ -238,14 +248,13 @@ export function WalkthroughWorld() {
       window.visualViewport?.removeEventListener("resize", measure);
       observer.disconnect();
     };
-  }, []);
-
-  const run = verdict === "run-full" || verdict === "run-lite";
+  }, [run]);
 
   return (
     <div
       ref={host}
       data-shop-ready={worldReady ? "world" : "poster"}
+      data-shop-stage={worldReady ? "world" : worldWarm ? "shell" : "poster"}
       aria-hidden="true"
       role="presentation"
       className="pointer-events-none fixed inset-0 z-[5]"
@@ -269,7 +278,9 @@ export function WalkthroughWorld() {
           finished linking the shop. Hold a real tungsten/cool room there,
           then dissolve it away once the full world is ready. */}
       <div
-        className={`wt-world-boot-light absolute inset-0 transition-opacity duration-1000 ${worldReady ? "opacity-0" : "opacity-100"}`}
+        className={`wt-world-boot-light absolute inset-0 transition-opacity duration-1000 ${
+          worldReady ? "opacity-0" : worldWarm ? "opacity-[0.46]" : "opacity-100"
+        }`}
         data-shop-doorway={doorwayNear ? "near" : "parked"}
       >
         {doorwayNear ? (

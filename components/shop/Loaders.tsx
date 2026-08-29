@@ -402,57 +402,32 @@ const WARM_KEYS = [
   "5-gallery",
 ];
 /* The photograph protects the only dangerous transition: building the first
-   full-size composed frame. Keep it for the shell and the two subjects already
-   visible at the doorway, so neither can submit hundreds of cold bindings on
-   the frame after the dissolve. Later bays continue behind the moving world. */
-const REVEAL_WARM_KEYS = ["shell", "0", "1"];
+   full-size composed frame. Keep it for the shell and the doorway subject, so
+   neither can submit hundreds of cold bindings on the frame after the final
+   dissolve. The shell begins moving beneath a partial safety layer as soon as
+   its exact composer is proved; later bays continue behind that moving world. */
+const REVEAL_WARM_KEYS = ["shell", "0"];
 const PENDING = new Set<string>(WARM_KEYS);
 const REVEAL_PENDING = new Set<string>(REVEAL_WARM_KEYS);
 const WARMED = new Set<string>();
 let contiguousWarmStation = -1;
 let worldFinalizer: (() => Promise<void>) | null = null;
 let finalizedWorld: (() => Promise<void>) | null = null;
-let finalizingWorld = false;
 
 /** The furthest station the camera can enter without aiming at an empty bay. */
 export function highestContiguousWarmStation() {
   return contiguousWarmStation;
 }
 
-async function finalizeWorld() {
-  const finalizer = worldFinalizer;
+function revealWorldIfReady() {
   if (
-    finalizingWorld ||
-    REVEAL_PENDING.size !== 0 ||
-    !finalizer ||
-    finalizedWorld === finalizer
-  ) return;
-  finalizingWorld = true;
-  try {
-    // The building and the ACTUAL full composer are ready. Bay shaders compile
-    // concurrently, then their hundreds of per-geometry GPU bindings continue
-    // through the existing paced queue ahead of the camera. Making those
-    // first draws block this frame left WebKit on the photograph even though
-    // a lit, moving garage already existed below.
-    await finalizer();
-    // `reportWarm` continues for every streamed bay. Remember the exact
-    // mounted world's proof so those progress events cannot replay two full
-    // composed frames through AO/DOF/bloom after the door is already open.
-    finalizedWorld = finalizer;
-    markShellWarm();
-    markWorldReady();
-  } catch (error) {
-    // Keep the finished photograph. Revealing an unverified renderer is never
-    // a recovery path; under ?perf the reason remains inspectable.
-    if (DEBUG) console.warn("[shop] final composed frame failed; retaining doorway", error);
-  } finally {
-    finalizingWorld = false;
-  }
+    finalizedWorld === worldFinalizer &&
+    REVEAL_PENDING.size === 0
+  ) markWorldReady();
 }
 
 function setWorldFinalizer(finalizer: (() => Promise<void>) | null) {
   worldFinalizer = finalizer;
-  if (finalizer && REVEAL_PENDING.size === 0) void finalizeWorld();
 }
 
 function reportWarm(key: string) {
@@ -467,7 +442,7 @@ function reportWarm(key: string) {
     }
     REVEAL_PENDING.delete(key);
     reportBootProgress(0.75 + 0.25 * ((WARM_KEYS.length - PENDING.size) / WARM_KEYS.length));
-    if (REVEAL_PENDING.size === 0) void finalizeWorld();
+    revealWorldIfReady();
     // Keep the postage-stamp compositor oven for the later bays. They can
     // still first-use the exact HDR target cheaply while the world is parked.
     if (PENDING.size === 0) restoreComposerOvens();
@@ -2500,11 +2475,22 @@ export function WarmScene({
       }
     };
     setWorldFinalizer(finalizer);
-    const finish = () => {
+    const finish = async () => {
       if (dead) return;
-      // The shell is ready, but frames remain parked until every station has
-      // reported too. `reportWarm` owns the one honest transition to live.
-      reportWarm("shell");
+      try {
+        // Prove the exact full-size composer as soon as the shell is warm.
+        // This starts the real render loop behind a partially open photographic
+        // safety layer; the final dissolve still waits for station zero.
+        await finalizer();
+        if (dead || worldFinalizer !== finalizer) return;
+        finalizedWorld = finalizer;
+        markShellWarm();
+        reportWarm("shell");
+      } catch (error) {
+        // Keep the finished photograph. Revealing an unverified renderer is
+        // never a recovery path; under ?perf the reason remains inspectable.
+        if (DEBUG) console.warn("[shop] final composed frame failed; retaining doorway", error);
+      }
     };
 
     /* THE PASSES COMPILE TOO — and `gl.compile` cannot reach them.
@@ -2560,7 +2546,7 @@ export function WarmScene({
               ` · programs ${gl.info.programs?.length ?? 0} · pad ${lightBudget()}`,
           );
         }
-        finish();
+        void finish();
       });
     }, 60);
     return () => {
