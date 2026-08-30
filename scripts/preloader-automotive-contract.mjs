@@ -9,7 +9,7 @@ const [preloader, runtime, cinema, css] = await Promise.all([
   readFile(new URL("app/globals.css", root), "utf8"),
 ]);
 
-assert.match(preloader, /PROGRESSIVE_CEILING_MS\s*=\s*1_200/);
+assert.match(preloader, /PROGRESSIVE_CEILING_MS\s*=\s*750/);
 assert.match(preloader, /MIN_BRAND_MS\s*=\s*500/);
 assert.match(preloader, /data-loader-instrument/);
 assert.match(
@@ -44,7 +44,7 @@ assert.match(
 );
 assert.match(
   cinema,
-  /runtimeProfile\?\.mobile\) graceTimer = window\.setTimeout\(scheduleRuntime, 1_800\)/,
+  /MOBILE_RUNTIME_GRACE_MS\s*=\s*850[\s\S]*window\.setTimeout\(scheduleRuntime, MOBILE_RUNTIME_GRACE_MS\)/,
   "Phones need a post-loader interaction window before model parsing and shader compilation.",
 );
 assert.match(css, /@keyframes loader-instrument-sweep/);

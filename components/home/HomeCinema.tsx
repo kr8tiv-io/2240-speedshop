@@ -24,6 +24,9 @@ type RuntimeProfile = null | {
   webgl2: boolean;
 };
 
+const MOBILE_RUNTIME_GRACE_MS = 850;
+const RUNTIME_IDLE_TIMEOUT_MS = 500;
+
 /**
  * The film, in three acts — SPLIT AROUND THE SHOP.
  *
@@ -77,7 +80,9 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
     let timer = 0;
     const scheduleRuntime = () => {
       if (typeof window.requestIdleCallback === "function") {
-        idle = window.requestIdleCallback(() => setRuntimeAllowed(true), { timeout: 800 });
+        idle = window.requestIdleCallback(() => setRuntimeAllowed(true), {
+          timeout: RUNTIME_IDLE_TIMEOUT_MS,
+        });
       } else {
         timer = window.setTimeout(() => setRuntimeAllowed(true), 180);
       }
@@ -87,7 +92,9 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
        graded composition, so this changes no visual quality; it only keeps
        model parsing and shader compilation away from the user's first tap.
        Opening an overlay cancels the beat, and closing it starts a fresh one. */
-    if (runtimeProfile?.mobile) graceTimer = window.setTimeout(scheduleRuntime, 1_800);
+    if (runtimeProfile?.mobile) {
+      graceTimer = window.setTimeout(scheduleRuntime, MOBILE_RUNTIME_GRACE_MS);
+    }
     else scheduleRuntime();
     return () => {
       if (graceTimer) window.clearTimeout(graceTimer);

@@ -1003,7 +1003,7 @@ html[data-ui-overlay="menu"] .grain {
    INSTRUMENT PRELOADER + DEAD-MAN FAILSAFE.
    No illustration or second scene: just the shop's wordmark, a calibrated
    rule and a small technical readout. A normal progressive handoff begins at
-   1.2 s and is gone at ~1.85 s; if hydration is late, this pure-CSS path
+   0.75 s and is gone at ~1.19 s; if hydration is late, this pure-CSS path
    uncovers the already-rendered hero still by 2.2 s on desktop. A throttled
    phone keeps the same bounded four-second safety envelope.
    ──────────────────────────────────────────────────────────────────────────── */
@@ -1104,7 +1104,7 @@ html[data-ui-overlay="menu"] .grain {
   width: 16%;
   background: linear-gradient(90deg, transparent, rgba(255, 225, 195, 0.9), transparent);
   filter: blur(1px);
-  animation: loader-instrument-sweep 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation: loader-instrument-sweep 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 .loader-instrument__status {

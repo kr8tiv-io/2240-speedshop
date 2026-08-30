@@ -8,11 +8,11 @@ import { getHeroBootGeneration, useHeroBootSnapshot } from "./hero-boot";
  * compile readiness arrive through hero-boot, so importing this component can
  * never evaluate drei, R3F, Three, postprocessing, or the hero model preloads.
  */
-const PROGRESSIVE_CEILING_MS = 1_200;
+const PROGRESSIVE_CEILING_MS = 750;
 const ESCAPE_MS = 3_000;
 const MIN_BRAND_MS = 500;
-const IGNITION_MS = 250;
-const EXIT_MS = 400;
+const IGNITION_MS = 160;
+const EXIT_MS = 280;
 
 type Phase = "loading" | "ignition" | "exit" | "gone";
 type ReadyReason =
@@ -149,7 +149,7 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
       data-ready-reason={loader.reason ?? undefined}
       data-progress={displayedProgress}
       data-boot-generation={getHeroBootGeneration()}
-      className={`preloader-veil fixed inset-0 z-[120] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[400ms] ease-out ${
+      className={`preloader-veil fixed inset-0 z-[120] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[280ms] ease-out ${
         loader.phase === "exit" ? "-translate-y-6 opacity-0" : ""
       }`}
       /* Once genuine scene provenance exists, the CSS dead-man must not win
