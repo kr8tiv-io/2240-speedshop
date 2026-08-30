@@ -163,42 +163,32 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
       aria-hidden="true"
     >
       <div
-        data-loader-car
-        className={`loader-car-stage ${loader.phase === "ignition" ? "loader-igniting" : ""}`}
+        data-loader-instrument
+        className={`loader-instrument ${loader.phase === "ignition" ? "is-igniting" : ""}`}
       >
-        <span className="loader-turntable" aria-hidden="true" />
-        <svg
-          className="loader-car-idle"
-          viewBox="0 0 420 170"
-          role="presentation"
-          aria-hidden="true"
-        >
-          <path
-            className="loader-car-body"
-            d="M35 117 55 96 104 87 137 52c8-9 19-14 32-15h91c14 1 27 7 37 18l30 32 38 10c11 3 18 11 20 22l-2 13h-28c-4-20-18-32-37-32s-34 12-38 32H136c-4-20-19-32-38-32s-34 12-38 32H39l-8-7 4-8Z"
-          />
-          <path className="loader-car-glass" d="m151 57-25 29h76V55h-33c-7 0-13 1-18 2Zm66-2v31h85l-24-25c-5-4-12-6-21-6h-40Z" />
-          <path className="loader-car-detail" d="M43 112h29m248-17 27 8m-185-2h73m-95 0h10" />
-          <circle className="loader-wheel" cx="98" cy="132" r="24" />
-          <circle className="loader-wheel-hub" cx="98" cy="132" r="9" />
-          <circle className="loader-wheel" cx="318" cy="132" r="24" />
-          <circle className="loader-wheel-hub" cx="318" cy="132" r="9" />
-        </svg>
-        <div className="loader-readout">
-          <span>LOADING</span>
-          <span aria-hidden="true">// IGNITION</span>
+        <div className="loader-instrument__identity">
+          <p className="loader-instrument__mark">2240</p>
+          <p className="loader-instrument__meta">
+            <span>EDMONTON / AFTER HOURS</span>
+            <span>53.4818°N / 113.3773°W</span>
+          </p>
         </div>
-        <span className="loader-progress-track" aria-hidden="true">
-          <span style={{ transform: `scaleX(${Math.max(0.04, displayedProgress / 100)})` }} />
-        </span>
-      </div>
 
-      <div className="absolute bottom-10 left-0 right-0 flex items-end justify-between px-6 sm:px-10">
-        <p className="corner-note">2240 SPEED SHOP · EDMONTON AB</p>
-        <p className="font-mono text-4xl tabular-nums leading-none text-bone/80 sm:text-5xl">
-          {String(Math.min(displayedProgress, 100)).padStart(3, "0")}
-          <span className="text-tungsten">%</span>
-        </p>
+        <div className="loader-instrument__field" aria-hidden="true">
+          <span>01</span>
+          <span>SHOP SYSTEMS</span>
+        </div>
+
+        <div className="loader-instrument__rule" aria-hidden="true">
+          <span style={{ transform: `scaleX(${Math.max(0.04, displayedProgress / 100)})` }} />
+        </div>
+
+        <div className="loader-instrument__status">
+          <span>OPENING THE SHOP</span>
+          <span className="tabular-nums">
+            {String(Math.min(displayedProgress, 100)).padStart(3, "0")}%
+          </span>
+        </div>
       </div>
     </div>
   );

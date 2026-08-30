@@ -1005,140 +1005,140 @@ html[data-ui-overlay="menu"] .grain {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   AUTOMOTIVE PRELOADER + DEAD-MAN FAILSAFE.
-   The vector car and its turntable cost no request and paint in the static
-   HTML. A normal progressive handoff begins at 1.2 s and is gone at ~1.85 s;
-   if hydration is late, this pure-CSS path uncovers the already-rendered hero
-   still by 2.2 s on desktop. A throttled phone gets a 4 s ceiling: long enough
-   to make its first controls interactive before the plate lifts, never long
-   enough to wait for the 3D graph. The raw-DOM escape remains separate.
+   INSTRUMENT PRELOADER + DEAD-MAN FAILSAFE.
+   No illustration or second scene: just the shop's wordmark, a calibrated
+   rule and a small technical readout. A normal progressive handoff begins at
+   1.2 s and is gone at ~1.85 s; if hydration is late, this pure-CSS path
+   uncovers the already-rendered hero still by 2.2 s on desktop. A throttled
+   phone keeps the same bounded four-second safety envelope.
    ──────────────────────────────────────────────────────────────────────────── */
-@keyframes loader-turntable {
-  to { transform: translateX(-50%) scaleY(0.28) rotate(360deg); }
+@keyframes loader-instrument-sweep {
+  0% { transform: translateX(-140%); opacity: 0; }
+  18% { opacity: 0.72; }
+  68% { opacity: 0.72; }
+  100% { transform: translateX(640%); opacity: 0; }
 }
 
-@keyframes loader-car-idle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-.loader-car-stage {
+.loader-instrument {
   position: relative;
-  display: grid;
-  width: min(82vw, 34rem);
-  place-items: center;
-  padding: 1.5rem 1rem 2.2rem;
+  width: min(86vw, 54rem);
+  color: #f2f0ec;
   isolation: isolate;
 }
 
-.loader-turntable {
-  position: absolute;
-  z-index: -1;
-  left: 50%;
-  bottom: 3.15rem;
-  width: 82%;
-  aspect-ratio: 1;
-  border: 1px solid rgba(255, 176, 102, 0.2);
-  border-top-color: rgba(255, 176, 102, 0.9);
-  border-radius: 999px;
-  transform: translateX(-50%) scaleY(0.28);
-  animation: loader-turntable 4.8s linear infinite;
-  box-shadow: 0 0 34px rgba(255, 139, 49, 0.1);
-}
-
-.loader-car-idle {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  overflow: visible;
-  animation: loader-car-idle 2.8s ease-in-out infinite;
-  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.7));
-}
-
-.loader-car-body,
-.loader-car-glass,
-.loader-car-detail,
-.loader-wheel,
-.loader-wheel-hub {
-  vector-effect: non-scaling-stroke;
-  transition: fill 250ms ease, stroke 250ms ease, opacity 250ms ease;
-}
-
-.loader-car-body {
-  fill: rgba(242, 240, 236, 0.08);
-  stroke: rgba(242, 240, 236, 0.88);
-  stroke-width: 2.2;
-}
-
-.loader-car-glass {
-  fill: rgba(94, 112, 140, 0.16);
-  stroke: rgba(154, 156, 160, 0.62);
-  stroke-width: 1.4;
-}
-
-.loader-car-detail {
-  fill: none;
-  stroke: rgba(255, 176, 102, 0.72);
-  stroke-linecap: round;
-  stroke-width: 1.6;
-}
-
-.loader-wheel {
-  fill: #0a0a0b;
-  stroke: rgba(242, 240, 236, 0.72);
-  stroke-width: 2.2;
-}
-
-.loader-wheel-hub {
-  fill: rgba(255, 176, 102, 0.24);
-  stroke: rgba(255, 176, 102, 0.88);
-  stroke-width: 1.5;
-}
-
-.loader-igniting .loader-car-body {
-  fill: rgba(255, 139, 49, 0.16);
-  stroke: #ffd9ad;
-}
-
-.loader-igniting .loader-car-detail,
-.loader-igniting .loader-wheel-hub {
-  stroke: #ffb066;
-}
-
-.loader-readout {
+.loader-instrument__identity {
   display: flex;
-  width: 100%;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  margin-top: 0.2rem;
-  color: rgba(242, 240, 236, 0.88);
+  gap: 2rem;
+  border-top: 1px solid rgba(242, 240, 236, 0.16);
+  padding-top: clamp(0.8rem, 2vw, 1.2rem);
+}
+
+.loader-instrument__mark {
+  font-family: var(--font-display);
+  font-size: clamp(4.6rem, 14vw, 8.5rem);
+  line-height: 0.72;
+  letter-spacing: 0.015em;
+  transition: color 260ms ease, text-shadow 260ms ease;
+}
+
+.loader-instrument__meta {
+  display: grid;
+  gap: 0.42rem;
+  padding-bottom: 0.1rem;
+  text-align: right;
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.28em;
+  font-size: clamp(0.56rem, 1.2vw, 0.66rem);
+  line-height: 1.2;
+  letter-spacing: 0.22em;
+  color: rgba(154, 156, 160, 0.8);
 }
 
-.loader-readout span:last-child {
-  color: rgba(255, 176, 102, 0.66);
-}
-
-.loader-progress-track {
+.loader-instrument__field {
   position: relative;
-  display: block;
-  width: 100%;
-  height: 1px;
-  margin-top: 0.8rem;
+  display: flex;
+  min-height: clamp(7.5rem, 22vh, 12.5rem);
+  align-items: flex-end;
+  justify-content: space-between;
   overflow: hidden;
-  background: rgba(154, 156, 160, 0.2);
+  padding: 0 0 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.24em;
+  color: rgba(154, 156, 160, 0.42);
+  background:
+    linear-gradient(90deg, transparent 49.9%, rgba(242, 240, 236, 0.055) 50%, transparent 50.1%),
+    linear-gradient(180deg, transparent 72%, rgba(255, 176, 102, 0.055));
 }
 
-.loader-progress-track > span {
+.loader-instrument__field::before,
+.loader-instrument__field::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255, 176, 102, 0.2), transparent);
+}
+.loader-instrument__field::before { left: 17%; }
+.loader-instrument__field::after { right: 17%; }
+
+.loader-instrument__rule {
+  position: relative;
+  height: 1px;
+  overflow: hidden;
+  background: rgba(154, 156, 160, 0.22);
+}
+
+.loader-instrument__rule > span {
   display: block;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, #c96f32, #ffd9ad);
-  box-shadow: 0 0 12px rgba(255, 176, 102, 0.5);
   transform-origin: left center;
+  background: linear-gradient(90deg, #b85e27, #ffb066 72%, #ffd9ad);
+  box-shadow: 0 0 14px rgba(255, 176, 102, 0.45);
   transition: transform 180ms ease-out;
+}
+
+.loader-instrument__rule::after {
+  content: "";
+  position: absolute;
+  inset-block: -4px;
+  left: 0;
+  width: 16%;
+  background: linear-gradient(90deg, transparent, rgba(255, 225, 195, 0.9), transparent);
+  filter: blur(1px);
+  animation: loader-instrument-sweep 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.loader-instrument__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(242, 240, 236, 0.09);
+  padding: 0.9rem 0;
+  font-family: var(--font-mono);
+  font-size: clamp(0.65rem, 1.4vw, 0.76rem);
+  letter-spacing: 0.24em;
+  color: rgba(242, 240, 236, 0.8);
+}
+
+.loader-instrument__status span:last-child {
+  color: #ffb066;
+  letter-spacing: 0.1em;
+}
+
+.loader-instrument.is-igniting .loader-instrument__mark {
+  color: #ffd9ad;
+  text-shadow: 0 0 42px rgba(255, 176, 102, 0.2);
+}
+
+@media (max-width: 520px) {
+  .loader-instrument { width: calc(100vw - 2.5rem); }
+  .loader-instrument__identity { align-items: flex-start; gap: 1rem; }
+  .loader-instrument__meta { gap: 0.35rem; max-width: 9.5rem; }
+  .loader-instrument__status { letter-spacing: 0.17em; }
 }
 
 @keyframes preloader-failsafe {
@@ -1158,8 +1158,7 @@ html[data-ui-overlay="menu"] .grain {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loader-turntable,
-  .loader-car-idle {
+  .loader-instrument__rule::after {
     animation: none;
   }
 }
