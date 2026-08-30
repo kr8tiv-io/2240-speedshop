@@ -86,7 +86,9 @@ try {
   assert.equal(first.canvases, 1);
 
   await Promise.all([
-    page.waitForFunction(() => location.pathname === "/about", { timeout: 20_000 }),
+    page.waitForFunction(() => location.pathname.replace(/\/+$/, "") === "/about", {
+      timeout: 20_000,
+    }),
     page.evaluate(() => {
       const about = document.querySelector('a[href="/about"], a[href="/about/"]');
       if (!about) throw new Error("about link missing");
