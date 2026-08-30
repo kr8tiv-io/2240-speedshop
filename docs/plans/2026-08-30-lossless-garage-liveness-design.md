@@ -37,7 +37,7 @@ The scheduler does not alter parser options or decoded content. `MeshoptDecoder.
 
 ### 3. Complete-route readiness handoff
 
-The elegant garage veil remains visible while the parked Canvas prepares the route. World readiness will require the shell, all six numbered stations, and the gallery. The reveal occurs only when the same scene the visitor will navigate is ready end to end. That makes the intentional camera frontier invisible during ordinary entry rather than weakening it.
+The elegant garage veil remains visible while the parked Canvas prepares the route. World readiness will require the shell, all seven numbered stations, and the gallery. The reveal occurs only when the same scene the visitor will navigate is ready end to end. That makes the intentional camera frontier invisible during ordinary entry rather than weakening it.
 
 The existing scene, camera keys, transitions, lighting, DPR, postprocessing, and station content remain unchanged.
 

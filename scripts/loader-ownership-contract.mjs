@@ -206,7 +206,7 @@ assert.ok(
   "The full-composer readiness proof must run once per mounted WebGL world, not after every bay.",
 );
 assert.ok(
-  /releaseOvenScene\(\);[\s\S]*await new Promise<void>\(\(resolve\) => window\.requestAnimationFrame\(\(\) => resolve\(\)\)\);[\s\S]*if \(!parkedNow\(\)\) break;[\s\S]*isolateOvenScene\(\)/.test(pacedWarm),
-  "A private oven must restore the live scene before every browser frame and abort if the shop activates.",
+  /releaseOvenScene\(\);[\s\S]*await nextFrameWithin\(\);[\s\S]*if \(!parkedNow\(\)\) break;[\s\S]*isolateOvenScene\(\)/.test(pacedWarm),
+  "A private oven must restore the live scene before every bounded browser frame and abort if the shop activates.",
 );
 console.log("loader ownership contract: PASS");

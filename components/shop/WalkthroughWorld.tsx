@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { WebGLBoundary } from "@/components/gl/WebGLBoundary";
 import { supportsWebGL2 } from "@/lib/webgl-capability";
 import {
-  addMediaQueryChangeListener,
   getHeroBootSnapshot,
   subscribeHeroBoot,
 } from "@/components/home/hero-boot";
@@ -62,10 +61,16 @@ const preloadShopWorld = () => {
   return shopWorldModule;
 };
 
+const POST_HERO_PRELOAD_TIMEOUT_MS = 1_200;
+const preloadGarageRoute = (tier: "full" | "lite") =>
+  preloadShopWorld().then((module) => {
+    module.preloadOpeningGarage(tier);
+    return module;
+  });
+
 /** Start transferring the split shop shortly after the hero proves its first
  * frame. Mounting remains separately scheduled so download never implies a
  * competing WebGL context during the opening interaction window. */
-const POST_HERO_PRELOAD_TIMEOUT_MS = 1_200;
 const ShopWorld = dynamic(() => preloadShopWorld().then((m) => m.ShopWorld), {
   ssr: false,
   loading: () => null,
@@ -79,6 +84,10 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 export function WalkthroughWorld() {
   const [verdict, setVerdict] = useState<Verdict>("idle");
+  // A Canvas is constructed for one immutable model shelf and DPR. Crossing a
+  // width breakpoint during rotation must never reset loader generations under
+  // that still-live renderer or enqueue a second 71-model tier behind it.
+  const verdictRef = useRef<Verdict>("idle");
   /** Latched true once the runway has come within ~5 viewports and the reader
       pauses: the scene
       mounts, downloads and compiles silently while the reader is still in the
@@ -104,12 +113,13 @@ export function WalkthroughWorld() {
     });
   }, []);
 
-  /* Tier detection — verbatim from the original mount. */
+  /* Tier detection — chosen once for the life of this mounted world. */
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const wide = window.matchMedia("(min-width: 1024px)");
 
     const decide = () => {
+      if (verdictRef.current !== "idle") return;
       const nav = navigator as CapableNavigator;
       const cores = nav.hardwareConcurrency ?? 4;
       // `deviceMemory` is Chromium-only; absence is not evidence of a weak
@@ -130,17 +140,12 @@ export function WalkthroughWorld() {
       if (window.location.search.includes("perf")) {
         console.log(`[shop] verdict ${next} @${Math.round(performance.now())} ms`);
       }
+      verdictRef.current = next;
       if (next === "skip") markWorldSkipped();
       setVerdict(next);
     };
 
     decide();
-    const removeMotionListener = addMediaQueryChangeListener(motion, decide);
-    const removeWideListener = addMediaQueryChangeListener(wide, decide);
-    return () => {
-      removeMotionListener();
-      removeWideListener();
-    };
   }, []);
 
   const run = verdict === "run-full" || verdict === "run-lite";
@@ -160,12 +165,17 @@ export function WalkthroughWorld() {
       const hero = getHeroBootSnapshot();
       if (!hero.sceneReady && !hero.failed) return;
       scheduled = true;
+      const tier = verdict === "run-full" ? "full" : "lite";
       if (typeof window.requestIdleCallback === "function") {
-        idle = window.requestIdleCallback(() => void preloadShopWorld().catch(() => undefined), {
-          timeout: POST_HERO_PRELOAD_TIMEOUT_MS,
-        });
+        idle = window.requestIdleCallback(
+          () => void preloadGarageRoute(tier).catch(() => undefined),
+          { timeout: POST_HERO_PRELOAD_TIMEOUT_MS },
+        );
       } else {
-        timer = window.setTimeout(() => void preloadShopWorld().catch(() => undefined), 180);
+        timer = window.setTimeout(
+          () => void preloadGarageRoute(tier).catch(() => undefined),
+          180,
+        );
       }
     };
     schedule();
@@ -201,7 +211,7 @@ export function WalkthroughWorld() {
       if (!run || warmLatched || !heroSettled) return;
       if (!warmNear) return;
       warmLatched = true;
-      warm.disconnect();
+      warm?.disconnect();
       window.clearTimeout(warmTimer);
       void preloadShopWorld()
         .then((module) => {
@@ -223,35 +233,55 @@ export function WalkthroughWorld() {
         warmTimer = window.setTimeout(mountWorld, 150);
       }
     });
-    const warm = new IntersectionObserver(
-      ([entry]) => {
-        warmNear = entry.isIntersecting;
-        if (warmNear) {
-          if (run) {
-            // Seven viewports of approach is enough to fill the shared model
-            // cache without charging the landing page for garage bytes a
-            // visitor may never request.
-            void preloadShopWorld()
-              .then((module) =>
-                module.preloadOpeningGarage(verdict === "run-full" ? "full" : "lite"),
-              )
-              .catch(() => undefined);
+    // Percentage vertical root margins are resolved against root WIDTH by the
+    // IntersectionObserver spec. On a portrait iPhone `700%` was only about
+    // three viewport heights. Use physical viewport-height pixels so every
+    // phone and tablet receives the full seven-screen runway.
+    let warm: IntersectionObserver | null = null;
+    let observedWarmLeadPx = 0;
+    const observeWarm = () => {
+      if (warmLatched) return;
+      const warmLeadPx = Math.ceil(Math.max(window.innerHeight, 1) * 7);
+      if (warm && Math.abs(observedWarmLeadPx - warmLeadPx) < 32) return;
+      observedWarmLeadPx = warmLeadPx;
+      warm?.disconnect();
+      warm = new IntersectionObserver(
+        ([entry]) => {
+          warmNear = entry.isIntersecting;
+          if (warmNear) {
+            if (run) {
+              // Seven viewports of approach is enough to fill the shared model
+              // cache without charging the landing page for garage bytes a
+              // visitor may never request.
+              void preloadGarageRoute(verdict === "run-full" ? "full" : "lite")
+                .catch(() => undefined);
+            }
           }
-        }
-        window.clearTimeout(warmTimer);
-        if (warmNear) warmTimer = window.setTimeout(mountWorld, 150);
-      },
-      { rootMargin: "700% 0px 700% 0px" },
-    );
-    warm.observe(runway);
+          window.clearTimeout(warmTimer);
+          if (warmNear) warmTimer = window.setTimeout(mountWorld, 150);
+        },
+        { rootMargin: `${warmLeadPx}px 0px ${warmLeadPx}px 0px` },
+      );
+      warm.observe(runway);
+    };
+    observeWarm();
 
     /* Draw gate: cover the 1.5-viewport dissolve with a little compile-safe
        margin. Outside that corridor the expensive frameloop still parks. */
-    const draw = new IntersectionObserver(
-      ([entry]) => setActive(entry.isIntersecting),
-      { rootMargin: "170% 0px 170% 0px" },
-    );
-    draw.observe(runway);
+    let draw: IntersectionObserver | null = null;
+    let observedDrawLeadPx = 0;
+    const observeDraw = () => {
+      const drawLeadPx = Math.ceil(Math.max(window.innerHeight, 1) * 1.7);
+      if (draw && Math.abs(observedDrawLeadPx - drawLeadPx) < 16) return;
+      observedDrawLeadPx = drawLeadPx;
+      draw?.disconnect();
+      draw = new IntersectionObserver(
+        ([entry]) => setActive(entry.isIntersecting),
+        { rootMargin: `${drawLeadPx}px 0px ${drawLeadPx}px 0px` },
+      );
+      draw.observe(runway);
+    };
+    observeDraw();
 
     /* THE HANDOFF FADE — the shop starts rising half a viewport before the
        outgoing film releases its sticky room and remains present half a
@@ -286,11 +316,20 @@ export function WalkthroughWorld() {
       measureRunway();
       fade();
     };
+    let viewportResizeFrame = 0;
+    const refreshViewportLeads = () => {
+      window.cancelAnimationFrame(viewportResizeFrame);
+      viewportResizeFrame = window.requestAnimationFrame(() => {
+        measure();
+        observeWarm();
+        observeDraw();
+      });
+    };
 
     fade();
     document.addEventListener("scroll", fade, { passive: true, capture: true });
-    window.addEventListener("resize", measure);
-    window.visualViewport?.addEventListener("resize", measure);
+    window.addEventListener("resize", refreshViewportLeads);
+    window.visualViewport?.addEventListener("resize", refreshViewportLeads);
     const observer = new ResizeObserver(measure);
     observer.observe(document.documentElement);
     observer.observe(runway);
@@ -298,12 +337,13 @@ export function WalkthroughWorld() {
     return () => {
       cancelled = true;
       unsubscribeHero();
-      warm.disconnect();
+      warm?.disconnect();
       window.clearTimeout(warmTimer);
-      draw.disconnect();
+      draw?.disconnect();
+      window.cancelAnimationFrame(viewportResizeFrame);
       document.removeEventListener("scroll", fade, { capture: true });
-      window.removeEventListener("resize", measure);
-      window.visualViewport?.removeEventListener("resize", measure);
+      window.removeEventListener("resize", refreshViewportLeads);
+      window.visualViewport?.removeEventListener("resize", refreshViewportLeads);
       observer.disconnect();
     };
   }, [run, verdict]);
@@ -323,7 +363,8 @@ export function WalkthroughWorld() {
         <WebGLBoundary onFailure={markWorldSkipped}>
           <ShopWorld
             tier={verdict === "run-full" ? "full" : "lite"}
-            active={active && uiOverlay === null}
+            active={active && worldReady && uiOverlay === null}
+            revealed={worldReady}
           />
         </WebGLBoundary>
       ) : null}
@@ -337,7 +378,7 @@ export function WalkthroughWorld() {
           then dissolve it away once the full world is ready. */}
       <div
         className={`wt-world-boot-light absolute inset-0 transition-opacity duration-1000 ${
-          worldReady ? "opacity-0" : worldWarm ? "opacity-[0.18]" : "opacity-100"
+          worldReady ? "opacity-0" : "opacity-100"
         }`}
         data-shop-doorway={worldReady ? "open" : worldWarm ? "warming" : "dark"}
       />

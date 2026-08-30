@@ -109,7 +109,7 @@ Remove only the `stillFor() >= 900` prerequisite from Canvas mounting. Keep hero
 
 **Step 4: Hand off only when the route is complete**
 
-Make reveal readiness depend on shell, stations 0–5, and gallery warm keys. Preserve the camera frontier clamp and all visual transitions.
+Make reveal readiness depend on shell, stations 0–6, and gallery warm keys. Preserve the camera frontier clamp and all visual transitions.
 
 **Step 5: Run focused tests**
 

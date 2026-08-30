@@ -2485,12 +2485,17 @@ export function prepareGarageMount() {
 export function ShopWorld({
   tier = "full",
   active = true,
+  revealed = false,
 }: {
   tier?: WorldTier;
   /** False while the runway is far from the viewport: the frameloop parks so
       the hero film's canvas owns the GPU. Same mechanism as the tab-hidden
       park — the scene stays warm, it just stops drawing. */
   active?: boolean;
+  /** The parent proves every route bay is present before dissolving the
+      elegant doorway. Keeping this separate from `active` lets the hidden
+      Canvas finish its exact shader/texture oven while the loop is parked. */
+  revealed?: boolean;
 }) {
   const renderer = useRef<THREE.WebGLRenderer | null>(null);
   const [lit, setLit] = useState(false);
@@ -2574,7 +2579,7 @@ export function ShopWorld({
       aria-hidden="true"
       role="presentation"
       className={`pointer-events-none absolute inset-0 transition-opacity duration-[1600ms] ease-out ${
-        lit && warm ? "opacity-100" : "opacity-0"
+        lit && warm && revealed ? "opacity-100" : "opacity-0"
       }`}
     >
       <Canvas

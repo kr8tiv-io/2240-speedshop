@@ -49,8 +49,8 @@ assert.match(
 );
 assert.match(
   loaders,
-  /finalizedWorld === worldFinalizer[\s\S]{0,180}REVEAL_PENDING\.size === 0[\s\S]{0,180}markWorldReady\(\)/,
-  "The final doorway dissolve must require a proved composer and every route warm key.",
+  /finalizedWorld === worldFinalizer[\s\S]{0,180}REVEAL_PENDING\.size === 0[\s\S]{0,500}await finalizer\(\)[\s\S]{0,500}markWorldReady\(\)/,
+  "The doorway dissolve must submit the complete route through the proved composer.",
 );
 assert.match(
   walkthrough,
@@ -74,7 +74,7 @@ assert.match(
 );
 assert.match(
   loaders,
-  /const PREFETCH_CONCURRENCY = 2;[\s\S]{0,2200}await prefetchModelBytes\(url\)/,
+  /const PREFETCH_CONCURRENCY = 2;[\s\S]*for \(const url of urls\)[\s\S]{0,300}prefetchModelBytes\(url\)/,
   "Opening bytes must preload with bounded concurrency.",
 );
 assert.doesNotMatch(
@@ -91,6 +91,11 @@ assert.match(
   walkthrough,
   /POST_HERO_PRELOAD_TIMEOUT_MS/,
   "A verified hero frame needs a bounded background shop preload.",
+);
+assert.match(
+  walkthrough,
+  /POST_HERO_PRELOAD_TIMEOUT_MS[\s\S]{0,2200}preloadOpeningGarage/,
+  "Verified hero readiness must start the exact route bytes, not only its JavaScript chunk.",
 );
 assert.doesNotMatch(
   walkthrough,
@@ -116,6 +121,26 @@ assert.match(
   walkthrough,
   /data-shop-stage=\{worldReady \? "world" : worldWarm \? "shell" : "poster"\}/,
   "Production diagnostics must expose poster, verified-shell, and full-world stages.",
+);
+assert.match(
+  walkthrough,
+  /<ShopWorld[\s\S]{0,220}revealed=\{worldReady\}/,
+  "The 3D canvas must remain hidden until complete-route readiness.",
+);
+assert.match(
+  walkthrough,
+  /active=\{active && worldReady && uiOverlay === null\}/,
+  "The hidden Canvas must stay parked in its cheap oven until the route is ready.",
+);
+assert.match(
+  walkthrough,
+  /worldReady \? "opacity-0" : "opacity-100"/,
+  "The elegant boot light must not become translucent over a partial garage.",
+);
+assert.match(
+  walkthrough,
+  /const warmLeadPx = Math\.ceil\(Math\.max\(window\.innerHeight, 1\) \* 7\)/,
+  "Apple/mobile approach lead must be measured in viewport height, not IntersectionObserver width percentages.",
 );
 
 console.log("garage progressive reveal contract: PASS");

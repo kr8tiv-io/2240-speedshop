@@ -23,8 +23,17 @@ import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.j
 import { ContactShadow } from "./materials";
 import { getBoot, markShellWarm, markWorldReady, reportBootProgress, stillFor, subscribeBoot } from "./boot";
 import { countLights, installLightPad, lightBudget, setStationLights } from "./lights";
-import { loadModelRequestAttempt } from "./modelRequest";
-import { createParseScheduler, type ParseGeneration } from "./parseScheduler";
+import {
+  createRequestPool,
+  loadModelRequestAttempt,
+  runModelResourceAttempts,
+} from "./modelRequest";
+import {
+  createParseScheduler,
+  runWithTimeout,
+  runWithTimeoutFallback,
+  type ParseGeneration,
+} from "./parseScheduler";
 import { createStationRelease } from "./stationLiveness";
 import { stationAt } from "./world";
 
@@ -258,8 +267,12 @@ function beginParseGeneration() {
   parseScheduler.beginGeneration();
 }
 
-function queueParse<T>(owner: ParseGeneration, run: () => Promise<T>): Promise<T> {
-  return parseScheduler.enqueue(owner, run);
+function queueParse<T>(
+  owner: ParseGeneration,
+  url: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  return parseScheduler.enqueue(owner, parseCourtesyKey(url), run);
 }
 
 /* ── Asking for the compressed twin by name ─────────────────────────────────
@@ -277,9 +290,19 @@ function queueParse<T>(owner: ParseGeneration, run: () => Promise<T>): Promise<T
    on the visible film's main thread. A later loader consumes the exact same
    ArrayBuffer promise, so there is no duplicate transfer. */
 const MODEL_BYTE_CACHE = new Map<string, Promise<ArrayBuffer>>();
+const PREFETCH_CONCURRENCY = 2;
+const modelTransport = createRequestPool(PREFETCH_CONCURRENCY);
+const MODEL_PREFETCH_QUEUE_TIMEOUT_MS = 45_000;
 const MODEL_REQUEST_TIMEOUT_MS = 8_000;
 const MODEL_REQUEST_HARD_TIMEOUT_MS = 45_000;
+const MODEL_REQUEST_TOTAL_TIMEOUT_MS = 60_000;
+const MODEL_REQUEST_BR_BUDGET_MS = 30_000;
 const MODEL_REQUEST_RETRY_DELAY_MS = 160;
+const MODEL_RESOURCE_ATTEMPTS = 2;
+const MODEL_RESOURCE_RETRY_DELAY_MS = 600;
+const MODEL_PARSE_TIMEOUT_MS = 15_000;
+const MODEL_PARSE_FALLBACK_TIMEOUT_MS = 30_000;
+const PROGRAM_COMPILE_PATIENCE_MS = 15_000;
 
 type ModelByteOptions = {
   manager?: THREE.LoadingManager;
@@ -287,6 +310,7 @@ type ModelByteOptions = {
   path?: string;
   withCredentials?: boolean;
   onProgress?: (event: ProgressEvent) => void;
+  demanded?: boolean;
 };
 
 function modelByteCacheKey(url: string, options: ModelByteOptions = {}) {
@@ -310,50 +334,78 @@ function fetchModelBytes(url: string, options: ModelByteOptions = {}) {
   const path = options.path ?? "";
   const key = modelByteCacheKey(url, options);
   const cached = MODEL_BYTE_CACHE.get(key);
-  if (cached) return cached;
+  if (cached) {
+    // A mounted useLoader consumer owns the foreground lane. If its bytes are
+    // still parked behind speculative route work, move that exact promise to
+    // the front without aborting any active CDN response.
+    if (options.demanded) modelTransport.demand(cached);
+    return cached;
+  }
 
-  const loadAttempt = (target: string) => {
-    // FileLoader owns an AbortController, so every retry needs a fresh loader.
-    const file = new THREE.FileLoader(options.manager);
-    file.setResponseType("arraybuffer");
-    file.setRequestHeader(options.requestHeader ?? {});
-    file.setPath(path);
-    file.setWithCredentials(options.withCredentials ?? false);
-    return loadModelRequestAttempt({
-      target,
-      start: ({ onLoad, onProgress, onError }) => {
-        file.load(target, onLoad, onProgress, onError);
-      },
-      abort: () => {
-        file.abort();
-      },
-      onProgress: options.onProgress,
-      idleTimeoutMs: MODEL_REQUEST_TIMEOUT_MS,
-      hardTimeoutMs: MODEL_REQUEST_HARD_TIMEOUT_MS,
-    });
-  };
+  // Register the promise before transport begins. Preload and mounted loaders
+  // therefore share one exact ArrayBuffer owner, while the pool is the single
+  // authority that admits at most two cellular/CDN requests at once.
+  const request = modelTransport.run(async () => {
+    const deadline = Date.now() + MODEL_REQUEST_TOTAL_TIMEOUT_MS;
+    const totalTimeout = (target: string) => {
+      const error = new Error(`Timed out loading ${target} within the total request budget`);
+      error.name = "ModelRequestTimeoutError";
+      return error;
+    };
+    const remainingBudget = (attemptDeadline = deadline) =>
+      Math.min(deadline, attemptDeadline) - Date.now();
 
-  const retry = async (target: string, attempts: number) => {
-    let lastError: unknown;
-    for (let attempt = 0; attempt < attempts; attempt++) {
-      try {
-        return await loadAttempt(target);
-      } catch (error) {
-        lastError = error;
-        if (attempt + 1 < attempts) {
-          await new Promise<void>((resolve) =>
-            globalThis.setTimeout(resolve, MODEL_REQUEST_RETRY_DELAY_MS),
-          );
+    const loadAttempt = (target: string, attemptDeadline = deadline) => {
+      const remaining = remainingBudget(attemptDeadline);
+      if (remaining <= 0) return Promise.reject<ArrayBuffer>(totalTimeout(target));
+      // FileLoader owns an AbortController, so every retry needs a fresh loader.
+      const file = new THREE.FileLoader(options.manager);
+      file.setResponseType("arraybuffer");
+      file.setRequestHeader(options.requestHeader ?? {});
+      file.setPath(path);
+      file.setWithCredentials(options.withCredentials ?? false);
+      return loadModelRequestAttempt({
+        target,
+        start: ({ onLoad, onProgress, onError }) => {
+          file.load(target, onLoad, onProgress, onError);
+        },
+        abort: () => {
+          file.abort();
+        },
+        onProgress: options.onProgress,
+        idleTimeoutMs: MODEL_REQUEST_TIMEOUT_MS,
+        hardTimeoutMs: Math.max(1, Math.min(MODEL_REQUEST_HARD_TIMEOUT_MS, remaining)),
+      });
+    };
+
+    const retry = async (target: string, attempts: number, attemptDeadline = deadline) => {
+      let lastError: unknown;
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+          return await loadAttempt(target, attemptDeadline);
+        } catch (error) {
+          lastError = error;
+          const remaining = remainingBudget(attemptDeadline);
+          if (attempt + 1 < attempts && remaining > 0) {
+            await new Promise<void>((resolve) =>
+              globalThis.setTimeout(
+                resolve,
+                Math.min(MODEL_REQUEST_RETRY_DELAY_MS, remaining),
+              ),
+            );
+          }
         }
       }
-    }
-    throw lastError ?? new Error(`Unable to load model bytes for ${target}`);
-  };
+      if (remainingBudget(attemptDeadline) <= 0) throw totalTimeout(target);
+      throw lastError ?? new Error(`Unable to load model bytes for ${target}`);
+    };
 
-  const request = (async () => {
     if (url.endsWith(".glb") && VERSION) {
+      // Reserve half the total budget for the exact plain asset. A stalled
+      // Brotli edge can never consume the fallback's entire opportunity.
+      const brDeadline = Math.min(deadline, Date.now() + MODEL_REQUEST_BR_BUDGET_MS);
       try {
-        return await retry(`${url}.br`, 2);
+        return await retry(`${url}.br`, 2, brDeadline);
       } catch {
         // A persistently missing twin affects this URL only. Never poison
         // compressed delivery for the rest of the session.
@@ -361,7 +413,10 @@ function fetchModelBytes(url: string, options: ModelByteOptions = {}) {
     }
     // The exact plain twin also gets one recovery attempt on a dead edge.
     return retry(url, 2);
-  })();
+  }, {
+    demanded: options.demanded ?? false,
+    queueTimeoutMs: options.demanded ? undefined : MODEL_PREFETCH_QUEUE_TIMEOUT_MS,
+  });
 
   MODEL_BYTE_CACHE.set(key, request);
   void request.catch(() => {
@@ -387,6 +442,7 @@ class IdleGLTFLoader extends GLTFLoader {
       path: this.path,
       withCredentials: this.withCredentials,
       onProgress,
+      demanded: true,
     };
     // Match GLTFLoader's manager contract even when the network bytes came
     // from our early cache: this item ends only after the expensive parse.
@@ -400,64 +456,103 @@ class IdleGLTFLoader extends GLTFLoader {
       this.manager.itemError(url);
       this.manager.itemEnd(url);
     };
-    // Capture renderer ownership before transport. An old Canvas request may
-    // resolve after a new Canvas begins; it must never enter the new queue.
-    const parseOwner = parseScheduler.captureGeneration();
-    const ownerGeneration = loaderGeneration;
-    const byteRequest = fetchModelBytes(url, options);
-    void byteRequest
-      .then(async (data) => {
+    void runModelResourceAttempts({
+      attempts: MODEL_RESOURCE_ATTEMPTS,
+      retryDelayMs: MODEL_RESOURCE_RETRY_DELAY_MS,
+      run: async () => {
+        const byteRequest = fetchModelBytes(url, options);
         try {
+          const data = await byteRequest;
+          const parseOwner = parseScheduler.captureGeneration();
+          // `useLoader` owns a global URL cache. A byte request created by an
+          // old Canvas can be reused by its replacement, so parsing joins the
+          // generation that is live when the context-neutral bytes arrive.
+          // Rejecting those bytes as "stale" would permanently cache that
+          // rejection across every later remount.
+          const parseOnce = () =>
+            new Promise<GLTF>((resolve, reject) => {
+              const started = DEBUG ? performance.now() : 0;
+              this.parse(
+                data,
+                this.resourcePath || this.path || "",
+                (gltf) => {
+                  if (DEBUG) {
+                    const ms = Math.round(performance.now() - started);
+                    if (ms > 30) console.log(`[shop] parse ${url.split("/").pop()} ${ms} ms`);
+                  }
+                  resolve(gltf);
+                },
+                reject,
+              );
+            });
           // Bytes are here. The expensive half waits its turn in the queue —
           // for stillness, and for every other model to be finished with the
           // main thread.
-          const gltf = await queueParse(
+          return await queueParse(
             parseOwner,
-            async () => {
-              if (ownerGeneration !== loaderGeneration) {
-                throw new Error("Stale garage parse generation");
-              }
-              return new Promise<GLTF>((resolve, reject) => {
-                const started = DEBUG ? performance.now() : 0;
-                this.parse(
-                  data,
-                  this.resourcePath || this.path || "",
-                  (gltf) => {
-                    if (DEBUG) {
-                      const ms = Math.round(performance.now() - started);
-                      if (ms > 30) console.log(`[shop] parse ${url.split("/").pop()} ${ms} ms`);
-                    }
-                    resolve(gltf);
-                  },
-                  reject,
-                );
-              });
-            },
+            url,
+            () =>
+              meshoptWorkersEnabled
+                ? runWithTimeoutFallback({
+                    runPrimary: parseOnce,
+                    runFallback: parseOnce,
+                    beforeFallback: disableMeshoptWorkers,
+                    timeoutMs: MODEL_PARSE_TIMEOUT_MS,
+                    fallbackTimeoutMs: MODEL_PARSE_FALLBACK_TIMEOUT_MS,
+                  })
+                : runWithTimeout({
+                    run: parseOnce,
+                    timeoutMs: MODEL_PARSE_FALLBACK_TIMEOUT_MS,
+                  }),
           );
-          reportOpeningModelParsed(url);
-          onLoad(gltf);
-          settled = true;
-          this.manager.itemEnd(url);
-        } catch (error) {
-          fail(error);
+        } finally {
+          releaseModelBytes(url, options, byteRequest);
         }
-      })
-      .catch(fail)
-      .finally(() => releaseModelBytes(url, options, byteRequest));
+      },
+    }).then(
+      (gltf) => {
+        if (settled) return;
+        reportOpeningModelParsed(url);
+        settled = true;
+        onLoad(gltf);
+        this.manager.itemEnd(url);
+      },
+      fail,
+    );
   }
 }
 
+const configureMeshoptWorkerCount =
+  typeof MeshoptDecoder.useWorkers === "function"
+    ? MeshoptDecoder.useWorkers.bind(MeshoptDecoder)
+    : null;
 let meshoptWorkersConfigured = false;
+let meshoptWorkersEnabled = false;
 
 function enableMeshoptWorkers() {
   if (meshoptWorkersConfigured || typeof window === "undefined") return;
   meshoptWorkersConfigured = true;
-  if (typeof Worker === "undefined" || typeof MeshoptDecoder.useWorkers !== "function") return;
+  if (typeof Worker === "undefined" || !configureMeshoptWorkerCount) return;
   try {
-    MeshoptDecoder.useWorkers(2);
+    configureMeshoptWorkerCount(2);
+    meshoptWorkersEnabled = true;
   } catch {
     // A restrictive worker-src policy or older WebKit keeps the exact
     // single-thread decoder path. Geometry bytes and decoded output match.
+    // `useWorkers(2)` is not atomic: worker zero may exist when worker one
+    // throws, so explicitly tear any partial pool down before local decoding.
+    disableMeshoptWorkers();
+  }
+}
+
+function disableMeshoptWorkers() {
+  meshoptWorkersEnabled = false;
+  if (!configureMeshoptWorkerCount) return;
+  try {
+    configureMeshoptWorkerCount(0);
+  } catch {
+    // The decoder already falls back to its local WASM path when worker
+    // teardown is unavailable. The model bytes and decoded geometry are exact.
   }
 }
 
@@ -475,6 +570,7 @@ function extendLoader(loader: GLTFLoader) {
    unlocking must re-render exactly one component, not the scene graph. */
 
 const STATION_COUNT = 7;
+const STATION_READY_FAILSAFE_MS = 30_000;
 /** Only the establishing bay owns the critical opening lane. */
 const OPENING = 1;
 
@@ -515,6 +611,9 @@ const WARMED = new Set<string>();
 let contiguousWarmStation = -1;
 let worldFinalizer: (() => Promise<void>) | null = null;
 let finalizedWorld: (() => Promise<void>) | null = null;
+let revealFinalizing: Promise<void> | null = null;
+let revealRetryTimer = 0;
+let revealAttempts = 0;
 /* Renderer-owned async work must never cross a Canvas lifecycle. A route
    revisit creates a new WebGL context while loader bytes intentionally stay
    cached; this generation distinguishes those two kinds of ownership. */
@@ -530,6 +629,7 @@ let loaderGeneration = 0;
  */
 export function beginLoaderStream() {
   loaderGeneration += 1;
+  resetModelRecoveries();
   // Do not put a new renderer behind promises queued by a Canvas that no
   // longer exists. In-flight old work observes the generation and restores
   // its visibility snapshot before exiting at its next async boundary.
@@ -545,6 +645,10 @@ export function beginLoaderStream() {
   contiguousWarmStation = -1;
   worldFinalizer = null;
   finalizedWorld = null;
+  revealFinalizing = null;
+  revealAttempts = 0;
+  if (revealRetryTimer) window.clearTimeout(revealRetryTimer);
+  revealRetryTimer = 0;
   worldParked = true;
   restoreComposerOvens();
   for (const listener of streamListeners) listener();
@@ -558,8 +662,52 @@ export function highestContiguousWarmStation() {
 function revealWorldIfReady() {
   if (
     finalizedWorld === worldFinalizer &&
-    REVEAL_PENDING.size === 0
-  ) markWorldReady();
+    worldFinalizer &&
+    REVEAL_PENDING.size === 0 &&
+    !revealFinalizing
+  ) {
+    const finalizer = worldFinalizer;
+    const generation = loaderGeneration;
+    revealAttempts += 1;
+    // The shell proof happened before the streamed bays existed. Submit two
+    // fresh full-composer frames now that the complete initial camera view is
+    // populated, then hand the frontbuffer to the doorway dissolve.
+    revealFinalizing = (async () => {
+      let revealed = false;
+      try {
+        await finalizer();
+        if (
+          generation === loaderGeneration &&
+          finalizedWorld === finalizer &&
+          worldFinalizer === finalizer &&
+          REVEAL_PENDING.size === 0
+        ) {
+          markWorldReady();
+          revealed = true;
+        }
+      } catch (error) {
+        if (DEBUG && generation === loaderGeneration) {
+          console.warn("[shop] final route frame failed; retaining doorway", error);
+        }
+      } finally {
+        if (generation === loaderGeneration) {
+          revealFinalizing = null;
+          if (
+            !revealed &&
+            revealAttempts < 3 &&
+            finalizedWorld === finalizer &&
+            worldFinalizer === finalizer &&
+            REVEAL_PENDING.size === 0
+          ) {
+            revealRetryTimer = window.setTimeout(() => {
+              revealRetryTimer = 0;
+              revealWorldIfReady();
+            }, 400 * revealAttempts);
+          }
+        }
+      }
+    })();
+  }
 }
 
 function setWorldFinalizer(finalizer: (() => Promise<void>) | null) {
@@ -1262,6 +1410,20 @@ const ROUTE_MODEL_GROUPS = [
   ],
 ] as const;
 const ROUTE_PREFETCH_MODELS = [...new Set(ROUTE_MODEL_GROUPS.flat())];
+const ROUTE_PARSE_BAY_BY_NAME = new Map<string, string>();
+for (const [bay, urls] of ROUTE_MODEL_GROUPS.entries()) {
+  for (const url of urls) {
+    const canonical = url.replace(/[?#].*$/, "").replace(/\.br$/i, "");
+    ROUTE_PARSE_BAY_BY_NAME.set(canonical.slice(canonical.lastIndexOf("/") + 1), `bay-${bay}`);
+  }
+}
+
+function parseCourtesyKey(url: string) {
+  const canonical = url.replace(/[?#].*$/, "").replace(/\.br$/i, "");
+  const name = canonical.slice(canonical.lastIndexOf("/") + 1);
+  return ROUTE_PARSE_BAY_BY_NAME.get(name) ?? "shared";
+}
+
 type OpeningTier = "full" | "lite";
 const PARSED_OPENING_MODELS: Record<OpeningTier, Set<string>> = {
   full: new Set<string>(),
@@ -1295,8 +1457,7 @@ function reportOpeningModelParsed(url: string) {
   PARSED_OPENING_MODELS[tier].add(canonical);
   if ((phoneTier ? "lite" : "full") === tier) reportParsedOpeningProgress(tier);
 }
-const PRELOADED_ROUTE_TIERS = new Set<"full" | "lite">();
-const PREFETCH_CONCURRENCY = 2;
+const PREFETCHED_ROUTE_URLS = new Set<string>();
 
 /**
  * Fill the exact byte cache in first-use tour order while the visitor is still
@@ -1306,31 +1467,27 @@ const PREFETCH_CONCURRENCY = 2;
  * until the real Canvas reaches its existing warm gate.
  */
 export function preloadOpeningModels(lite: boolean) {
-  const tier = lite ? "lite" : "full";
-  if (PRELOADED_ROUTE_TIERS.has(tier)) return;
-  PRELOADED_ROUTE_TIERS.add(tier);
   const urls = ROUTE_PREFETCH_MODELS.map((url) => tierUrl(url, lite));
   // Two lossless transfers at a time keep cellular congestion low. This fills
   // the exact byte cache IdleGLTFLoader consumes later; parsing remains serial
   // in the parked Canvas instead of interrupting the visible film in a burst.
-  const pending = [...urls];
-  for (let worker = 0; worker < Math.min(PREFETCH_CONCURRENCY, pending.length); worker++) {
-    void (async () => {
-      while (pending.length > 0) {
-        const url = pending.shift();
-        if (!url) return;
-        try {
-          await prefetchModelBytes(url);
-        } catch {
-          // The mounted loader owns the ordinary retry/fallback path.
-        }
-      }
-    })();
+  // Register every route promise synchronously. The shared transport pool
+  // admits two at a time even if the Canvas mounts while this loop is running.
+  // Only successful URLs latch, so a transient edge miss can re-arm on the
+  // next proximity/hero-ready signal.
+  for (const url of urls) {
+    if (PREFETCHED_ROUTE_URLS.has(url)) continue;
+    void prefetchModelBytes(url).then(() => PREFETCHED_ROUTE_URLS.add(url))
+      .catch(() => undefined);
   }
 }
 
 function useShopModel(url: string) {
-  const gltf = useLoader(IdleGLTFLoader, shelf(url), extendLoader) as unknown as GLTF;
+  const resource = shelf(url);
+  const gltf = useLoader(IdleGLTFLoader, resource, extendLoader) as unknown as GLTF;
+  useEffect(() => {
+    markModelResourceHealthy(resource);
+  }, [resource]);
   // Grading is idempotent and guarded by a WeakSet, so it is safe here — but
   // nothing else may be: the debug timing that used to wrap this called
   // `performance.now()` during render, which is exactly the impurity React's
@@ -1415,21 +1572,92 @@ function useTint(group: React.RefObject<THREE.Group | null>, tint?: string) {
  * and `Clone` shares the loaded geometry and materials — so eight tyres cost
  * one fetch, one geometry upload and eight matrices.
  */
+const MODEL_BOUNDARY_RETRIES = 1;
+const MODEL_BOUNDARY_RETRY_DELAY_MS = 2_000;
+
+type ModelRecovery = {
+  attempts: number;
+  timer: number;
+  listeners: Set<() => void>;
+};
+
+const MODEL_RECOVERIES = new Map<string, ModelRecovery>();
+
+function scheduleModelRecovery(resource: string, listener: () => void) {
+  let recovery = MODEL_RECOVERIES.get(resource);
+  if (!recovery) {
+    recovery = { attempts: 0, timer: 0, listeners: new Set() };
+    MODEL_RECOVERIES.set(resource, recovery);
+  }
+  if (recovery.attempts >= MODEL_BOUNDARY_RETRIES) return false;
+  recovery.listeners.add(listener);
+  if (recovery.timer) return true;
+  const delay = MODEL_BOUNDARY_RETRY_DELAY_MS * 2 ** recovery.attempts;
+  recovery.timer = window.setTimeout(() => {
+    recovery.timer = 0;
+    recovery.attempts += 1;
+    useLoader.clear(IdleGLTFLoader, resource);
+    const listeners = [...recovery.listeners];
+    recovery.listeners.clear();
+    for (const retry of listeners) retry();
+  }, delay);
+  return true;
+}
+
+function unsubscribeModelRecovery(resource: string | null, listener: () => void) {
+  if (!resource) return;
+  MODEL_RECOVERIES.get(resource)?.listeners.delete(listener);
+}
+
+function markModelResourceHealthy(resource: string) {
+  const recovery = MODEL_RECOVERIES.get(resource);
+  if (!recovery) return;
+  if (recovery.timer) window.clearTimeout(recovery.timer);
+  MODEL_RECOVERIES.delete(resource);
+}
+
+function resetModelRecoveries() {
+  for (const [resource, recovery] of MODEL_RECOVERIES) {
+    if (recovery.timer) window.clearTimeout(recovery.timer);
+    // A new Canvas is a new bounded recovery generation. Clear only keys that
+    // actually failed; successful resources never enter this map.
+    useLoader.clear(IdleGLTFLoader, resource);
+  }
+  MODEL_RECOVERIES.clear();
+}
+
 class ModelBoundary extends Component<
   { url: string; children: ReactNode },
   { failed: boolean }
 > {
   state = { failed: false };
+  private recoveryResource: string | null = null;
+  private retry = () => {
+    this.recoveryResource = null;
+    this.setState({ failed: false });
+  };
 
   static getDerivedStateFromError() {
     return { failed: true };
   }
 
   componentDidCatch(error: unknown) {
-    /* A missing wrench is not a missing garage. Keep the larger bay boundary
-       as the final safety net, but contain ordinary asset failures at the one
-       file that caused them so every other full-quality model stays present. */
-    console.warn(`[shop] model ${this.props.url} failed to load — omitting only this prop`, error);
+    /* The loader already kept one whole recovery attempt inside the same
+       Suspense resource. If the edge or WebKit decoder still failed, clear
+       only this exact R3F key after a bounded cooldown. Never leave one
+       transient rejection cached for the rest of the SPA visit, and never
+       create an immediate error-boundary render loop. */
+    const resource = shelf(this.props.url);
+    if (!scheduleModelRecovery(resource, this.retry)) {
+      console.warn(`[shop] model ${this.props.url} failed after recovery — omitting only this prop`, error);
+      return;
+    }
+    this.recoveryResource = resource;
+    console.warn(`[shop] model ${this.props.url} failed — scheduling exact-key recovery`, error);
+  }
+
+  componentWillUnmount() {
+    unsubscribeModelRecovery(this.recoveryResource, this.retry);
   }
 
   render() {
@@ -1604,6 +1832,24 @@ const DEBUG =
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
+/** A hidden Safari tab may suspend rAF indefinitely; a timer still advances the
+ * parked renderer's proof and is cancelled when the real frame arrives. */
+const nextFrameWithin = (timeoutMs = 1_000) =>
+  new Promise<void>((resolve) => {
+    let settled = false;
+    let frame = 0;
+    let timer = 0;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      resolve();
+    };
+    frame = window.requestAnimationFrame(finish);
+    timer = window.setTimeout(finish, timeoutMs);
+  });
+
 /* ── Yield to the reader ────────────────────────────────────────────────────
    Warming a bay is the cheapest it will ever be, and it is still work: a few
    hundred milliseconds of shader translation that has to happen SOMEWHERE. The
@@ -1688,8 +1934,7 @@ function countRenderables(node: THREE.Object3D) {
    mip allocation in one frame. Ownership is renderer-specific because one
    Three texture may be consumed by more than one WebGL context. */
 const UPLOADED_TEXTURES = new WeakMap<THREE.WebGLRenderer, WeakSet<THREE.Texture>>();
-const nextUploadFrame = () =>
-  new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+const nextUploadFrame = () => nextFrameWithin();
 
 async function warmTextures(
   gl: THREE.WebGLRenderer,
@@ -1792,6 +2037,38 @@ async function waitForReaderQuiet(patience = 900) {
   while (stillFor() < 450 && performance.now() < deadline) await wait(80);
 }
 
+type ReadyShaderProgram = { isReady?: () => boolean };
+
+/**
+ * Start Three's exact program compile, but own the polling loop so a disposed
+ * WebKit renderer cannot leave `compileAsync()`'s private 10 ms timer alive
+ * forever. A later postage-stamp first-use remains the authoritative proof.
+ */
+async function compileProgramsWithin(
+  gl: THREE.WebGLRenderer,
+  node: THREE.Object3D,
+  camera: THREE.Camera,
+  targetScene: THREE.Scene | undefined,
+  isStale: () => boolean,
+) {
+  if (isStale()) return;
+  const pending = gl.compile(node, camera, targetScene);
+  const deadline = performance.now() + PROGRAM_COMPILE_PATIENCE_MS;
+  while (!isStale() && performance.now() < deadline) {
+    for (const material of pending) {
+      const properties = gl.properties.get(material) as {
+        currentProgram?: ReadyShaderProgram;
+      };
+      const program = properties.currentProgram;
+      if (!program || typeof program.isReady !== "function" || program.isReady()) {
+        pending.delete(material);
+      }
+    }
+    if (pending.size === 0) return;
+    await wait(16);
+  }
+}
+
 /** Allocate the base material programs before the paced composer first-use. */
 async function warmUp(
   gl: THREE.WebGLRenderer,
@@ -1814,12 +2091,18 @@ async function warmUp(
     });
   const previousTarget = gl.getRenderTarget();
   try {
-    // compileAsync lets KHR_parallel_shader_compile keep ANGLE's link work off
-    // the main thread. The old synchronous compile could hold the film still
-    // for several seconds even though this entire shop canvas was parked.
+    // Our bounded readiness poll lets KHR_parallel_shader_compile keep ANGLE's
+    // link work off the main thread. The old synchronous compile could hold
+    // the film still for seconds even though this shop canvas was parked.
     if (isStale()) return;
     gl.setRenderTarget(target);
-    await gl.compileAsync(node, camera, node === scene ? undefined : scene);
+    await compileProgramsWithin(
+      gl,
+      node,
+      camera,
+      node === scene ? undefined : scene,
+      isStale,
+    );
   } catch {
     /* A material the renderer will not touch is not one we can warm. */
   } finally {
@@ -1953,7 +2236,7 @@ async function warmComposerPrograms(
   try {
     if (isStale()) return;
     gl.setRenderTarget(target);
-    await gl.compileAsync(scene, camera);
+    await compileProgramsWithin(gl, scene, camera, undefined, isStale);
     if (isStale()) return;
     if (DEBUG) {
       const parallel = Boolean(gl.getContext().getExtension("KHR_parallel_shader_compile"));
@@ -2238,7 +2521,7 @@ async function pacedWarm(
         COMPOSER_OVENS.set(root.gl, oven);
       }
       /* Upload/bind in self-tuning slices. Shader programs have already
-         completed through compileAsync; this pass is primarily geometry
+         completed through the bounded parallel compile; this pass is primarily geometry
          bindings plus a tiny 24px draw. Starting at one forced WebKit to pay
          its browser-frame overhead 121 times for the shell. Cold Apple-like
          runs measured twelve as both faster (27.4s → 18.6–23.0s) and gentler
@@ -2252,7 +2535,11 @@ async function pacedWarm(
       let index = 0;
       while (index < representatives.length) {
         if (stale()) return;
-        await waitForReaderQuiet();
+        // Pay the visible film one bounded courtesy for this bay, not one for
+        // every postage-stamp slice. The old per-slice wait multiplied 900 ms
+        // by dozens of geometry/program pairs and kept a complete garage behind
+        // its doorway long after every byte had arrived.
+        if (index === 0) await waitForReaderQuiet();
         if (stale()) return;
         const end = Math.min(index + size, representatives.length);
         for (let i = index; i < end; i++) representatives[i].visible = true;
@@ -2278,10 +2565,10 @@ async function pacedWarm(
         else if (cost < 18) size = Math.min(12, size + 2);
         /* The canvas can become active while this queue is yielding. Never
            leave its real scene hidden across a browser frame: release the
-           snapshot first, then either stop or re-isolate for the next private
+        snapshot first, then either stop or re-isolate for the next private
            slice after the frame proves the shop is still parked. */
         releaseOvenScene();
-        await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+        await nextFrameWithin();
         if (stale()) return;
         if (!parkedNow()) break;
         isolateOvenScene();
@@ -2366,8 +2653,7 @@ async function pacedWarm(
     const live = root?.get ? root.get() : undefined;
     return !!live && live.frameloop !== "never";
   };
-  const nextFrame = () =>
-    new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+  const nextFrame = () => nextFrameWithin();
 
   /* SELF-TUNING BATCH SIZE.
      A fixed batch is a guess about a machine you have never met. Six meshes is
@@ -2710,6 +2996,7 @@ function WarmStation({
        the watchdog looks for. A permanently invisible bay, produced by two
        copies of the code that exists to make it visible. */
     let finishing = false;
+    let readyFailsafe = 0;
     const generation = loaderGeneration;
     const stale = () => dead || generation !== loaderGeneration;
     const releaseNextGate = createStationRelease({
@@ -2727,10 +3014,23 @@ function WarmStation({
       // wait is bounded so one broken bay can never strand the rest.
       if (station > 0) await waitForWarmKey(String(station - 1), 30000);
       if (stale()) return;
+      armReadyFailsafe();
       await firstUse();
       if (stale()) return;
       warm.current = true;
       reportWarm(warmKey);
+    };
+    const armReadyFailsafe = () => {
+      if (readyFailsafe || stale() || warm.current) return;
+      // The exact models, textures, and base programs are now present. Bound
+      // only the optional private first-use proof; never promote a station
+      // while its lossless subtree is still uploading or compiling.
+      readyFailsafe = window.setTimeout(() => {
+        if (stale() || warm.current) return;
+        releaseNextGate();
+        warm.current = true;
+        reportWarm(warmKey);
+      }, STATION_READY_FAILSAFE_MS);
     };
 
     /* THE LAST HIDDEN COST: first USE, as opposed to first compile.
@@ -2824,15 +3124,17 @@ function WarmStation({
       releaseNextGate();
       void finish();
     });
-    // A driver that never reports back cannot be allowed to stall the queue.
+    // A driver that never reports its base compile cannot hold later model
+    // downloads. Readiness itself remains behind `armReadyFailsafe`, which is
+    // installed only after this subtree settles and its predecessor clears.
     const failsafe = window.setTimeout(() => {
       releaseNextGate();
-      void finish();
     }, 9000);
 
     return () => {
       dead = true;
       window.clearTimeout(failsafe);
+      window.clearTimeout(readyFailsafe);
     };
   }, [gl, camera, scene, station, warmKey, get]);
 
@@ -2940,7 +3242,7 @@ export function WarmScene({
       // state the material compiler cannot see; the second proves the chain can
       // consume that state and reach the canvas before the photo dissolves.
       advance(performance.now(), true, root);
-      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await nextFrameWithin();
       if (stale()) throw new Error("shop warm scene superseded during final frame");
       advance(performance.now(), true, root);
       if (DEBUG) {
@@ -3034,6 +3336,12 @@ export function WarmScene({
     return () => {
       dead = true;
       if (worldFinalizer === finalizer) setWorldFinalizer(null);
+      if (finalizedWorld === finalizer) finalizedWorld = null;
+      if (generation === loaderGeneration) {
+        revealFinalizing = null;
+        if (revealRetryTimer) window.clearTimeout(revealRetryTimer);
+        revealRetryTimer = 0;
+      }
       window.clearTimeout(start);
     };
   }, [gl, camera, scene, get, composer, target]);

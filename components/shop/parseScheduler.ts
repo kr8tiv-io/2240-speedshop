@@ -5,13 +5,13 @@ export type ParseSchedulerOptions = {
 
 export type ParseGeneration = {
   tail: Promise<void>;
-  courtesy: Promise<unknown> | null;
+  courtesies: Map<string, Promise<unknown>>;
 };
 
 function createGeneration(): ParseGeneration {
   return {
     tail: Promise.resolve(),
-    courtesy: null,
+    courtesies: new Map(),
   };
 }
 
@@ -31,16 +31,26 @@ export function createParseScheduler(options: ParseSchedulerOptions) {
 
   const captureGeneration = () => current;
 
-  const enqueue = <T>(owner: ParseGeneration, run: () => Promise<T>): Promise<T> => {
-    owner.courtesy ??= Promise.resolve()
-      .then(options.waitForCourtesy)
-      .then(
-        () => undefined,
-        () => undefined,
-      );
-
+  const enqueue = <T>(
+    owner: ParseGeneration,
+    courtesyKey: string,
+    run: () => Promise<T>,
+  ): Promise<T> => {
     const next = owner.tail.then(async () => {
-      await owner.courtesy;
+      // Start a bay's courtesy only when that bay reaches the serial head.
+      // Starting it at enqueue lets every downstream courtesy expire behind
+      // earlier parses, so it offers no protection at the moment work begins.
+      let courtesy = owner.courtesies.get(courtesyKey);
+      if (!courtesy) {
+        courtesy = Promise.resolve()
+          .then(options.waitForCourtesy)
+          .then(
+            () => undefined,
+            () => undefined,
+          );
+        owner.courtesies.set(courtesyKey, courtesy);
+      }
+      await courtesy;
       try {
         return await run();
       } finally {
@@ -65,4 +75,76 @@ export function createParseScheduler(options: ParseSchedulerOptions) {
     enqueue,
     currentGeneration: () => generation,
   };
+}
+
+export type FallbackClock = {
+  set: (callback: () => void, delay: number) => unknown;
+  clear: (handle: unknown) => void;
+};
+
+const DEFAULT_FALLBACK_CLOCK: FallbackClock = {
+  set: (callback, delay) => globalThis.setTimeout(callback, delay),
+  clear: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof globalThis.setTimeout>),
+};
+
+/** Bound an operation while still observing every late settlement. */
+export function runWithTimeout<T>({
+  run,
+  timeoutMs,
+  clock = DEFAULT_FALLBACK_CLOCK,
+}: {
+  run: () => Promise<T>;
+  timeoutMs: number;
+  clock?: FallbackClock;
+}): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const timer = clock.set(() => {
+      if (settled) return;
+      settled = true;
+      const error = new Error(`Operation did not settle within ${timeoutMs} ms`);
+      error.name = "OperationTimeoutError";
+      reject(error);
+    }, timeoutMs);
+    void Promise.resolve()
+      .then(run)
+      .then(
+        (value) => {
+          if (settled) return;
+          settled = true;
+          clock.clear(timer);
+          resolve(value);
+        },
+        (error) => {
+          if (settled) return;
+          settled = true;
+          clock.clear(timer);
+          reject(error);
+        },
+      );
+  });
+}
+
+/** Retry an exact operation through an independently bounded fallback. */
+export async function runWithTimeoutFallback<T>({
+  runPrimary,
+  runFallback,
+  beforeFallback,
+  timeoutMs,
+  fallbackTimeoutMs = timeoutMs,
+  clock = DEFAULT_FALLBACK_CLOCK,
+}: {
+  runPrimary: () => Promise<T>;
+  runFallback: () => Promise<T>;
+  beforeFallback: () => void;
+  timeoutMs: number;
+  fallbackTimeoutMs?: number;
+  clock?: FallbackClock;
+}): Promise<T> {
+  try {
+    return await runWithTimeout({ run: runPrimary, timeoutMs, clock });
+  } catch {
+    beforeFallback();
+    return runWithTimeout({ run: runFallback, timeoutMs: fallbackTimeoutMs, clock });
+  }
 }
