@@ -31,6 +31,7 @@
     "test:blog-navigation": "node scripts/blog-navigation-check.mjs",
     "test:designer-type-speed": "node scripts/designer-type-speed-contract.mjs",
     "test:raw-metal-finish": "node scripts/raw-metal-finish-contract.mjs",
+    "test:lossless-cinema-priority": "node scripts/lossless-cinema-priority-contract.mjs",
     "audit:model-shelves": "node scripts/model-shelf-audit.cjs",
     "audit:export-hero": "node scripts/export-hero-check.mjs",
     "serve:export": "node scripts/serve-export.mjs",
