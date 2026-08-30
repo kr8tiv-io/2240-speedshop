@@ -148,9 +148,11 @@ function PxCamera() {
 
 function Flowmap() {
   const gl = useThree((s) => s.gl);
+  const invalidate = useThree((s) => s.invalidate);
   const scene = useMemo(() => new THREE.Scene(), []);
   const cam = useMemo(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), []);
   const mouse = useRef({ uv: new THREE.Vector2(-1, -1), vel: new THREE.Vector2(), last: new THREE.Vector2(-1, -1) });
+  const wakeFrames = useRef(2);
 
   const material = useMemo(
     () =>
@@ -178,24 +180,49 @@ function Flowmap() {
       });
     return { a: mk(), b: mk() };
   }, []);
-
-  useMemo(() => {
-    scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
-  }, [scene, material]);
+  const flowGeometry = useMemo(() => new THREE.PlaneGeometry(2, 2), []);
+  const flowMesh = useMemo(
+    () => new THREE.Mesh(flowGeometry, material),
+    [flowGeometry, material],
+  );
 
   useEffect(() => {
+    scene.add(flowMesh);
+    return () => {
+      scene.remove(flowMesh);
+      flowGeometry.dispose();
+      material.dispose();
+    };
+  }, [flowGeometry, flowMesh, material, scene]);
+
+  useEffect(() => {
+    const wakeFor = (frames: number) => {
+      wakeFrames.current = Math.max(wakeFrames.current, frames);
+      invalidate();
+    };
+    const wake = () => wakeFor(90);
     const onMove = (e: PointerEvent) => {
       shared.mouseClient.x = e.clientX;
       shared.mouseClient.y = e.clientY;
       mouse.current.uv.set(e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight);
+      // 150 rendered frames preserves the exact frame-based flow dissipation
+      // and hover settle the always-loop produced, then parks at visual zero.
+      wakeFor(150);
     };
     window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("scroll", wake, { passive: true });
+    document.addEventListener("scroll", wake, { passive: true, capture: true });
     return () => {
       window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("scroll", wake);
+      document.removeEventListener("scroll", wake, { capture: true });
+      if (shared.flow === targets.a.texture || shared.flow === targets.b.texture) {
+        shared.flow = null;
+      }
       targets.a.dispose();
       targets.b.dispose();
     };
-  }, [targets]);
+  }, [invalidate, targets]);
 
   useFrame(() => {
     const m = mouse.current;
@@ -221,6 +248,14 @@ function Flowmap() {
     // page scroll velocity, clamped + smoothed
     const raw = THREE.MathUtils.clamp(window.__lenisVelocity ?? 0, -30, 30);
     shared.velocity += (raw - shared.velocity) * 0.1;
+
+    // R3F invalidation is a coalesced flag, so pointer + scroll + GSAP can all
+    // request the same next frame without multiplying work. Once the exact
+    // frame-based decay finishes, this canvas consumes no more GPU frames.
+    if (wakeFrames.current > 0) {
+      wakeFrames.current -= 1;
+      invalidate();
+    }
   }, -1);
 
   return null;
@@ -233,6 +268,7 @@ function ImagePlane({ entry }: { entry: GLImageEntry }) {
   const mesh = useRef<THREE.Mesh>(null);
   const gl = useThree((s) => s.gl);
   const size = useThree((s) => s.size);
+  const invalidate = useThree((s) => s.invalidate);
   const rect = useRef({ left: 0, top: 0, w: 1, h: 1 });
   const hover = useRef(0);
 
@@ -295,8 +331,18 @@ function ImagePlane({ entry }: { entry: GLImageEntry }) {
     const io = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) {
-          gsap.to(material.uniforms.uReveal, { value: 1.16, duration: 1.25, ease: "power4.out" });
-          gsap.to(material.uniforms.uZoom, { value: entry.zoom, duration: 1.5, ease: "power3.out" });
+          gsap.to(material.uniforms.uReveal, {
+            value: 1.16,
+            duration: 1.25,
+            ease: "power4.out",
+            onUpdate: invalidate,
+          });
+          gsap.to(material.uniforms.uZoom, {
+            value: entry.zoom,
+            duration: 1.5,
+            ease: "power3.out",
+            onUpdate: invalidate,
+          });
           io.disconnect();
         }
       },
@@ -308,7 +354,7 @@ function ImagePlane({ entry }: { entry: GLImageEntry }) {
       io.disconnect();
       material.dispose();
     };
-  }, [entry, material]);
+  }, [entry, invalidate, material]);
 
   useFrame(() => {
     const m = mesh.current;
@@ -378,7 +424,7 @@ export function GLImagesRuntime({
     <div className="pointer-events-none fixed inset-0 z-30" aria-hidden="true">
       <Canvas
         dpr={[1, 1.5]}
-        frameloop={active ? "always" : "never"}
+        frameloop={active ? "demand" : "never"}
         gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}
         camera={{ position: [0, 0, 600], near: 0.1, far: 1400 }}
         onCreated={({ gl }) => {

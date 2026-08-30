@@ -48,13 +48,16 @@ export function CinemaRail() {
   const travelRef = useRef(false);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!near || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     return subscribe((s) => {
       // Which orbit owns this stretch of the film.
-      const near = Math.min(Math.floor(s + (1 - ORBIT_SPAN) * 0.5 + 0.325), COUNT - 1);
-      if (near !== activeRef.current) {
-        activeRef.current = near;
-        setActive(near);
+      const activeStation = Math.min(
+        Math.floor(s + (1 - ORBIT_SPAN) * 0.5 + 0.325),
+        COUNT - 1,
+      );
+      if (activeStation !== activeRef.current) {
+        activeRef.current = activeStation;
+        setActive(activeStation);
       }
       // Letterbox: in a travel phase AND actually moving.
       const frac = s - Math.floor(s);
@@ -67,7 +70,13 @@ export function CinemaRail() {
         setTravelling(on);
       }
     });
-  }, []);
+  }, [near]);
+
+  useEffect(() => {
+    if (near || !travelRef.current) return;
+    travelRef.current = false;
+    setTravelling(false);
+  }, [near]);
 
   useEffect(() => {
     const runway = document.getElementById(RUNWAY_ID);

@@ -245,6 +245,12 @@ export function StationReveal({
       }
     };
 
+    let unregister: (() => void) | null = null;
+    const detach = () => {
+      unregister?.();
+      unregister = null;
+    };
+
     /* PHASE TWO — paint. */
     const write = () => {
       const node = host.current;
@@ -261,7 +267,13 @@ export function StationReveal({
       if (r >= 0.05 && latchFrom.current === 0) latchFrom.current = performance.now();
       if (latchFrom.current > 0) {
         r = Math.max(r, Math.min(1, (performance.now() - latchFrom.current) / 700));
-        if (r >= 1) latched.current = true;
+        if (r >= 1) {
+          latched.current = true;
+          // A settled panel is now ordinary DOM. Drop it out of the shared
+          // read/write heartbeat instead of measuring it for the rest of the
+          // page visit. Deferring avoids mutating the Set during its own pass.
+          queueMicrotask(detach);
+        }
       }
 
       // One write per change of ~1/300th — cheap, and skips idle frames.
@@ -288,12 +300,34 @@ export function StationReveal({
       }
     };
 
-    // Paint once immediately: a panel that is already on screen at load — or
-    // one the reader lands on from a deep link — must not wait for a scroll.
+    const attach = () => {
+      if (unregister || latched.current) return;
+      // Paint immediately: a panel reached by a deep link or a very fast
+      // scroll must not wait for the following animation frame.
+      read();
+      write();
+      if (!latched.current) unregister = registerPanel(read, write);
+    };
+
+    // One initial measurement preserves the server/deep-link contract. After
+    // that, only panels within 35% of the viewport join the shared heartbeat.
+    // The old unconditional registration measured all seven panels for the
+    // whole page, even while the garage was thousands of pixels away.
     read();
     write();
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) attach();
+        else detach();
+      },
+      { rootMargin: "35% 0px" },
+    );
+    if (host.current && !latched.current) io.observe(host.current);
 
-    return registerPanel(read, write);
+    return () => {
+      io.disconnect();
+      detach();
+    };
   }, [station]);
 
   return (

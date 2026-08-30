@@ -65,12 +65,22 @@ assert.match(
 assert.match(
   walkthrough,
   /preloadOpeningGarage/,
-  "The exact opening models should share the loader cache before the doorway.",
+  "The exact opening models should warm their bytes before the doorway.",
 );
 assert.match(
   loaders,
-  /for \(const url of urls\) useLoader\.preload\(IdleGLTFLoader, url, extendLoader\)/,
-  "Opening preloads must use the same scalar suspense cache key as mounted models.",
+  /const MODEL_BYTE_CACHE = new Map<string, Promise<ArrayBuffer>>\(\)[\s\S]*function fetchModelBytes[\s\S]*class IdleGLTFLoader extends GLTFLoader[\s\S]{0,1400}fetchModelBytes\(url/,
+  "Opening and mounted loads must consume the same lossless byte cache.",
+);
+assert.match(
+  loaders,
+  /const PREFETCH_CONCURRENCY = 2;[\s\S]{0,2200}await prefetchModelBytes\(url\)/,
+  "Opening bytes must preload with bounded concurrency.",
+);
+assert.doesNotMatch(
+  loaders,
+  /useLoader\.preload\(IdleGLTFLoader/,
+  "Opening preload must not eagerly parse GLBs on the visible film's main thread.",
 );
 assert.match(
   walkthrough,

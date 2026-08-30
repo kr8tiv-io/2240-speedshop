@@ -43,7 +43,9 @@ function contentVersion(shelves) {
     const dir = path.join(ROOT, "public", shelf);
     if (!fs.existsSync(dir)) continue;
     for (const name of fs.readdirSync(dir).sort()) {
-      if (!name.endsWith(".glb")) continue; // the .br twin is derived from it
+      // The transport twin is content too: an encoder/quality improvement must
+      // receive a fresh immutable URL even when the raw GLB is unchanged.
+      if (!name.endsWith(".glb") && !name.endsWith(".glb.br")) continue;
       hash.update(shelf);
       hash.update(name);
       hash.update(fs.readFileSync(path.join(dir, name)));
@@ -66,8 +68,36 @@ function heroVersion() {
   return contentVersion([HERO_SHELF]);
 }
 
+/** Browser/CDN-safe version for the shipped shop photography tree. Query
+ * versioning is appropriate here (unlike `.glb`, whose `.endsWith()` transport
+ * gate requires the extension to remain last). */
+function shopVersion() {
+  const root = path.join(ROOT, "public", "shop");
+  if (!fs.existsSync(root)) return "";
+  const hash = crypto.createHash("sha1");
+  let counted = 0;
+
+  const walk = (dir, prefix = "") => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (relative.startsWith("_orig-letterboxed/") || relative.startsWith("_orig-ig/")) continue;
+      const absolute = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(absolute, relative);
+      else if (entry.isFile()) {
+        hash.update(relative);
+        hash.update(fs.readFileSync(absolute));
+        counted += 1;
+      }
+    }
+  };
+
+  walk(root);
+  return counted ? hash.digest("hex").slice(0, 8) : "";
+}
+
 module.exports = modelVersion;
 module.exports.SHELVES = SHELVES;
 module.exports.heroVersion = heroVersion;
+module.exports.shopVersion = shopVersion;
 
 if (require.main === module) process.stdout.write(modelVersion());

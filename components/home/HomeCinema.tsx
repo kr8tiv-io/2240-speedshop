@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { site } from "@/lib/site";
+import { versionShopAsset } from "@/lib/optimized";
 import { splitChars } from "@/lib/split";
 import { supportsWebGL2 } from "@/lib/webgl-capability";
 import { IntentLink } from "@/components/IntentLink";
@@ -814,10 +815,16 @@ function StaticBackdrop() {
           desktop file carries eight original pixels beyond each visible
           vertical edge so object-cover lands on the exact former framing. */}
       <picture className="absolute inset-0">
-        <source media="(max-width: 767px)" srcSet="/shop/hero-still-mobile.jpg" />
-        <source media="(min-width: 768px)" srcSet="/shop/hero-still-desktop.jpg" />
+        <source
+          media="(max-width: 767px)"
+          srcSet={versionShopAsset("/shop/hero-still-mobile.jpg")}
+        />
+        <source
+          media="(min-width: 768px)"
+          srcSet={versionShopAsset("/shop/hero-still-desktop.jpg")}
+        />
         <img
-          src="/shop/IMG_0434-black-muscle-car.jpeg"
+          src={versionShopAsset("/shop/IMG_0434-black-muscle-car.jpeg")}
           alt=""
           aria-hidden="true"
           decoding="async"

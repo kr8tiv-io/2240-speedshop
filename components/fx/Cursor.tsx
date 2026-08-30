@@ -79,6 +79,8 @@ export function Cursor() {
 
     /* Magnetic CTAs: the element leans toward the pointer, snaps back on exit. */
     const magnets = new Map<HTMLElement, { x: ReturnType<typeof gsap.quickTo>; y: ReturnType<typeof gsap.quickTo> }>();
+    let activeMagnet: HTMLElement | null = null;
+    let activeRect: DOMRect | null = null;
     const getMagnet = (el: HTMLElement) => {
       let m = magnets.get(el);
       if (!m) {
@@ -91,17 +93,29 @@ export function Cursor() {
       return m;
     };
 
+    const releaseActiveMagnet = () => {
+      if (!activeMagnet) return;
+      const m = magnets.get(activeMagnet);
+      m?.x(0);
+      m?.y(0);
+      activeMagnet = null;
+      activeRect = null;
+    };
+    const invalidateMagnetRect = () => {
+      activeRect = null;
+    };
+
     const onMagnetMove = (e: PointerEvent) => {
       const el = (e.target as Element | null)?.closest?.("[data-magnetic]") as HTMLElement | null;
-      // Release every magnet the pointer is no longer inside.
-      for (const [node, m] of magnets) {
-        if (node !== el) {
-          m.x(0);
-          m.y(0);
-        }
+      if (el !== activeMagnet) {
+        releaseActiveMagnet();
+        activeMagnet = el;
       }
       if (!el) return;
-      const rect = el.getBoundingClientRect();
+      // The centre is stable while hovering. Re-measure only after scroll,
+      // resize, or entering another CTA—not at 60–120 pointer events/second.
+      const rect = activeRect ?? el.getBoundingClientRect();
+      activeRect = rect;
       const m = getMagnet(el);
       m.x((e.clientX - rect.left - rect.width / 2) * 0.28);
       m.y((e.clientY - rect.top - rect.height / 2) * 0.28);
@@ -113,6 +127,8 @@ export function Cursor() {
     document.addEventListener("pointerup", onUp, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);
     document.documentElement.addEventListener("pointerenter", onEnter);
+    window.addEventListener("scroll", invalidateMagnetRect, { passive: true });
+    window.addEventListener("resize", invalidateMagnetRect);
 
     return () => {
       document.removeEventListener("pointermove", onMove);
@@ -121,6 +137,9 @@ export function Cursor() {
       document.removeEventListener("pointerup", onUp);
       document.documentElement.removeEventListener("pointerleave", onLeave);
       document.documentElement.removeEventListener("pointerenter", onEnter);
+      window.removeEventListener("scroll", invalidateMagnetRect);
+      window.removeEventListener("resize", invalidateMagnetRect);
+      releaseActiveMagnet();
       for (const [, m] of magnets) {
         m.x(0);
         m.y(0);

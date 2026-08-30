@@ -156,16 +156,25 @@ function BayOutline({
    and enough on the floor either side to say the place is used. */
 
 export function StationDoorway() {
+  const doorSlats = useMemo(
+    () =>
+      buildInstances(
+        new THREE.BoxGeometry(10.4, 0.52, 0.09),
+        new THREE.MeshStandardMaterial({ color: "#33363d", roughness: 0.66, metalness: 0.3 }),
+        Array.from({ length: 9 }, (_, i) => ({
+          position: [0, 0.35 + i * 0.56, 0] as [number, number, number],
+        })),
+      ),
+    [],
+  );
+
+  useEffect(() => () => disposeInstanced(doorSlats), [doorSlats]);
+
   return (
     <group>
       {/* Front roll-up, closed behind the reader */}
       <group position={[0, 0, 9.78]}>
-        {Array.from({ length: 9 }, (_, i) => (
-          <mesh key={i} position={[0, 0.35 + i * 0.56, 0]}>
-            <boxGeometry args={[10.4, 0.52, 0.09]} />
-            <meshStandardMaterial color="#33363d" roughness={0.66} metalness={0.3} />
-          </mesh>
-        ))}
+        <primitive object={doorSlats} />
         {[-1, 1].map((s) => (
           <mesh key={s} position={[s * 5.34, 2.6, 0.06]}>
             <boxGeometry args={[0.22, 5.2, 0.26]} />

@@ -256,8 +256,9 @@ function queueParse<T>(run: () => Promise<T>): Promise<T> {
     // file at a time so a cluster of completed responses can never turn into a
     // cluster of main-thread parses. Before reveal there is no additional
     // stillness delay; after reveal the existing courtesy still protects a
-    // moving reader.
-    if (!racing()) await untilIdle();
+    // moving reader. The hero film is visible before the garage reveal, so a
+    // parse is never allowed to treat that period as "nothing to protect".
+    await untilIdle(1200, true);
     const result = await run();
     // Hand the frame back before the next model gets its turn.
     await wait(0);
@@ -278,11 +279,87 @@ function queueParse<T>(run: () => Promise<T>): Promise<T> {
    file. Rather than keep guessing at another host's mod_rewrite, the loader
    asks for the twin by name.
 
-   Tri-state, resolved once by the first model that tries: a browser that
-   cannot decode brotli fails that request, and every model after it goes
-   straight to the plain file. Not `false` until something actually fails — the
-   fallback is what makes asking safe. */
-let brTwin: boolean | null = null;
+   The byte promise is separate from the parsed R3F resource. That lets the
+   long approach corridor fill the browser/network cache without parsing glTF
+   on the visible film's main thread. A later loader consumes the exact same
+   ArrayBuffer promise, so there is no duplicate transfer. */
+const MODEL_BYTE_CACHE = new Map<string, Promise<ArrayBuffer>>();
+
+type ModelByteOptions = {
+  manager?: THREE.LoadingManager;
+  requestHeader?: Record<string, string>;
+  path?: string;
+  withCredentials?: boolean;
+  onProgress?: (event: ProgressEvent) => void;
+};
+
+function modelByteCacheKey(url: string, options: ModelByteOptions = {}) {
+  return `${options.path ?? ""}|${url}|${options.withCredentials ? 1 : 0}`;
+}
+
+function releaseModelBytes(
+  url: string,
+  options: ModelByteOptions,
+  owner: Promise<ArrayBuffer>,
+) {
+  const key = modelByteCacheKey(url, options);
+  if (MODEL_BYTE_CACHE.get(key) === owner) MODEL_BYTE_CACHE.delete(key);
+}
+
+function fetchModelBytes(url: string, options: ModelByteOptions = {}) {
+  const path = options.path ?? "";
+  const key = modelByteCacheKey(url, options);
+  const cached = MODEL_BYTE_CACHE.get(key);
+  if (cached) return cached;
+
+  const file = new THREE.FileLoader(options.manager);
+  file.setResponseType("arraybuffer");
+  file.setRequestHeader(options.requestHeader ?? {});
+  file.setPath(path);
+  file.setWithCredentials(options.withCredentials ?? false);
+
+  const load = (target: string) =>
+    new Promise<ArrayBuffer>((resolve, reject) => {
+      file.load(
+        target,
+        (data) => {
+          if (data instanceof ArrayBuffer) resolve(data);
+          else reject(new TypeError(`Expected model bytes for ${target}`));
+        },
+        options.onProgress,
+        reject,
+      );
+    });
+
+  const request = (async () => {
+    if (url.endsWith(".glb") && VERSION) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          return await load(`${url}.br`);
+        } catch {
+          // One short edge retry is far cheaper than immediately transferring
+          // the heavier plain GLB after a transient CDN miss.
+          if (attempt === 0) {
+            await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 160));
+          }
+        }
+      }
+      // A persistently missing twin affects this URL only. Never poison
+      // compressed delivery for the rest of the session.
+    }
+    return load(url);
+  })();
+
+  MODEL_BYTE_CACHE.set(key, request);
+  void request.catch(() => {
+    if (MODEL_BYTE_CACHE.get(key) === request) MODEL_BYTE_CACHE.delete(key);
+  });
+  return request;
+}
+
+function prefetchModelBytes(url: string) {
+  return fetchModelBytes(url).then(() => undefined);
+}
 
 class IdleGLTFLoader extends GLTFLoader {
   load(
@@ -291,75 +368,60 @@ class IdleGLTFLoader extends GLTFLoader {
     onProgress?: (event: ProgressEvent) => void,
     onError?: (error: unknown) => void,
   ) {
-    const file = new THREE.FileLoader(this.manager);
-    file.setResponseType("arraybuffer");
-    file.setRequestHeader(this.requestHeader);
-    file.setPath(this.path);
-    file.setWithCredentials(this.withCredentials);
-
-    /* One retry, on the plain URL, and only from the twin. A failure of the
-       plain file is a real failure and goes to `onError` as it always did. */
-    const fetchBytes = (
-      hit: (data: string | ArrayBuffer) => void,
-      miss: (error: unknown) => void,
-    ) => {
-      const plain = () => file.load(url, hit, onProgress, miss);
-      /* Twins only on stamped (deploy) builds: the production host serves
-         `.glb.br` with `Content-Encoding: br`, but the dev server hands the
-         compressed bytes over as-is with a 200 — brTwin latches true and the
-         parser chokes on brotli. VERSION is empty exactly when the shelves
-         are un-stamped, which is exactly when the host is not ours. */
-      if (brTwin === false || !url.endsWith(".glb") || !VERSION) return plain();
-      file.load(
-        `${url}.br`,
-        (data) => {
-          brTwin = true;
-          hit(data);
-        },
-        onProgress,
-        () => {
-          brTwin = false;
-          plain();
-        },
-      );
+    const options: ModelByteOptions = {
+      manager: this.manager,
+      requestHeader: this.requestHeader,
+      path: this.path,
+      withCredentials: this.withCredentials,
+      onProgress,
     };
-
-    fetchBytes(
-      async (data) => {
+    // Match GLTFLoader's manager contract even when the network bytes came
+    // from our early cache: this item ends only after the expensive parse.
+    this.manager.itemStart(url);
+    let settled = false;
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      if (onError) onError(error);
+      else console.error(error);
+      this.manager.itemError(url);
+      this.manager.itemEnd(url);
+    };
+    const byteRequest = fetchModelBytes(url, options);
+    void byteRequest
+      .then(async (data) => {
         try {
           // Bytes are here. The expensive half waits its turn in the queue —
           // for stillness, and for every other model to be finished with the
           // main thread.
-          await queueParse(
+          const gltf = await queueParse(
             () =>
               new Promise<GLTF>((resolve, reject) => {
                 const started = DEBUG ? performance.now() : 0;
                 this.parse(
-                  data as ArrayBuffer,
+                  data,
                   this.resourcePath || this.path || "",
                   (gltf) => {
                     if (DEBUG) {
                       const ms = Math.round(performance.now() - started);
                       if (ms > 30) console.log(`[shop] parse ${url.split("/").pop()} ${ms} ms`);
                     }
-                    onLoad(gltf);
                     resolve(gltf);
                   },
-                  (error) => {
-                    (onError as ((e: unknown) => void) | undefined)?.(error);
-                    reject(error);
-                  },
+                  reject,
                 );
               }),
           );
+          reportOpeningModelParsed(url);
+          onLoad(gltf);
+          settled = true;
+          this.manager.itemEnd(url);
         } catch (error) {
-          if (onError) onError(error);
-          else console.error(error);
-          this.manager.itemError(url);
+          fail(error);
         }
-      },
-      onError as (error: unknown) => void,
-    );
+      })
+      .catch(fail)
+      .finally(() => releaseModelBytes(url, options, byteRequest));
   }
 }
 
@@ -418,6 +480,10 @@ const WARMED = new Set<string>();
 let contiguousWarmStation = -1;
 let worldFinalizer: (() => Promise<void>) | null = null;
 let finalizedWorld: (() => Promise<void>) | null = null;
+/* Renderer-owned async work must never cross a Canvas lifecycle. A route
+   revisit creates a new WebGL context while loader bytes intentionally stay
+   cached; this generation distinguishes those two kinds of ownership. */
+let loaderGeneration = 0;
 
 /**
  * Reset renderer-owned progress before a new Canvas is created.
@@ -428,12 +494,18 @@ let finalizedWorld: (() => Promise<void>) | null = null;
  * brand-new Safari/Edge renderer was still blank.
  */
 export function beginLoaderStream() {
+  loaderGeneration += 1;
+  // Do not put a new renderer behind promises queued by a Canvas that no
+  // longer exists. In-flight old work observes the generation and restores
+  // its visibility snapshot before exiting at its next async boundary.
+  warmQueue = Promise.resolve();
   unlocked = OPENING;
   PENDING.clear();
   for (const key of WARM_KEYS) PENDING.add(key);
   REVEAL_PENDING.clear();
   for (const key of REVEAL_WARM_KEYS) REVEAL_PENDING.add(key);
   WARMED.clear();
+  seededProgressGeneration = -1;
   contiguousWarmStation = -1;
   worldFinalizer = null;
   finalizedWorld = null;
@@ -1051,24 +1123,64 @@ function shelf(url: string) {
 }
 
 const OPENING_MODELS = [
+  // Vehicles establish the scene. Stream their unchanged bytes before the
+  // heavier decorative tyre/rim props so the doorway subject wins every race.
+  M.charger,
+  M.camaro,
   M.pickup,
   M.drum,
   M.extinguisher,
   M.pallet,
-  M.charger,
   M.tyre,
   M.rim,
-  M.camaro,
   M.jerryCan,
   M.jerrycanGreen,
   M.wheelMag,
 ] as const;
+const OPENING_PRELOAD_COUNT = OPENING_MODELS.length;
+const OPENING_MODEL_NAMES = new Set(
+  OPENING_MODELS.map((url) => url.slice(url.lastIndexOf("/") + 1)),
+);
+type OpeningTier = "full" | "lite";
+const PARSED_OPENING_MODELS: Record<OpeningTier, Set<string>> = {
+  full: new Set<string>(),
+  lite: new Set<string>(),
+};
+let seededProgressGeneration = -1;
+let seededProgressTier: OpeningTier | null = null;
+
+function reportParsedOpeningProgress(tier: OpeningTier) {
+  const parsed = PARSED_OPENING_MODELS[tier].size;
+  if (parsed === 0) return;
+  reportBootProgress(0.06 + 0.64 * Math.min(1, parsed / Math.max(OPENING_PRELOAD_COUNT, 1)));
+}
+
+function seedOpeningProgress(tier: OpeningTier) {
+  if (seededProgressGeneration === loaderGeneration && seededProgressTier === tier) return;
+  seededProgressGeneration = loaderGeneration;
+  seededProgressTier = tier;
+  const generation = loaderGeneration;
+  queueMicrotask(() => {
+    if (generation !== loaderGeneration || (phoneTier ? "lite" : "full") !== tier) return;
+    reportParsedOpeningProgress(tier);
+  });
+}
+
+function reportOpeningModelParsed(url: string) {
+  const canonical = url.replace(/[?#].*$/, "").replace(/\.br$/i, "");
+  const name = canonical.slice(canonical.lastIndexOf("/") + 1);
+  if (!OPENING_MODEL_NAMES.has(name)) return;
+  const tier: OpeningTier = canonical.startsWith(MOBILE_BASE) ? "lite" : "full";
+  PARSED_OPENING_MODELS[tier].add(canonical);
+  if ((phoneTier ? "lite" : "full") === tier) reportParsedOpeningProgress(tier);
+}
 const PRELOADED_OPENING_TIERS = new Set<"full" | "lite">();
+const PREFETCH_CONCURRENCY = 2;
 
 /**
- * Fill the exact R3F loader cache used by station zero while the visitor is
- * still in the film. This is deliberately the loader's own cache — never a
- * second raw fetch — so mounting the bay cannot race or duplicate a request.
+ * Fill the exact byte cache consumed by station zero while the visitor is
+ * still in the film. The mounted loader awaits these same promises, so it
+ * cannot race or duplicate a request.
  * Parsing remains one-file-at-a-time and no GPU upload or shader work begins
  * until the real Canvas reaches its existing warm gate.
  */
@@ -1078,10 +1190,23 @@ export function preloadOpeningModels(lite: boolean) {
   PRELOADED_OPENING_TIERS.add(tier);
   const base = lite ? MOBILE_BASE : BASE;
   const urls = OPENING_MODELS.map((url) => url.replace(BASE, base));
-  // Cache each request under the same scalar key `useShopModel` will use.
-  // Preloading one aggregate array creates a different suspense key and makes
-  // the mounted bay download every file a second time.
-  for (const url of urls) useLoader.preload(IdleGLTFLoader, url, extendLoader);
+  // Two lossless transfers at a time keep cellular congestion low. This fills
+  // the exact byte cache IdleGLTFLoader consumes later; parsing remains behind
+  // the real 900ms-still garage mount gate instead of interrupting the film.
+  const pending = [...urls];
+  for (let worker = 0; worker < Math.min(PREFETCH_CONCURRENCY, pending.length); worker++) {
+    void (async () => {
+      while (pending.length > 0) {
+        const url = pending.shift();
+        if (!url) return;
+        try {
+          await prefetchModelBytes(url);
+        } catch {
+          // The mounted loader owns the ordinary retry/fallback path.
+        }
+      }
+    })();
+  }
 }
 
 function useShopModel(url: string) {
@@ -1343,6 +1468,7 @@ export function Vehicle(props: Omit<PlacedProps, "orient">) {
 let phoneTier = false;
 export function setWorldTier(lite: boolean) {
   phoneTier = lite;
+  seedOpeningProgress(lite ? "lite" : "full");
 }
 
 /** How far from a station the camera keeps it drawn, in station units. */
@@ -1381,11 +1507,12 @@ const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve,
  * under a second is long enough to sit out a flick and short enough that being
  * wrong costs a frame instead of the entire scene.
  */
-async function untilIdle(patience = 900) {
-  // Nothing to protect yet — see `racing()`.
-  if (racing()) return true;
+async function untilIdle(patience = 900, protectVisiblePage = false) {
+  // Most hidden garage work can race before reveal. Model parsing is the
+  // exception because it blocks the same main thread as the visible hero.
+  if (racing() && !protectVisiblePage) return true;
   // Nobody is watching a parked world: keep the queue's shape, shrink its wait.
-  if (worldParked) patience = Math.min(patience, 150);
+  if (worldParked && !protectVisiblePage) patience = Math.min(patience, 150);
   const deadline = performance.now() + patience;
   while (stillFor() < 200) {
     if (performance.now() > deadline) return false;
@@ -1444,7 +1571,12 @@ const UPLOADED_TEXTURES = new WeakMap<THREE.WebGLRenderer, WeakSet<THREE.Texture
 const nextUploadFrame = () =>
   new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 
-async function warmTextures(gl: THREE.WebGLRenderer, node: THREE.Object3D) {
+async function warmTextures(
+  gl: THREE.WebGLRenderer,
+  node: THREE.Object3D,
+  isStale: () => boolean,
+) {
+  if (isStale()) return;
   let uploaded = UPLOADED_TEXTURES.get(gl);
   if (!uploaded) {
     uploaded = new WeakSet<THREE.Texture>();
@@ -1470,6 +1602,7 @@ async function warmTextures(gl: THREE.WebGLRenderer, node: THREE.Object3D) {
   const started = performance.now();
   let count = 0;
   for (const texture of textures) {
+    if (isStale()) return;
     if (uploaded.has(texture)) continue;
     // warmSubtree enters this loop only after its bounded idle courtesy. One
     // upload per animation frame is the hard pacing contract from here: a
@@ -1484,6 +1617,7 @@ async function warmTextures(gl: THREE.WebGLRenderer, node: THREE.Object3D) {
       // render path; pre-upload is an acceleration, never a reveal gate.
     }
     await nextUploadFrame();
+    if (isStale()) return;
   }
   if (DEBUG && count > 0) {
     console.log(`[shop]   pre-uploaded ${count} textures in ${Math.round(performance.now() - started)} ms`);
@@ -1505,23 +1639,30 @@ async function warmSubtree(
   node: THREE.Object3D,
   camera: THREE.Camera,
   scene: THREE.Scene,
+  isStale: () => boolean,
 ): Promise<void> {
+  if (isStale()) return;
   let previous = -1;
   for (let i = 0; i < 14; i++) {
+    if (isStale()) return;
     const count = countRenderables(node);
     if (count > 0 && count === previous) break;
     previous = count;
     // Short steps: this is a settle check, and every wasted tick here is a
     // bay arriving later than it needed to.
     await wait(70);
+    if (isStale()) return;
   }
 
   // Collapse the feature sets BEFORE compiling, or we compile the variety we
   // are about to throw away.
+  if (isStale()) return;
   unifyTree(node);
   await untilIdle();
-  await warmTextures(gl, node);
-  await warmUp(gl, node, camera, scene);
+  if (isStale()) return;
+  await warmTextures(gl, node, isStale);
+  if (isStale()) return;
+  await warmUp(gl, node, camera, scene, isStale);
 }
 
 /** Prefer stillness before an indivisible driver upload, but never strand the
@@ -1537,7 +1678,9 @@ async function warmUp(
   node: THREE.Object3D,
   camera: THREE.Camera,
   scene: THREE.Scene,
+  isStale: () => boolean,
 ): Promise<void> {
+  if (isStale()) return;
   // The shipped composer renders the scene into a half-float HDR target. A
   // program prepared for the default canvas framebuffer is a different ANGLE
   // variant and does not pay that bill; the old warm-up compiled the wrong
@@ -1554,14 +1697,22 @@ async function warmUp(
     // compileAsync lets KHR_parallel_shader_compile keep ANGLE's link work off
     // the main thread. The old synchronous compile could hold the film still
     // for several seconds even though this entire shop canvas was parked.
+    if (isStale()) return;
     gl.setRenderTarget(target);
     await gl.compileAsync(node, camera, node === scene ? undefined : scene);
   } catch {
     /* A material the renderer will not touch is not one we can warm. */
   } finally {
-    gl.setRenderTarget(previousTarget);
+    // Suspense can cancel work while retaining this renderer; a Canvas
+    // teardown can dispose it. Restore when possible and tolerate the latter.
+    try {
+      gl.setRenderTarget(previousTarget);
+    } catch {
+      // Superseded renderer.
+    }
     if (!composerTarget) target.dispose();
   }
+  if (isStale()) return;
   await wait(0);
 }
 
@@ -1604,10 +1755,15 @@ export function releaseLoaderRenderer(gl: THREE.WebGLRenderer) {
 async function warmComposerPrograms(
   gl: THREE.WebGLRenderer,
   composer: React.RefObject<ComposerHandle | null> | undefined,
+  isStale: () => boolean,
 ) {
   // The React postprocessing wrapper installs its pass list in a layout
   // effect. WarmScene is a sibling, so allow one short commit turn for the ref.
-  for (let i = 0; i < 20 && !composer?.current?.passes?.length; i++) await wait(25);
+  for (let i = 0; i < 20 && !composer?.current?.passes?.length; i++) {
+    if (isStale()) return;
+    await wait(25);
+  }
+  if (isStale()) return;
 
   const materials = new Set<THREE.Material>();
   const seen = new Set<object>();
@@ -1657,6 +1813,7 @@ async function warmComposerPrograms(
     }
   };
   visit(composer?.current?.passes ?? []);
+  if (isStale()) return;
   if (!materials.size) return;
 
   const composerTarget = composer?.current?.inputBuffer;
@@ -1674,8 +1831,10 @@ async function warmComposerPrograms(
     });
   const previousTarget = gl.getRenderTarget();
   try {
+    if (isStale()) return;
     gl.setRenderTarget(target);
     await gl.compileAsync(scene, camera);
+    if (isStale()) return;
     if (DEBUG) {
       const parallel = Boolean(gl.getContext().getExtension("KHR_parallel_shader_compile"));
       console.log(`[shop] async composer programs ${materials.size} · parallel ${parallel}`);
@@ -1684,7 +1843,11 @@ async function warmComposerPrograms(
     // The composed verification frame below remains the authoritative fallback
     // for browsers whose driver rejects an isolated pass material.
   } finally {
-    gl.setRenderTarget(previousTarget);
+    try {
+      gl.setRenderTarget(previousTarget);
+    } catch {
+      // The old Canvas may already have released its renderer.
+    }
     geometry.dispose();
     if (!composerTarget) target.dispose();
     scene.clear();
@@ -1707,7 +1870,8 @@ async function waitForWarmKey(key: string, patience = 12000) {
  * advance: the portal lightformers still capture, while no car, prop, floor or
  * shell material can accidentally pay first-use work on the main thread.
  */
-async function primeEnvironment(root: RootState) {
+async function primeEnvironment(root: RootState, isStale: () => boolean) {
+  if (isStale()) return;
   const hidden: THREE.Object3D[] = [];
   root.scene.traverse((object) => {
     const renderable = object as THREE.Mesh;
@@ -1723,8 +1887,12 @@ async function primeEnvironment(root: RootState) {
     // One is the contract; the two fallback turns cover a concurrent React
     // commit where the Environment hook joined just after WarmScene's effect.
     for (let i = 0; i < 3 && !root.scene.environment; i++) {
+      if (isStale()) return;
       advance(performance.now(), true, root);
-      if (!root.scene.environment) await wait(0);
+      if (!root.scene.environment) {
+        await wait(0);
+        if (isStale()) return;
+      }
     }
     if (DEBUG) console.log(`[shop] environment primed ${Boolean(root.scene.environment)}`);
   } catch {
@@ -1758,7 +1926,7 @@ let warmQueue: Promise<void> = Promise.resolve();
    redundant pass re-hid a freshly restored bay for seconds (the probe kept
    catching bays at exactly "one mesh shown, N hidden"). The node object
    survives the re-suspension, so identity is the honest key. */
-const PACED = new WeakSet<THREE.Object3D>();
+const PACED = new WeakMap<THREE.Object3D, number>();
 
 /* Which objects a paced warm currently owns while temporarily hidden.
    NOT on userData: drei's <Clone> spreads `userData` BY REFERENCE, so every
@@ -1783,9 +1951,10 @@ const PACED_HIDDEN = new WeakMap<THREE.Object3D, number>();
  * ordering a fact rather than a usual outcome.
  */
 function warmThroughComposer(node: THREE.Object3D, label = "", root?: RootState) {
-  if (PACED.has(node)) return Promise.resolve();
-  PACED.add(node);
-  const next = warmQueue.then(() => pacedWarm(node, label, root));
+  const generation = loaderGeneration;
+  if (PACED.get(node) === generation) return Promise.resolve();
+  PACED.set(node, generation);
+  const next = warmQueue.then(() => pacedWarm(node, label, root, generation));
   warmQueue = next.catch(() => undefined);
   return next;
 }
@@ -1838,7 +2007,14 @@ function firstUseKey(object: THREE.Object3D) {
   ].join("|");
 }
 
-async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
+async function pacedWarm(
+  node: THREE.Object3D,
+  label = "",
+  root?: RootState,
+  generation = loaderGeneration,
+) {
+  const stale = () => generation !== loaderGeneration;
+  if (stale()) return;
   const drawables: THREE.Object3D[] = [];
   const mirrors: THREE.Object3D[] = [];
   node.traverse((child) => {
@@ -1955,7 +2131,9 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
       let size = OVEN_START_BATCH;
       let index = 0;
       while (index < representatives.length) {
+        if (stale()) return;
         await waitForReaderQuiet();
+        if (stale()) return;
         const end = Math.min(index + size, representatives.length);
         for (let i = index; i < end; i++) representatives[i].visible = true;
         const sliceStarted = performance.now();
@@ -1984,11 +2162,15 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
            slice after the frame proves the shop is still parked. */
         releaseOvenScene();
         await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+        if (stale()) return;
         if (!parkedNow()) break;
         isolateOvenScene();
       }
     } finally {
-      root.gl.setRenderTarget(previousTarget);
+      // The old renderer may already have been disposed by the time an
+      // awaited frame resumes. Visibility is plain scene state and must be
+      // restored; touching that stale GPU context must be avoided.
+      if (!stale()) root.gl.setRenderTarget(previousTarget);
       releaseOvenScene();
     }
     if (DEBUG) {
@@ -2089,6 +2271,7 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
   let i = 0;
 
     while (i < drawables.length) {
+      if (stale()) break;
       if (performance.now() > deadline) {
         if (DEBUG) {
           console.log(
@@ -2105,6 +2288,7 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
       // ahead one mesh at a time: thin enough that a forced slice costs a frame.
       const parked = parkedNow();
       const idle = parked ? true : await untilIdle();
+      if (stale()) break;
       const take = idle ? size : 1;
       for (let k = i; k < Math.min(i + take, drawables.length); k++) {
         drawables[k].visible = was[k];
@@ -2115,6 +2299,7 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
       const started = performance.now();
       if (liveNow()) await nextFrame();
       else step();
+      if (stale()) break;
       const cost = performance.now() - started;
 
       if (idle) {
@@ -2133,6 +2318,7 @@ async function pacedWarm(node: THREE.Object3D, label = "", root?: RootState) {
          between slices — that yield IS the fix for the 9.5 s handoff freeze. */
       if (parked) await nextFrame();
       else await wait(idle ? 0 : 16);
+      if (stale()) break;
     }
   } finally {
     // This is the visibility contract. Exceptions, deadline exits, context
@@ -2255,6 +2441,9 @@ type Cullable = {
 
 /** Projected radius, as a fraction of the distance. ~2 px on a 390 screen. */
 const CULL_RATIO = 0.006;
+/** 2.5 cm of accumulated camera travel cannot move a 2 px cull boundary by a
+ * visible amount, but skipping that interval removes idle full-list scans. */
+const CULL_MOVE_EPSILON_SQUARED = 0.000625;
 
 /**
  * Build the cull index WITHOUT eating a frame.
@@ -2283,8 +2472,15 @@ async function collectCullables(
   const scale = new THREE.Vector3();
   for (let i = 0; i < meshes.length; i++) {
     const mesh = meshes[i];
-    if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
-    const sphere = mesh.geometry.boundingSphere;
+    const instanced = mesh as THREE.InstancedMesh;
+    let sphere: THREE.Sphere | null;
+    if (instanced.isInstancedMesh) {
+      if (!instanced.boundingSphere) instanced.computeBoundingSphere();
+      sphere = instanced.boundingSphere;
+    } else {
+      if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
+      sphere = mesh.geometry.boundingSphere;
+    }
     if (sphere) {
       const centre = sphere.center.clone().applyMatrix4(mesh.matrixWorld);
       // Uniform-ish scale is a fair assumption for placed props; take the
@@ -2316,6 +2512,7 @@ export function DetailCull({ target }: { target: React.RefObject<THREE.Object3D 
   const building = useRef(false);
   const tick = useRef(0);
   const ready = useRef(false);
+  const lastCullEye = useRef(new THREE.Vector3(Infinity, Infinity, Infinity));
 
   /* WAIT FOR THE WARM-UP TO BE DONE WITH THE SCENE, NOT FOR A GUESS.
      This armed on a fixed 2.5-second timer while the shell's paced warm-up runs
@@ -2342,6 +2539,8 @@ export function DetailCull({ target }: { target: React.RefObject<THREE.Object3D 
       return;
     }
     const eye = state.camera.position;
+    if (eye.distanceToSquared(lastCullEye.current) < CULL_MOVE_EPSILON_SQUARED) return;
+    lastCullEye.current.copy(eye);
     for (const item of items.current) {
       // Anything the warm-up is still holding is not ours to show.
       if (PACED_HIDDEN.has(item.object)) continue;
@@ -2368,6 +2567,7 @@ function WarmStation({
   const cullables = useRef<Cullable[] | null>(null);
   const building = useRef(false);
   const cullTick = useRef(0);
+  const lastCullEye = useRef(new THREE.Vector3(Infinity, Infinity, Infinity));
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
   const scene = useThree((state) => state.scene);
@@ -2390,9 +2590,11 @@ function WarmStation({
        the watchdog looks for. A permanently invisible bay, produced by two
        copies of the code that exists to make it visible. */
     let finishing = false;
+    const generation = loaderGeneration;
+    const stale = () => dead || generation !== loaderGeneration;
 
     const finish = async () => {
-      if (dead || finishing || warm.current) return;
+      if (stale() || finishing || warm.current) return;
       finishing = true;
       // Downloads and compile may finish out of order, but exact first-use is
       // the camera frontier. A later bay claiming the private composer queue
@@ -2400,8 +2602,9 @@ function WarmStation({
       // about station five. Advance this final ownership step linearly; the
       // wait is bounded so one broken bay can never strand the rest.
       if (station > 0) await waitForWarmKey(String(station - 1), 30000);
+      if (stale()) return;
       await firstUse();
-      if (dead) return;
+      if (stale()) return;
       warm.current = true;
       reportWarm(warmKey);
     };
@@ -2443,6 +2646,7 @@ function WarmStation({
       } catch {
         // The finally-equivalent state below must still restore the light pad.
       }
+      if (stale()) return;
       const near = Math.abs(stationAt(camera) - station) < drawSpan();
       node.visible = near;
       drawn.current = near;
@@ -2472,7 +2676,8 @@ function WarmStation({
 
 
     const started = performance.now();
-    warmSubtree(gl, node, camera, scene).then(() => {
+    warmSubtree(gl, node, camera, scene, stale).then(() => {
+      if (stale()) return;
       if (DEBUG) {
         console.log(
           `[shop] station ${station} warm in ${Math.round(performance.now() - started)} ms` +
@@ -2488,7 +2693,9 @@ function WarmStation({
       // Phones used to open two, creating more cellular and parse contention
       // than the desktop path.
       openGate(station + 2);
-      finish();
+      void finish();
+    }).catch((error) => {
+      if (DEBUG && !stale()) console.warn(`[shop] station ${station} warm failed`, error);
     });
     // A driver that never reports back cannot be allowed to stall the queue.
     const failsafe = window.setTimeout(finish, 9000);
@@ -2526,8 +2733,13 @@ function WarmStation({
       const list = cullables.current;
       if (list) {
         const eye = state.camera.position;
-        for (const item of list) {
-          item.object.visible = item.centre.distanceToSquared(eye) < item.maxDistanceSquared;
+        const stationary =
+          eye.distanceToSquared(lastCullEye.current) < CULL_MOVE_EPSILON_SQUARED;
+        if (!stationary) {
+          lastCullEye.current.copy(eye);
+          for (const item of list) {
+            item.object.visible = item.centre.distanceToSquared(eye) < item.maxDistanceSquared;
+          }
         }
       }
     }
@@ -2586,9 +2798,12 @@ export function WarmScene({
 
   useEffect(() => {
     let dead = false;
+    const generation = loaderGeneration;
+    const stale = () => dead || generation !== loaderGeneration;
     const finalizer = async () => {
-      if (dead) throw new Error("shop warm scene unmounted before final frame");
+      if (stale()) throw new Error("shop warm scene unmounted before final frame");
       await waitForReaderQuiet();
+      if (stale()) throw new Error("shop warm scene superseded before final frame");
       const root = get();
       const started = performance.now();
       // Two completed frames: the first allocates/initialises any private pass
@@ -2596,6 +2811,7 @@ export function WarmScene({
       // consume that state and reach the canvas before the photo dissolves.
       advance(performance.now(), true, root);
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      if (stale()) throw new Error("shop warm scene superseded during final frame");
       advance(performance.now(), true, root);
       if (DEBUG) {
         console.log(
@@ -2605,13 +2821,13 @@ export function WarmScene({
     };
     setWorldFinalizer(finalizer);
     const finish = async () => {
-      if (dead) return;
+      if (stale()) return;
       try {
         // Prove the exact full-size composer as soon as the shell is warm.
         // This starts the real render loop behind a partially open photographic
         // safety layer; the final dissolve still waits for station zero.
         await finalizer();
-        if (dead || worldFinalizer !== finalizer) return;
+        if (stale() || worldFinalizer !== finalizer) return;
         finalizedWorld = finalizer;
         markShellWarm();
         reportWarm("shell");
@@ -2639,11 +2855,14 @@ export function WarmScene({
         return performance.now();
       };
       let t = performance.now();
-      await warmComposerPrograms(gl, composer);
+      await warmComposerPrograms(gl, composer, stale);
+      if (stale()) return;
       t = mark("async post compile", t);
-      await primeEnvironment(get());
+      await primeEnvironment(get(), stale);
+      if (stale()) return;
       t = mark("environment prime", t);
-      await warmSubtree(gl, target.current ?? scene, camera, scene);
+      await warmSubtree(gl, target.current ?? scene, camera, scene, stale);
+      if (stale()) return;
       t = mark("settle+compile", t);
       // Cheap first: the whole building drawn to a postage stamp, which pays
       // most of the driver's translation bill without submitting a frame's
@@ -2664,11 +2883,13 @@ export function WarmScene({
          with its own magic batch number; both are now the same self-tuning
          loop, so a fix to one can never again miss the other. */
       await warmThroughComposer(target.current ?? scene, "shell", get());
+      if (stale()) return;
       mark("composer warm", t);
     };
     const started = performance.now();
     const start = window.setTimeout(() => {
       warmShell().then(() => {
+        if (stale()) return;
         if (DEBUG) {
           console.log(
             `[shop] shell warm in ${Math.round(performance.now() - started)} ms` +
@@ -2676,6 +2897,8 @@ export function WarmScene({
           );
         }
         void finish();
+      }).catch((error) => {
+        if (DEBUG && !stale()) console.warn("[shop] shell warm failed", error);
       });
     }, 60);
     return () => {

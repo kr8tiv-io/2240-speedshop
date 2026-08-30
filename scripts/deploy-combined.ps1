@@ -15,12 +15,124 @@
 
 param(
   [Parameter(Mandatory = $true)][string]$Repo,
-  [string]$Message = "Combined site: After Hours film + shop walk-through + Journal"
+  [string]$Message = "Combined site: After Hours film + shop walk-through + Journal",
+  [string]$LiveUrl = "https://steelblue-gaur-917651.hostingersite.com"
 )
 
 $ErrorActionPreference = "Stop"
 $project = Split-Path -Parent $PSScriptRoot
 Set-Location $project
+
+function Wait-ForPublishedRelease {
+  param(
+    [Parameter(Mandatory = $true)][string]$BaseUrl,
+    [Parameter(Mandatory = $true)][string]$Expected,
+    [int]$TimeoutSeconds = 300
+  )
+
+  $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+  $markerUrl = $BaseUrl.TrimEnd("/") + "/.well-known/2240-release.txt?release=" + $Expected
+  do {
+    try {
+      $response = Invoke-WebRequest `
+        -Uri $markerUrl `
+        -Headers @{ "Cache-Control" = "no-cache" } `
+        -TimeoutSec 15 `
+        -UseBasicParsing
+      if ($response.StatusCode -eq 200 -and $response.Content.Trim() -eq $Expected) {
+        Write-Host "== Hostinger published release $Expected"
+        return
+      }
+    } catch {
+      # The webhook deploy is asynchronous. Network/404 responses are expected
+      # until the new tree becomes active; the bounded deadline owns failure.
+    }
+    Start-Sleep -Seconds 5
+  } while ([DateTime]::UtcNow -lt $deadline)
+
+  throw "Hostinger did not publish release $Expected within $TimeoutSeconds seconds"
+}
+
+function Add-ReleaseStamp {
+  param(
+    [Parameter(Mandatory = $true)][string]$Root,
+    [Parameter(Mandatory = $true)][string]$Release
+  )
+
+  $stamp = '<meta name="2240-release" content="' + $Release + '">'
+  $htmlFiles = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Filter "*.html")
+  if ($htmlFiles.Count -eq 0) { throw "no HTML files available for release stamping" }
+  $utf8 = [System.Text.UTF8Encoding]::new($false)
+  foreach ($file in $htmlFiles) {
+    $content = [System.IO.File]::ReadAllText($file.FullName)
+    if (-not $content.Contains("</head>")) { throw "HTML release stamp has no head in $($file.FullName)" }
+    [System.IO.File]::WriteAllText(
+      $file.FullName,
+      $content.Replace("</head>", $stamp + "</head>"),
+      $utf8
+    )
+  }
+}
+
+function Wait-ForLiveHtmlRelease {
+  param(
+    [Parameter(Mandatory = $true)][string]$BaseUrl,
+    [Parameter(Mandatory = $true)][string]$Expected,
+    [int]$TimeoutSeconds = 180
+  )
+
+  $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+  $rootUrl = $BaseUrl.TrimEnd("/") + "/"
+  $expectedStamp = '<meta name="2240-release" content="' + $Expected + '">'
+  do {
+    try {
+      $response = Invoke-WebRequest `
+        -Uri $rootUrl `
+        -Headers @{ "Cache-Control" = "no-cache"; "Pragma" = "no-cache" } `
+        -TimeoutSec 15 `
+        -UseBasicParsing
+      if ($response.StatusCode -eq 200 -and $response.Content.Contains($expectedStamp)) {
+        Write-Host "== live root HTML is exact release $Expected"
+        return
+      }
+    } catch {
+      # An edge may still be replacing its shared HTML generation.
+    }
+    Start-Sleep -Seconds 5
+  } while ([DateTime]::UtcNow -lt $deadline)
+
+  throw "Hostinger root HTML did not reach release $Expected within $TimeoutSeconds seconds"
+}
+
+function Assert-LiveReleaseAssets {
+  param(
+    [Parameter(Mandatory = $true)][string]$BaseUrl,
+    [Parameter(Mandatory = $true)][string[]]$RelativePaths,
+    [int]$TimeoutSeconds = 120
+  )
+
+  foreach ($relativePath in $RelativePaths) {
+    $assetUrl = $BaseUrl.TrimEnd("/") + "/" + $relativePath.TrimStart("/")
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    $published = $false
+    do {
+      try {
+        $response = Invoke-WebRequest `
+          -Uri $assetUrl `
+          -Method Head `
+          -Headers @{ "Cache-Control" = "no-cache" } `
+          -TimeoutSec 15 `
+          -UseBasicParsing
+        if ($response.StatusCode -eq 200) { $published = $true; break }
+      } catch {
+        # Immutable assets can propagate just after the stamped HTML.
+      }
+      Start-Sleep -Seconds 4
+    } while ([DateTime]::UtcNow -lt $deadline)
+    if (-not $published) { throw "critical release asset is not live: $relativePath" }
+    Write-Host "   live asset $relativePath"
+  }
+}
 
 Write-Host "== precompressing model transport twins"
 node scripts/precompress.js
@@ -58,13 +170,59 @@ if (Test-Path (Join-Path $out "models-mobile")) { Remove-Item (Join-Path $out "m
 node scripts/flatten-rsc.mjs $out
 if ($LASTEXITCODE -ne 0) { throw "flatten-rsc failed" }
 
+# A unique, uncacheable marker proves which export Hostinger is actually
+# serving. Purging before this marker changes races the asynchronous webhook:
+# the old deployment can refill a freshly emptied edge cache.
+$releaseId = [guid]::NewGuid().ToString("N")
+$releaseDirectory = Join-Path $out ".well-known"
+New-Item -ItemType Directory -Path $releaseDirectory -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $releaseDirectory "2240-release.txt") -Value $releaseId -NoNewline
+Add-ReleaseStamp -Root $out -Release $releaseId
+
+# Verify the exact runtime, lossless desktop/mobile model shelves, and hero
+# model generation that this HTML references. These paths are captured before
+# mirroring so post-purge verification cannot accidentally validate an old tree.
+$criticalAssets = @()
+$indexHtml = [System.IO.File]::ReadAllText((Join-Path $out "index.html"))
+$runtimeAssets = @([regex]::Matches($indexHtml, '(?:src|href)="(/_next/static/[^"?]+\.(?:js|css))') | ForEach-Object {
+  $_.Groups[1].Value.TrimStart("/")
+} | Select-Object -Unique)
+$criticalAssets += $runtimeAssets
+$garageChunk = Get-ChildItem -LiteralPath (Join-Path $out "_next\static\chunks") -Recurse -File -Filter "*.js" | Where-Object {
+  $source = [System.IO.File]::ReadAllText($_.FullName)
+  $source.Contains("data-shop-world") -or ($source.Contains("models-opt-") -and $source.Contains("models-mobile-"))
+} | Select-Object -First 1
+if (-not $garageChunk) { throw "could not discover the exported ShopWorld garage chunk" }
+$criticalAssets += [System.IO.Path]::GetRelativePath($out, $garageChunk.FullName).Replace("\", "/")
+$criticalAssets = @($criticalAssets | Select-Object -Unique)
+foreach ($shelfPattern in @("models-opt-*", "models-mobile-*")) {
+  $shelf = Get-ChildItem -LiteralPath $out -Directory -Filter $shelfPattern | Select-Object -First 1
+  if (-not $shelf) { throw "missing release shelf $shelfPattern" }
+  $candidate = Join-Path $shelf.FullName "car-dodge-charger.glb.br"
+  if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+    $candidate = Join-Path $shelf.FullName "car-dodge-charger.glb"
+  }
+  if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) { throw "missing critical Charger in $($shelf.Name)" }
+  $criticalAssets += [System.IO.Path]::GetRelativePath($out, $candidate).Replace("\", "/")
+}
+$heroShelf = Get-ChildItem -LiteralPath (Join-Path $out "models") -Directory -Filter "hero-*" | Select-Object -First 1
+if (-not $heroShelf) { throw "missing content-addressed hero shelf" }
+$heroAsset = Get-ChildItem -LiteralPath $heroShelf.FullName -File | Where-Object {
+  $_.Name -match '\.glb(?:\.br)?$'
+} | Sort-Object { if ($_.Name.EndsWith(".br")) { 0 } else { 1 } } | Select-Object -First 1
+if (-not $heroAsset) { throw "missing critical hero model" }
+$criticalAssets += [System.IO.Path]::GetRelativePath($out, $heroAsset.FullName).Replace("\", "/")
+if ($criticalAssets.Count -lt 4) { throw "release verification did not capture enough critical assets" }
+
 $size = (Get-ChildItem $out -Recurse -File | Measure-Object Length -Sum).Sum
 Write-Host ("   export {0:N1} MB" -f ($size / 1MB))
 
 Write-Host "== mirroring into $Repo"
 $staticMarker = Join-Path $Repo ".deploy-current-static.txt"
+$shelfMarker = Join-Path $Repo ".deploy-current-shelves.txt"
 $repoStatic = [System.IO.Path]::GetFullPath((Join-Path $Repo "_next\static"))
-$repoStaticPrefix = $repoStatic.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$repoRoot = [System.IO.Path]::GetFullPath($Repo)
+$repoRootPrefix = $repoRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
 $overlapRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("2240-static-overlap-" + [guid]::NewGuid().ToString("N"))
 $overlapResolved = [System.IO.Path]::GetFullPath($overlapRoot)
 $tempPrefix = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
@@ -89,11 +247,33 @@ try {
     @()
   }
 
-  Write-Host "== preserving previous immutable static generation ($($previousStatic.Count) files)"
-  foreach ($relativePath in $previousStatic) {
+  $previousShelves = if (Test-Path -LiteralPath $shelfMarker) {
+    @(Get-Content -LiteralPath $shelfMarker | Where-Object { $_.Trim().Length -gt 0 })
+  } else {
+    $roots = @(
+      Get-ChildItem -LiteralPath $Repo -Directory -ErrorAction SilentlyContinue | Where-Object {
+        $_.Name -match '^models-(?:opt|mobile)-'
+      }
+      Get-ChildItem -LiteralPath (Join-Path $Repo "models") -Directory -Filter "hero-*" -ErrorAction SilentlyContinue
+    )
+    @($roots | ForEach-Object {
+      Get-ChildItem -LiteralPath $_.FullName -Recurse -File | ForEach-Object {
+        [System.IO.Path]::GetRelativePath($Repo, $_.FullName).Replace("\", "/")
+      }
+    })
+  }
+  $previousImmutable = @($previousStatic + $previousShelves | Sort-Object -Unique)
+
+  Write-Host "== preserving previous immutable runtime/model generation ($($previousImmutable.Count) files)"
+  foreach ($relativePath in $previousImmutable) {
+    $normalized = $relativePath.Replace("\", "/")
+    $allowedImmutable =
+      $normalized.StartsWith("_next/static/", [System.StringComparison]::OrdinalIgnoreCase) -or
+      $normalized -match '^(?:models-(?:opt|mobile)-[^/]+|models/hero-[^/]+)/'
+    if (-not $allowedImmutable) { throw "immutable overlap marker escaped allowed shelves: $relativePath" }
     $source = [System.IO.Path]::GetFullPath((Join-Path $Repo $relativePath.Replace("/", "\")))
-    if (-not $source.StartsWith($repoStaticPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-      throw "static overlap marker escaped _next/static: $relativePath"
+    if (-not $source.StartsWith($repoRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "immutable overlap marker escaped deployment repo: $relativePath"
     }
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
     $target = Join-Path $overlapResolved $relativePath.Replace("/", "\")
@@ -104,9 +284,18 @@ try {
   Get-ChildItem $Repo -Force | Where-Object { $_.Name -ne ".git" } | Remove-Item -Recurse -Force
   Copy-Item (Join-Path $out "*") $Repo -Recurse -Force
 
-  if ($previousStatic.Count -gt 0) {
-    Write-Host "== restoring previous immutable static generation"
-    Copy-Item (Join-Path $overlapResolved "*") $Repo -Recurse -Force
+  if ($previousImmutable.Count -gt 0) {
+    Write-Host "== restoring previous immutable runtime/model generation"
+    foreach ($relativePath in $previousImmutable) {
+      $source = Join-Path $overlapResolved $relativePath.Replace("/", "\")
+      if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
+      $target = Join-Path $Repo $relativePath.Replace("/", "\")
+      # Current output always wins a same-path collision. This matters when a
+      # newer Brotli encoder improves the twin without changing raw GLB bytes.
+      if (Test-Path -LiteralPath $target) { continue }
+      New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
+      Copy-Item -LiteralPath $source -Destination $target -Force
+    }
   }
 
   $outStatic = Join-Path $out "_next\static"
@@ -114,6 +303,16 @@ try {
     [System.IO.Path]::GetRelativePath($out, $_.FullName).Replace("\", "/")
   } | Sort-Object)
   Set-Content -LiteralPath (Join-Path $Repo ".deploy-current-static.txt") -Value $currentStatic
+  $currentShelfRoots = @(
+    Get-ChildItem -LiteralPath $out -Directory | Where-Object { $_.Name -match '^models-(?:opt|mobile)-' }
+    Get-ChildItem -LiteralPath (Join-Path $out "models") -Directory -Filter "hero-*" -ErrorAction SilentlyContinue
+  )
+  $currentShelves = @($currentShelfRoots | ForEach-Object {
+    Get-ChildItem -LiteralPath $_.FullName -Recurse -File | ForEach-Object {
+      [System.IO.Path]::GetRelativePath($out, $_.FullName).Replace("\", "/")
+    }
+  } | Sort-Object)
+  Set-Content -LiteralPath (Join-Path $Repo ".deploy-current-shelves.txt") -Value $currentShelves
   Set-Content (Join-Path $Repo ".gitattributes") "* -text`n*.glb binary`n*.br binary`n" -NoNewline
 } finally {
   if (Test-Path -LiteralPath $overlapResolved) {
@@ -158,11 +357,25 @@ git -C $Repo push $pushUrl HEAD:main
 if ($LASTEXITCODE -ne 0) { throw "push failed" }
 Write-Host "== pushed - Hostinger webhook redeploys on its own"
 
-# The helper is intentionally credential-gated. On an unconfigured machine it
-# exits cleanly and prints which variable names are missing; it never prints a
-# token. Hostinger's endpoint clears server cache and purges the enabled CDN.
-Write-Host "== requesting optional Hostinger cache purge"
-node scripts/purge-hostinger-cache.mjs
-if ($LASTEXITCODE -ne 0) {
-  Write-Warning "source deployed, but Hostinger cache purge was not accepted"
+Write-Host "== waiting for the new Hostinger release before cache purge"
+Wait-ForPublishedRelease -BaseUrl $LiveUrl -Expected $releaseId
+
+# When API credentials exist, cache purge is mandatory and a skip is failure.
+# On a workstation without them, the exact queryless HTML and critical-asset
+# checks below remain the deployment gate rather than reporting a false purge.
+$purgeVariables = @("HOSTINGER_API_TOKEN", "HOSTINGER_USERNAME", "HOSTINGER_DOMAIN")
+$purgeConfigured = @($purgeVariables | Where-Object {
+  -not (Get-Item -Path ("Env:" + $_) -ErrorAction SilentlyContinue).Value
+}).Count -eq 0
+if ($purgeConfigured) {
+  Write-Host "== requesting required Hostinger server and CDN cache purge"
+  node scripts/purge-hostinger-cache.mjs --required
+  if ($LASTEXITCODE -ne 0) { throw "Hostinger cache purge was required but not accepted" }
+} else {
+  Write-Warning "Hostinger API credentials are unavailable; exact live release verification is required"
 }
+
+Write-Host "== verifying exact root HTML and critical assets after cache handling"
+Wait-ForPublishedRelease -BaseUrl $LiveUrl -Expected $releaseId -TimeoutSeconds 90
+Wait-ForLiveHtmlRelease -BaseUrl $LiveUrl -Expected $releaseId
+Assert-LiveReleaseAssets -BaseUrl $LiveUrl -RelativePaths $criticalAssets

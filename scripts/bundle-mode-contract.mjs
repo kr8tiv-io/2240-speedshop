@@ -22,8 +22,8 @@ assert.match(
 );
 assert.match(
   deploy,
-  /\.deploy-current-static\.txt[\s\S]*preserving previous immutable static generation[\s\S]*Copy-Item \(Join-Path \$out "\*"\) \$Repo -Recurse -Force[\s\S]*restoring previous immutable static generation/,
-  "Hostinger deploys must overlap one complete hashed static generation so HTML/chunk propagation cannot strand the garage.",
+  /\.deploy-current-static\.txt[\s\S]*\.deploy-current-shelves\.txt[\s\S]*preserving previous immutable runtime\/model generation[\s\S]*Copy-Item \(Join-Path \$out "\*"\) \$Repo -Recurse -Force[\s\S]*restoring previous immutable runtime\/model generation/,
+  "Hostinger deploys must overlap one complete hashed runtime and model generation so propagation cannot strand the garage.",
 );
 
 console.log("bundle mode contract: PASS");

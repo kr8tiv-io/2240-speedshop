@@ -169,15 +169,17 @@ const UNIT_SPHERE_8_GEOMETRY = new THREE.SphereGeometry(1, 8, 8);
 
 /* Raw texture fetches bypass basePath like the models do — same prefix. */
 const SHOP_BASE = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/shop`;
+const SHOP_VERSION = process.env.NEXT_PUBLIC_SHOP_VERSION ?? "";
+const SHOP_VERSION_QUERY = SHOP_VERSION ? `?v=${SHOP_VERSION}` : "";
 
 const WALL_PHOTO = {
-  d100: `${SHOP_BASE}/car-d100-truck.jpg`,
-  coupe: `${SHOP_BASE}/car-green-coupe.jpg`,
-  muscle: `${SHOP_BASE}/car-black-muscle.jpg`,
-  bluePickup: `${SHOP_BASE}/car-blue-pickup.jpg`,
-  redPickup: `${SHOP_BASE}/car-red-pickup.jpg`,
-  blackClassic: `${SHOP_BASE}/car-black-classic.jpg`,
-  badge: `${SHOP_BASE}/badge-2240-sign.png`,
+  d100: `${SHOP_BASE}/car-d100-truck.jpg${SHOP_VERSION_QUERY}`,
+  coupe: `${SHOP_BASE}/car-green-coupe.jpg${SHOP_VERSION_QUERY}`,
+  muscle: `${SHOP_BASE}/car-black-muscle.jpg${SHOP_VERSION_QUERY}`,
+  bluePickup: `${SHOP_BASE}/car-blue-pickup.jpg${SHOP_VERSION_QUERY}`,
+  redPickup: `${SHOP_BASE}/car-red-pickup.jpg${SHOP_VERSION_QUERY}`,
+  blackClassic: `${SHOP_BASE}/car-black-classic.jpg${SHOP_VERSION_QUERY}`,
+  badge: `${SHOP_BASE}/badge-2240-sign.png${SHOP_VERSION_QUERY}`,
 } as const;
 
 type PhotoKey = keyof typeof WALL_PHOTO;
@@ -2560,28 +2562,10 @@ export function ShopWorld({
   const onStruggle = useCallback((_struggling: boolean) => {}, []);
 
   useEffect(() => {
-    // The meter at the door. This manager is shared by every Three canvas on
-    // the page, so the shop must compose with the hero's existing subscriber,
-    // never replace it. Slow phones can still be loading a hero when this
-    // scene mounts on its 3.5 s warm timer.
-    const manager = THREE.DefaultLoadingManager;
-    const previousOnProgress = manager.onProgress;
+    // The meter starts immediately; exact opening-model parse completions and
+    // renderer warm keys advance it from here. Keeping this shop-local avoids
+    // hero loads and failed Brotli probes overstating garage readiness.
     reportBootProgress(0.06);
-    const onProgress = (url: string, loaded: number, total: number) => {
-      previousOnProgress?.call(manager, url, loaded, total);
-      // Only shop-owned requests move the shop meter. The underlying counts
-      // remain the manager's global truth, but hero events cannot make this
-      // scene appear further along before one of its own assets arrives.
-      if (/\/(?:models-(?:opt|mobile)(?:-[^/]+)?|shop)\//i.test(url)) {
-        reportBootProgress(0.06 + 0.64 * (loaded / Math.max(total, 1)));
-      }
-    };
-    manager.onProgress = onProgress;
-    return () => {
-      // A later owner may have composed on top of us. Restore only when our
-      // wrapper is still current so cleanup cannot clobber that newer chain.
-      if (manager.onProgress === onProgress) manager.onProgress = previousOnProgress;
-    };
   }, []);
 
   return (

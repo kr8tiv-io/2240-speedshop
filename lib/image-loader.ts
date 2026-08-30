@@ -9,5 +9,8 @@
  */
 export default function imageLoader({ src }: { src: string; width: number; quality?: number }) {
   const prefix = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  return src.startsWith("/") ? `${prefix}${src}` : src;
+  const path = src.startsWith("/") ? `${prefix}${src}` : src;
+  const shopVersion = process.env.NEXT_PUBLIC_SHOP_VERSION ?? "";
+  if (!shopVersion || !src.startsWith("/shop/")) return path;
+  return path.includes("?") ? `${path}&v=${shopVersion}` : `${path}?v=${shopVersion}`;
 }

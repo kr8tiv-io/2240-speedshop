@@ -11,6 +11,11 @@ const deployCommand = fs.readFileSync(new URL("./deploy-combined.ps1", import.me
 assert.match(versioner, /function heroVersion\(/, "hero content hash function missing");
 assert.match(versioner, /models[\\/]hero/, "hero hash does not read the hero shelf");
 assert.match(versioner, /module\.exports\.heroVersion\s*=\s*heroVersion/, "hero hash is not exported");
+assert.match(
+  versioner,
+  /name\.endsWith\("\.glb\.br"\)/,
+  "Content-addressed model shelves must include the exact Brotli transport bytes in their hash.",
+);
 assert.match(config, /NEXT_PUBLIC_HERO_MODELS_VERSION/, "hero hash is not compiled into export builds");
 assert.match(hero, /NEXT_PUBLIC_HERO_MODELS_VERSION/, "HeroScene does not consume the compiled hero hash");
 assert.match(hero, /hero-\$\{HERO_MODELS_VERSION\}/, "HeroScene URL is not content-addressed");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 
@@ -18,6 +18,8 @@ import {
   SAFETY,
   STEEL,
   TOOL_RED,
+  buildInstances,
+  disposeInstanced,
   influence,
   railOf,
 } from "./world";
@@ -148,6 +150,24 @@ function Carriage({ side, deck, span }: { side: number; deck: number; span: numb
   );
 }
 
+/** Eleven unchanged steel lock teeth, submitted as one GPU draw per column. */
+function LiftLockLadder({ side }: { side: number }) {
+  const notches = useMemo(
+    () =>
+      buildInstances(
+        new THREE.BoxGeometry(0.05, 0.06, 0.06),
+        new THREE.MeshStandardMaterial({ ...STEEL }),
+        Array.from({ length: 11 }, (_, i) => ({
+          position: [-side * 0.2, 0.85 + i * 0.32, 0.19] as Vec3,
+        })),
+      ),
+    [side],
+  );
+
+  useEffect(() => () => disposeInstanced(notches), [notches]);
+  return <primitive object={notches} />;
+}
+
 function LiftColumn({ side, deck, span }: { side: number; deck: number; span: number }) {
   return (
     <group position={[side * span, 0, 0]}>
@@ -179,12 +199,7 @@ function LiftColumn({ side, deck, span }: { side: number; deck: number; span: nu
         <meshStandardMaterial {...DARK_STEEL} />
       </mesh>
       {/* Lock ladder — the notches a lift drops onto once it is up */}
-      {Array.from({ length: 11 }, (_, i) => (
-        <mesh key={i} position={[-side * 0.2, 0.85 + i * 0.32, 0.19]}>
-          <boxGeometry args={[0.05, 0.06, 0.06]} />
-          <meshStandardMaterial {...STEEL} />
-        </mesh>
-      ))}
+      <LiftLockLadder side={side} />
 
       {/* Cap and the equalizer cable running down inside the column */}
       <mesh position={[0, 4.66, 0]}>

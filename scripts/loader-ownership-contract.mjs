@@ -36,16 +36,16 @@ const pacedWarm = loaders.slice(
 );
 
 assert.ok(
-  /const previousOnProgress = manager\.onProgress/.test(shop),
-  "ShopWorld must preserve the progress callback already owned by the hero runtime.",
+  !/manager\.onProgress\s*=/.test(shop),
+  "ShopWorld must not wrap or replace the global loading callback owned by the hero runtime.",
 );
 assert.ok(
-  /previousOnProgress\?\.call\(manager, url, loaded, total\)/.test(shop),
-  "ShopWorld must forward every global loading event to the previous owner.",
+  /reportBootProgress\(0\.06\)/.test(shop),
+  "The garage meter must start without borrowing unrelated global request counts.",
 );
 assert.ok(
-  /if \(manager\.onProgress === onProgress\) manager\.onProgress = previousOnProgress/.test(shop),
-  "ShopWorld must restore the exact prior callback without clobbering a newer owner.",
+  /function reportOpeningModelParsed/.test(loaders) && /reportOpeningModelParsed\(url\)/.test(loaders),
+  "Only successful shop parse completions may advance opening model progress.",
 );
 assert.ok(
   !/manager\.onProgress = \(\) => \{\}/.test(shop),
@@ -128,9 +128,10 @@ assert.ok(
   "The private 24px oven must amortize WebKit mobile overhead without giving full desktop an oversized first batch.",
 );
 assert.ok(
-  /if \(!s\.ready \|\| streaming\) return/.test(loaders) &&
-    /openGate\(unlocked \+ 1\);[\s\S]*}, 2500\)/.test(loaders),
-  "After reveal, start one next-bay owner immediately and pace the rest to prevent a parse stampede.",
+  /const OPENING = 1/.test(loaders) &&
+    /openGate\(station \+ 2\)/.test(loaders) &&
+    !/setInterval\([\s\S]*openGate/.test(loaders),
+  "Only station zero may open immediately; each compiled bay must pace the next owner without a timer flood.",
 );
 assert.ok(
   /export function highestContiguousWarmStation\(\)/.test(loaders) &&
@@ -186,7 +187,7 @@ assert.ok(
   "Model textures must upload one paced frame at a time before their first visible draw.",
 );
 assert.ok(
-  /await warmTextures\(gl, node\);[\s\S]*await warmUp\(gl, node, camera, scene\)/.test(loaders),
+  /await warmTextures\(gl, node, isStale\);[\s\S]*await warmUp\(gl, node, camera, scene, isStale\)/.test(loaders),
   "Texture upload must finish before shader compile and geometry first-use.",
 );
 assert.ok(
@@ -195,7 +196,7 @@ assert.ok(
   "Texture identity must not multiply geometry/program representatives once uploads are owned separately.",
 );
 assert.ok(
-  /warmSubtree\(gl, node, camera, scene\)\.then\(\(\) => \{[\s\S]*openGate\(station \+ \(phoneTier \? 3 : 2\)\);[\s\S]*finish\(\);/.test(loaders),
+  /warmSubtree\(gl, node, camera, scene, stale\)\.then\(\(\) => \{[\s\S]*openGate\(station \+ 2\);[\s\S]*void finish\(\);/.test(loaders),
   "A compiled bay must release download credit before its serialized first-use so later copy panels do not outrun their models.",
 );
 assert.ok(

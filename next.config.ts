@@ -13,11 +13,15 @@ const MODELS_VERSION = process.env.EXPORT ? modelVersion() : "";
 const HERO_MODELS_VERSION = process.env.EXPORT
   ? (modelVersion as typeof modelVersion & { heroVersion: () => string }).heroVersion()
   : "";
+const SHOP_VERSION = process.env.EXPORT
+  ? (modelVersion as typeof modelVersion & { shopVersion: () => string }).shopVersion()
+  : "";
 
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_MODELS_VERSION: MODELS_VERSION,
     NEXT_PUBLIC_HERO_MODELS_VERSION: HERO_MODELS_VERSION,
+    NEXT_PUBLIC_SHOP_VERSION: SHOP_VERSION,
   },
   // `EXPORT=1 next build` produces a fully static `out/` for dumb hosts
   // (Hostinger shared, any Apache/nginx). Unset, the build stays a normal
