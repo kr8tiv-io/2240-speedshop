@@ -890,20 +890,35 @@ html[data-ui-overlay="menu"] .grain {
 }
 
 @media (max-width: 639px) {
-  /* BOTTOM-ANCHORED, not centred. The radial version faded outward in every
-     direction — including UP, over the car. At 320px the copy block is most of
-     the viewport, so the wash crossed the whole body. Less punishing here than
-     on the daylight build (black over a night shot mostly reads as mood) but
-     it still eats the lamp glow, and the two builds should behave the same. */
+  /* Slow vertical bleed, not a card. Hard top/bottom edges on the phone
+     plate were reading as a black overlay; a longer fade from bay-black
+     into transparent lets the 3D show through above and below the words. */
   .copy-plate::before {
     content: "";
     position: absolute;
-    inset: -1.5rem -1.25rem -1.75rem;
+    inset: -6.75rem -1.5rem -6.75rem;
     background: linear-gradient(
-      to top,
-      rgba(10, 10, 11, 0.92) 0%,
-      rgba(10, 10, 11, 0.74) 34%,
-      rgba(10, 10, 11, 0.36) 66%,
+      to bottom,
+      transparent 0%,
+      rgba(10, 10, 11, 0.18) 16%,
+      rgba(10, 10, 11, 0.62) 34%,
+      rgba(10, 10, 11, 0.88) 50%,
+      rgba(10, 10, 11, 0.62) 66%,
+      rgba(10, 10, 11, 0.18) 84%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 22%,
+      #000 78%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 22%,
+      #000 78%,
       transparent 100%
     );
     pointer-events: none;
@@ -925,11 +940,13 @@ html[data-ui-overlay="menu"] .grain {
     content: "";
     position: absolute;
     z-index: -1;
-    inset: -0.65rem -2rem -0.65rem -1.25rem;
+    inset: -3.5rem -2rem -3.5rem -1.25rem;
     background: linear-gradient(
-      90deg,
-      rgba(10, 10, 11, 0.82) 0%,
-      rgba(10, 10, 11, 0.58) 52%,
+      to bottom,
+      transparent 0%,
+      rgba(10, 10, 11, 0.2) 22%,
+      rgba(10, 10, 11, 0.78) 50%,
+      rgba(10, 10, 11, 0.2) 78%,
       transparent 100%
     );
     pointer-events: none;
