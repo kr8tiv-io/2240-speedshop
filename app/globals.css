@@ -27,7 +27,7 @@
   --font-sub: var(--font-archivo), system-ui, sans-serif;
   --font-body: var(--font-archivo), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
-  --font-serif: var(--font-bodoni), Didot, "Bodoni MT", Georgia, serif;
+  --font-serif: var(--font-instrument-serif), Didot, "Bodoni MT", Georgia, serif;
 }
 
 :root {
@@ -548,37 +548,32 @@ html[data-ui-overlay="menu"] .grain {
    annotation plates, the chapter HUD. One accent, real light logic.
    ──────────────────────────────────────────────────────────────────────────── */
 
-/* The signature: ONE italic Fraunces word inside an Anton headline, tungsten.
-   Lowercase against the uppercase wall — the couture tell. */
+/* The signature: one italic Instrument Serif word inside an Anton headline,
+   tungsten. Lowercase against the uppercase wall — the couture tell. */
 /* ─────────────────────────────────────────────────────────────────────────────
    THE ACCENT WORD.
 
    Anton is a heavy condensed grotesque with a very tall cap height; a serif
-   italic set at the SAME font-size renders visually ~20% smaller and lands in
-   the line like a typo. That is the whole reason the old Fraunces treatment
-   read as "a weird little word" — it was an optical-sizing bug, not a taste
-   problem, and no amount of swapping faces fixes it on its own.
-
-   So: a high-contrast Didone (Bodoni Moda) — the classic editorial partner
-   for a heavy condensed sans, and the register this shop wants — optically
-   up-sized until its lowercase ascenders meet Anton's caps, with its own
-   line-height pinned so a taller face cannot open up the headline's leading.
-   0.86 / 1.14 = 0.754: the accent occupies exactly the same line box as the
-   type around it.
+   italic set at the same size renders visually smaller and lands in the line
+   like a typo. Instrument Serif's taller, more calligraphic italic needs less
+   compensation than the former Bodoni. It is optically up-sized until its
+   ascenders meet Anton's caps, with a pinned line-height so the face cannot
+   open the headline leading. 0.86 / 1.10 = 0.782: the accent occupies the same
+   line box as the type around it.
    ──────────────────────────────────────────────────────────────────────────── */
 .accent-serif {
   font-family: var(--font-serif);
   font-style: italic;
-  font-weight: 500;
+  font-weight: 400;
   text-transform: none;
-  font-size: 1.14em;
-  line-height: 0.754;
-  letter-spacing: -0.005em;
+  font-size: 1.1em;
+  line-height: 0.782;
+  letter-spacing: -0.012em;
   color: #ffb066;
-  padding-inline: 0.06em 0.1em;
+  padding-inline: 0.045em 0.085em;
   /* Sit the italic on the cap line rather than the baseline of a face that
      has no descenders in play. */
-  vertical-align: -0.012em;
+  vertical-align: -0.016em;
 }
 
 /* Display interplay: a 1px-stroke outline echo sits offset behind the bone

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Anton, Archivo, Bodoni_Moda, IBM_Plex_Mono } from "next/font/google";
+import { Anton, Archivo, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { site } from "@/lib/site";
 import { Nav } from "@/components/Nav";
@@ -26,17 +26,15 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
   display: "swap",
 });
-/* The couture signature: ONE italic word inside select Anton headlines, set in
-   tungsten. Bodoni Moda, not Fraunces — a high-contrast Didone is the classic
-   editorial partner for a heavy condensed grotesque, and it is the difference
-   between "a serif word got in here" and a deliberate pairing. Italic only; it
-   never carries body text. See .accent-serif in globals.css for the optical
-   sizing that makes it sit ON the line instead of inside it. */
-const bodoni = Bodoni_Moda({
-  variable: "--font-bodoni",
+/* The couture signature: one italic word inside select Anton headlines, set
+   in tungsten. Instrument Serif has a sharper, contemporary editorial hand
+   than the former Didone and needs only one compact italic face. It never
+   carries body text. See .accent-serif for its optical alignment with Anton. */
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
   subsets: ["latin"],
-  style: ["italic"],
-  weight: ["500", "600"],
+  style: "italic",
+  weight: "400",
   display: "swap",
 });
 
@@ -71,7 +69,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="en-CA"
-      className={`${anton.variable} ${archivo.variable} ${plexMono.variable} ${bodoni.variable} h-full`}
+      className={`${anton.variable} ${archivo.variable} ${plexMono.variable} ${instrumentSerif.variable} h-full`}
     >
       <body className="min-h-full flex flex-col bg-bay-black text-bone">
         {/* AI crawlers do not execute JS, so the entity graph ships in the
