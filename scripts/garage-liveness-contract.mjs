@@ -13,6 +13,7 @@ const loaders = fs.readFileSync(loadersPath, "utf8");
 const walkthrough = fs.readFileSync(walkthroughPath, "utf8");
 const shopWorld = fs.readFileSync(shopWorldPath, "utf8");
 const failures = [];
+const schedulerOnly = process.argv.includes("--scheduler");
 
 function contract(condition, message) {
   if (!condition) failures.push(message);
@@ -60,9 +61,15 @@ async function exerciseScheduler() {
     },
   });
   scheduler.beginGeneration();
+  contract(
+    typeof scheduler.captureGeneration === "function",
+    "parse scheduler exposes a generation owner for pre-fetch capture",
+  );
+  if (typeof scheduler.captureGeneration !== "function") return;
+  const owner = scheduler.captureGeneration();
   const order = [];
   const jobs = Array.from({ length: 17 }, (_, index) =>
-    scheduler.enqueue(async () => {
+    scheduler.enqueue(owner, async () => {
       order.push(index);
       return index;
     }),
@@ -79,10 +86,11 @@ async function exerciseScheduler() {
     yieldControl: async () => undefined,
   });
   rejectionSafe.beginGeneration();
-  await assert.rejects(rejectionSafe.enqueue(async () => {
+  const rejectionOwner = rejectionSafe.captureGeneration();
+  await assert.rejects(rejectionSafe.enqueue(rejectionOwner, async () => {
     throw new Error("expected parse failure");
   }));
-  assert.equal(await rejectionSafe.enqueue(async () => "recovered"), "recovered");
+  assert.equal(await rejectionSafe.enqueue(rejectionOwner, async () => "recovered"), "recovered");
 
   let releaseOld;
   const oldWork = new Promise((resolve) => {
@@ -96,11 +104,13 @@ async function exerciseScheduler() {
     yieldControl: async () => undefined,
   });
   isolated.beginGeneration();
-  const abandoned = isolated.enqueue(() => oldWork);
-  await Promise.resolve();
-  await Promise.resolve();
+  const abandonedOwner = isolated.captureGeneration();
   isolated.beginGeneration();
-  const fresh = isolated.enqueue(async () => "fresh");
+  const freshOwner = isolated.captureGeneration();
+  // A transport owned by the abandoned Canvas resolves late, after the fresh
+  // generation exists. It must still enter only its captured private queue.
+  const abandoned = isolated.enqueue(abandonedOwner, () => oldWork);
+  const fresh = isolated.enqueue(freshOwner, async () => "fresh");
   assert.equal(
     await settlesWithin(fresh, 100, "new generation waited behind abandoned parse work"),
     "fresh",
@@ -110,6 +120,7 @@ async function exerciseScheduler() {
   await abandoned;
 }
 
+if (!schedulerOnly) {
 contract(
   /from ["']\.\/parseScheduler["']/.test(loaders),
   "Loaders uses the generation-scoped parse scheduler",
@@ -123,7 +134,12 @@ contract(
   "new Canvas lifecycle begins an isolated parse generation",
 );
 contract(
-  /MeshoptDecoder\.useWorkers\?\.\(2\)|typeof MeshoptDecoder\.useWorkers === ["']function["'][\s\S]{0,120}MeshoptDecoder\.useWorkers\(2\)/.test(loaders),
+  /const parseOwner = parseScheduler\.captureGeneration\(\)[\s\S]{0,500}fetchModelBytes\(url, options\)/.test(loaders) &&
+    /queueParse\(\s*parseOwner,/.test(loaders),
+  "each loader captures parse ownership before its byte request can settle late",
+);
+contract(
+  /typeof MeshoptDecoder\.useWorkers !== ["']function["'][\s\S]{0,180}MeshoptDecoder\.useWorkers\(2\)/.test(loaders),
   "meshopt decoding uses at most two workers behind feature detection",
 );
 contract(
@@ -154,6 +170,7 @@ contract(
   /const warmStation = highestContiguousWarmStation\(\)[\s\S]{0,220}\(warmStation \+ 0\.42\) \/ SEGMENTS[\s\S]{0,140}Math\.min\(desired\.current, warmLimit\)/.test(shopWorld),
   "camera retains the no-pop-in warm frontier clamp",
 );
+}
 
 await exerciseScheduler();
 
@@ -164,4 +181,3 @@ if (failures.length > 0) {
 } else {
   console.log("garage liveness contract: PASS");
 }
-

@@ -23,6 +23,7 @@ import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.j
 import { ContactShadow } from "./materials";
 import { getBoot, markShellWarm, markWorldReady, reportBootProgress, stillFor, subscribeBoot } from "./boot";
 import { countLights, installLightPad, lightBudget, setStationLights } from "./lights";
+import { createParseScheduler, type ParseGeneration } from "./parseScheduler";
 import { stationAt } from "./world";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -235,38 +236,28 @@ export function primeLoaders(_gl: THREE.WebGLRenderer) {
  * reader to be still. It is the general form of the fix, so a model added next
  * year gets it for free.
  */
-/* ── One parse at a time, ever ──────────────────────────────────────────────
+/* ── One parse at a time, per Canvas generation ────────────────────────────
    Waiting for stillness is not enough on its own. Half a dozen files land
    within a second of each other, every one of their loaders sees the same
    quiet moment, and they all start parsing in the same tick — six models'
    worth of main-thread work chained back to back, which a profile caught as a
    SIX-SECOND frame with the reader's finger on the glass.
 
-   The queue makes it one at a time: each parse waits for stillness of its own,
-   runs alone, and hands the thread back before the next begins. The blocking
-   unit stops being "however many files the network happened to deliver
-   together" and becomes "one model" — which is the most a reader can ever be
-   made to wait for, no matter how the network behaves. */
+   The queue makes it one at a time, but the whole Canvas generation shares a
+   single bounded motion courtesy. Continuous scroll can delay the first parse
+   briefly; it cannot multiply that delay by every model in the route. */
 
-let parseQueue: Promise<unknown> = Promise.resolve();
+const parseScheduler = createParseScheduler({
+  waitForCourtesy: () => untilIdle(1200, true),
+  yieldControl: () => wait(0),
+});
 
-function queueParse<T>(run: () => Promise<T>): Promise<T> {
-  const next = parseQueue.then(async () => {
-    // The early model preload overlaps network with the hero film. Decode one
-    // file at a time so a cluster of completed responses can never turn into a
-    // cluster of main-thread parses. Before reveal there is no additional
-    // stillness delay; after reveal the existing courtesy still protects a
-    // moving reader. The hero film is visible before the garage reveal, so a
-    // parse is never allowed to treat that period as "nothing to protect".
-    await untilIdle(1200, true);
-    const result = await run();
-    // Hand the frame back before the next model gets its turn.
-    await wait(0);
-    return result;
-  });
-  // A failed parse must not wedge the queue behind it.
-  parseQueue = next.catch(() => undefined);
-  return next as Promise<T>;
+function beginParseGeneration() {
+  parseScheduler.beginGeneration();
+}
+
+function queueParse<T>(owner: ParseGeneration, run: () => Promise<T>): Promise<T> {
+  return parseScheduler.enqueue(owner, run);
 }
 
 /* ── Asking for the compressed twin by name ─────────────────────────────────
@@ -387,6 +378,10 @@ class IdleGLTFLoader extends GLTFLoader {
       this.manager.itemError(url);
       this.manager.itemEnd(url);
     };
+    // Capture renderer ownership before transport. An old Canvas request may
+    // resolve after a new Canvas begins; it must never enter the new queue.
+    const parseOwner = parseScheduler.captureGeneration();
+    const ownerGeneration = loaderGeneration;
     const byteRequest = fetchModelBytes(url, options);
     void byteRequest
       .then(async (data) => {
@@ -395,8 +390,12 @@ class IdleGLTFLoader extends GLTFLoader {
           // for stillness, and for every other model to be finished with the
           // main thread.
           const gltf = await queueParse(
-            () =>
-              new Promise<GLTF>((resolve, reject) => {
+            parseOwner,
+            async () => {
+              if (ownerGeneration !== loaderGeneration) {
+                throw new Error("Stale garage parse generation");
+              }
+              return new Promise<GLTF>((resolve, reject) => {
                 const started = DEBUG ? performance.now() : 0;
                 this.parse(
                   data,
@@ -410,7 +409,8 @@ class IdleGLTFLoader extends GLTFLoader {
                   },
                   reject,
                 );
-              }),
+              });
+            },
           );
           reportOpeningModelParsed(url);
           onLoad(gltf);
@@ -425,7 +425,22 @@ class IdleGLTFLoader extends GLTFLoader {
   }
 }
 
+let meshoptWorkersConfigured = false;
+
+function enableMeshoptWorkers() {
+  if (meshoptWorkersConfigured || typeof window === "undefined") return;
+  meshoptWorkersConfigured = true;
+  if (typeof Worker === "undefined" || typeof MeshoptDecoder.useWorkers !== "function") return;
+  try {
+    MeshoptDecoder.useWorkers(2);
+  } catch {
+    // A restrictive worker-src policy or older WebKit keeps the exact
+    // single-thread decoder path. Geometry bytes and decoded output match.
+  }
+}
+
 function extendLoader(loader: GLTFLoader) {
+  enableMeshoptWorkers();
   loader.setMeshoptDecoder(MeshoptDecoder);
 }
 /* ── The stream ─────────────────────────────────────────────────────────────
@@ -499,6 +514,7 @@ export function beginLoaderStream() {
   // longer exists. In-flight old work observes the generation and restores
   // its visibility snapshot before exiting at its next async boundary.
   warmQueue = Promise.resolve();
+  beginParseGeneration();
   unlocked = OPENING;
   PENDING.clear();
   for (const key of WARM_KEYS) PENDING.add(key);

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [loaders, shopWorld] = await Promise.all([
+const [loaders, shopWorld, parseScheduler] = await Promise.all([
   readFile(new URL("../components/shop/Loaders.tsx", import.meta.url), "utf8"),
   readFile(new URL("../components/shop/ShopWorld.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../components/shop/parseScheduler.ts", import.meta.url), "utf8"),
 ]);
 const parseQueue = loaders.slice(
   loaders.indexOf("function queueParse"),
@@ -20,9 +21,11 @@ assert.ok(
   "Early garage requests must cache exact model bytes independently from glTF parsing.",
 );
 assert.ok(
-  /await untilIdle\(1200, true\)/.test(parseQueue) &&
-    !/if \(!racing\(\)\) await untilIdle/.test(parseQueue),
-  "Every glTF parse must honor visible-page stillness, including pre-reveal work.",
+  /createParseScheduler/.test(loaders) &&
+    /waitForCourtesy: \(\) => untilIdle\(1200, true\)/.test(loaders) &&
+    !/untilIdle/.test(parseQueue) &&
+    /owner\.courtesy \?\?=/.test(parseScheduler),
+  "A Canvas generation must share one visible-page courtesy instead of delaying every glTF parse.",
 );
 assert.ok(
   /const PREFETCH_CONCURRENCY = 2/.test(opening) &&
