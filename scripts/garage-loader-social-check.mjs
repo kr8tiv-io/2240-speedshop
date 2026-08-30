@@ -18,6 +18,7 @@ const sizes = [
   { name: "iphone-375", width: 375, height: 667, dsf: 2 },
   { name: "iphone-390", width: 390, height: 844, dsf: 3, garage: true },
   { name: "iphone-430", width: 430, height: 932, dsf: 3 },
+  { name: "ipad-768", width: 768, height: 1024, dsf: 2 },
 ].filter((size) => !FOCUS || size.name.toLowerCase() === FOCUS);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -49,6 +50,7 @@ async function auditSize(browser, size) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   const errors = [];
+  const staleGaragePhotos = [];
 
   page.on("pageerror", (error) => errors.push(`page: ${error.message}`));
   page.on("console", (message) => {
@@ -61,6 +63,9 @@ async function auditSize(browser, size) {
   });
   page.on("response", (response) => {
     if (response.status() >= 400) errors.push(`http ${response.status()}: ${response.url()}`);
+  });
+  page.on("request", (request) => {
+    if (/shop-showroom-neon-/i.test(request.url())) staleGaragePhotos.push(request.url());
   });
 
   await page.evaluateOnNewDocument(() => {
@@ -109,7 +114,10 @@ async function auditSize(browser, size) {
 
   const loader = await page.$("[data-preloader]");
   assert.ok(loader, `${size.name}: branded preloader was never presented`);
-  assert.ok(await page.$("[data-loader-car]"), `${size.name}: loader car is missing`);
+  assert.ok(
+    await page.$("[data-loader-instrument]"),
+    `${size.name}: instrument loader is missing`,
+  );
   const cssFailsafe = await page.$eval("[data-preloader]", (element) => {
     const style = getComputedStyle(element);
     const seconds = (value) => Number.parseFloat(value) * (value.endsWith("ms") ? 0.001 : 1);
@@ -152,8 +160,30 @@ async function auditSize(browser, size) {
   assert.ok(hydratedDuration <= 8_000, `${size.name}: loader DOM cleanup took ${hydratedDuration}ms`);
   pass(
     size.name,
-    "automotive loader exits inside the release budget",
+    "instrument loader exits inside the release budget",
     `${visualBudget.toFixed(1)} s visual ceiling; DOM cleanup ${Math.round(hydratedDuration)} ms after first scan`,
+  );
+
+  const shopType = await page.evaluate(() => {
+    const px = (selector) => {
+      const node = document.querySelector(selector);
+      return node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
+    };
+    return {
+      eyebrow: px(".wt-station-eyebrow"),
+      body: px(".wt-station-body"),
+      list: px(".wt-station-list"),
+      glide: px(".wt-glide-body"),
+    };
+  });
+  assert.ok(shopType.eyebrow >= 12, `${size.name}: shop eyebrow is ${shopType.eyebrow}px`);
+  assert.ok(shopType.body >= 17, `${size.name}: shop body is ${shopType.body}px`);
+  assert.ok(shopType.list >= 12, `${size.name}: shop list is ${shopType.list}px`);
+  assert.ok(shopType.glide >= 16, `${size.name}: shop travel copy is ${shopType.glide}px`);
+  pass(
+    size.name,
+    "garage copy meets the legibility floor",
+    `eyebrow ${shopType.eyebrow}px; body ${shopType.body}px; list ${shopType.list}px; travel ${shopType.glide}px`,
   );
 
   if (size.garage) {
@@ -284,6 +314,12 @@ async function auditSize(browser, size) {
     path: path.join(OUT, `${size.name}-shop-floor.png`),
     captureBeyondViewport: false,
   });
+
+  assert.deepEqual(
+    staleGaragePhotos,
+    [],
+    `${size.name}: old showroom photograph was requested:\n${staleGaragePhotos.join("\n")}`,
+  );
 
   assert.deepEqual(errors, [], `${size.name}: browser errors:\n${errors.join("\n")}`);
   pass(size.name, "release probe emits no page or console errors", "0 errors");

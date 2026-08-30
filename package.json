@@ -27,6 +27,7 @@
     "test:garage-reveal": "node scripts/garage-progressive-reveal-contract.mjs",
     "test:preloader-automotive": "node scripts/preloader-automotive-contract.mjs",
     "test:instagram-grid": "node scripts/instagram-grid-contract.mjs",
+    "test:shop-copy-legibility": "node scripts/shop-copy-legibility-contract.mjs",
     "audit:model-shelves": "node scripts/model-shelf-audit.cjs",
     "audit:export-hero": "node scripts/export-hero-check.mjs",
     "serve:export": "node scripts/serve-export.mjs",

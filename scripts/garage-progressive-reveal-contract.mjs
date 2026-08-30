@@ -32,7 +32,27 @@ assert.match(
 assert.match(
   walkthrough,
   /void preloadShopWorld\(\)/,
-  "Entering the warm corridor must start the split runtime download immediately.",
+  "The split runtime must begin downloading before the doorway.",
+);
+assert.match(
+  walkthrough,
+  /POST_HERO_PRELOAD_TIMEOUT_MS/,
+  "A verified hero frame needs a bounded background shop preload.",
+);
+assert.match(
+  walkthrough,
+  /MOUNT_DEADLINE_MS/,
+  "Continuous scrolling needs a bounded shop mount deadline.",
+);
+assert.doesNotMatch(
+  walkthrough,
+  /heroSettled && stillFor\(\) >= 900/,
+  "Reader stillness may be preferred, but it cannot remain a hard garage mount prerequisite.",
+);
+assert.doesNotMatch(
+  walkthrough,
+  /shop-showroom-neon-|wt-world-boot-photo|<picture>/,
+  "The garage handoff must not show the old showroom photograph.",
 );
 assert.match(
   walkthrough,
