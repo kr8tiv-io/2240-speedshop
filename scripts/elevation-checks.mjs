@@ -534,7 +534,9 @@ async function auditHeroBoot(browser) {
         if (!scenario.reduced) {
           const hold =
             !heldHeroRequestSeen &&
-            /\/models\/hero(?:-[^/]+)?\/charger\.glb(?:\.br)?(?:[?#]|$)/i.test(request.url());
+            /\/models\/hero(?:-[^/]+)?\/(?:challenger|coupe-hoodup|charger)\.glb(?:\.br)?(?:[?#]|$)/i.test(
+              request.url(),
+            );
           if (hold) {
             heldHeroRequestSeen = true;
             signalHeldHeroRequest();
@@ -637,7 +639,7 @@ async function auditHeroBoot(browser) {
             afterResize.profile === "desktop" &&
             afterResize.mounts === beforeResize.mounts &&
             (!beforeResize.sceneReady || afterResize.sceneReady),
-          `held charger=${held}; runtime ${beforeResize.present ? beforeResize.profile : "missing"}→${afterResize.present ? afterResize.profile : "missing"}; same=${afterResize.sameInstance}; mounts ${beforeResize.mounts}→${afterResize.mounts}; ready ${beforeResize.sceneReady}→${afterResize.sceneReady}`,
+          `held hero model=${held}; runtime ${beforeResize.present ? beforeResize.profile : "missing"}→${afterResize.present ? afterResize.profile : "missing"}; same=${afterResize.sameInstance}; mounts ${beforeResize.mounts}→${afterResize.mounts}; ready ${beforeResize.sceneReady}→${afterResize.sceneReady}`,
         );
         releaseHeldHeroRequest?.();
       }
