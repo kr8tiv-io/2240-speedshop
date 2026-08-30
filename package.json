@@ -28,6 +28,7 @@
     "test:preloader-automotive": "node scripts/preloader-automotive-contract.mjs",
     "test:instagram-grid": "node scripts/instagram-grid-contract.mjs",
     "test:shop-copy-legibility": "node scripts/shop-copy-legibility-contract.mjs",
+    "test:blog-navigation": "node scripts/blog-navigation-check.mjs",
     "audit:model-shelves": "node scripts/model-shelf-audit.cjs",
     "audit:export-hero": "node scripts/export-hero-check.mjs",
     "serve:export": "node scripts/serve-export.mjs",

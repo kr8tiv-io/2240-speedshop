@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { articles } from "@/lib/blog/registry";
 import { blogSchema } from "@/lib/blog/schema";
 import { JsonLd, breadcrumbSchema } from "@/lib/schema";
@@ -67,7 +66,7 @@ export default function BlogIndexPage() {
         {/* FEATURED — index entry 01, set large. */}
         <section aria-label="Featured article" className="mt-16">
           <div className="weld" aria-hidden="true" />
-          <Link
+          <a
             href={`/blog/${featured.meta.slug}`}
             className="backlit group mt-px grid !bg-transparent gap-8 py-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center"
           >
@@ -97,7 +96,7 @@ export default function BlogIndexPage() {
                 </span>
               </p>
             </div>
-          </Link>
+          </a>
         </section>
 
         {/* THE INDEX — numbered rows, services-row language. */}
@@ -106,7 +105,7 @@ export default function BlogIndexPage() {
             <ul className="border-t border-rust/60">
               {rest.map((a, i) => (
                 <li key={a.meta.slug} className="relative border-b border-rust/40">
-                  <Link
+                  <a
                     href={`/blog/${a.meta.slug}`}
                     className="backlit group flex flex-col gap-2 !bg-transparent px-2 py-6 sm:flex-row sm:items-baseline sm:gap-8 sm:px-4 sm:py-7"
                   >
@@ -125,7 +124,7 @@ export default function BlogIndexPage() {
                     >
                       →
                     </span>
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
