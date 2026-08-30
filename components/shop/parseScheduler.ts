@@ -1,16 +1,24 @@
 export type ParseSchedulerOptions = {
   waitForCourtesy: () => Promise<unknown>;
   yieldControl: () => Promise<unknown>;
+  cancelActive?: () => void;
 };
 
 export type ParseGeneration = {
-  tail: Promise<void>;
+  active: boolean;
   courtesies: Map<string, Promise<unknown>>;
 };
 
-function createGeneration(): ParseGeneration {
+export class ParseGenerationCancelledError extends Error {
+  constructor(message = "Parse generation is no longer active") {
+    super(message);
+    this.name = "ParseGenerationCancelledError";
+  }
+}
+
+function createGeneration(active = false): ParseGeneration {
   return {
-    tail: Promise.resolve(),
+    active,
     courtesies: new Map(),
   };
 }
@@ -22,25 +30,54 @@ function createGeneration(): ParseGeneration {
 export function createParseScheduler(options: ParseSchedulerOptions) {
   let generation = 0;
   let current = createGeneration();
+  let tail: Promise<void> = Promise.resolve();
+  const activeWaiters = new Set<(owner: ParseGeneration) => void>();
+
+  const invalidate = (owner: ParseGeneration) => {
+    if (owner !== current || !owner.active) return false;
+    owner.active = false;
+    try {
+      options.cancelActive?.();
+    } catch {
+      // The global lane still advances when a browser has already disposed
+      // the old worker or renderer.
+    }
+    return true;
+  };
 
   const beginGeneration = () => {
+    invalidate(current);
     generation += 1;
-    current = createGeneration();
+    current = createGeneration(true);
+    for (const resolve of activeWaiters) resolve(current);
+    activeWaiters.clear();
     return generation;
   };
 
+  const endGeneration = (owner: ParseGeneration) => invalidate(owner);
+
   const captureGeneration = () => current;
+
+  const waitForActiveGeneration = () => {
+    if (current.active) return Promise.resolve(current);
+    return new Promise<ParseGeneration>((resolve) => activeWaiters.add(resolve));
+  };
 
   const enqueue = <T>(
     owner: ParseGeneration,
     courtesyKey: string,
-    run: () => Promise<T>,
+    run: (executionOwner: ParseGeneration) => Promise<T>,
   ): Promise<T> => {
-    const next = owner.tail.then(async () => {
+    const next = tail.then(async () => {
+      // A stale URL must re-enter through the new Canvas's exact demand gate.
+      // Migrating this queued closure directly could parse a full-tier model
+      // inside a replacement lite generation (or the reverse).
+      const effectiveOwner = owner.active ? owner : null;
+      if (!effectiveOwner) throw new ParseGenerationCancelledError();
       // Start a bay's courtesy only when that bay reaches the serial head.
       // Starting it at enqueue lets every downstream courtesy expire behind
       // earlier parses, so it offers no protection at the moment work begins.
-      let courtesy = owner.courtesies.get(courtesyKey);
+      let courtesy = effectiveOwner.courtesies.get(courtesyKey);
       if (!courtesy) {
         courtesy = Promise.resolve()
           .then(options.waitForCourtesy)
@@ -48,11 +85,14 @@ export function createParseScheduler(options: ParseSchedulerOptions) {
             () => undefined,
             () => undefined,
           );
-        owner.courtesies.set(courtesyKey, courtesy);
+        effectiveOwner.courtesies.set(courtesyKey, courtesy);
       }
       await courtesy;
+      if (!effectiveOwner.active) throw new ParseGenerationCancelledError();
       try {
-        return await run();
+        const value = await run(effectiveOwner);
+        if (!effectiveOwner.active) throw new ParseGenerationCancelledError();
+        return value;
       } finally {
         // One parse per turn. A rejection still hands control back and cannot
         // poison the remaining jobs in this generation.
@@ -62,7 +102,7 @@ export function createParseScheduler(options: ParseSchedulerOptions) {
       }
     });
 
-    owner.tail = next.then(
+    tail = next.then(
       () => undefined,
       () => undefined,
     );
@@ -71,7 +111,9 @@ export function createParseScheduler(options: ParseSchedulerOptions) {
 
   return {
     beginGeneration,
+    endGeneration,
     captureGeneration,
+    waitForActiveGeneration,
     enqueue,
     currentGeneration: () => generation,
   };

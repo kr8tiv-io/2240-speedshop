@@ -24,8 +24,8 @@ assert.ok(
   /createParseScheduler/.test(loaders) &&
     /waitForCourtesy: \(\) => untilIdle\(1200, true\)/.test(loaders) &&
     !/untilIdle/.test(parseQueue) &&
-    /owner\.courtesies\.get\(courtesyKey\)/.test(parseScheduler) &&
-    /owner\.courtesies\.set\(courtesyKey, courtesy\)/.test(parseScheduler),
+    /effectiveOwner\.courtesies\.get\(courtesyKey\)/.test(parseScheduler) &&
+    /effectiveOwner\.courtesies\.set\(courtesyKey, courtesy\)/.test(parseScheduler),
   "Each route bay must share one visible-page courtesy instead of delaying every glTF parse.",
 );
 assert.ok(

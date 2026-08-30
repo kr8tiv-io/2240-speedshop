@@ -24,14 +24,18 @@ import { ContactShadow } from "./materials";
 import { getBoot, markShellWarm, markWorldReady, reportBootProgress, stillFor, subscribeBoot } from "./boot";
 import { countLights, installLightPad, lightBudget, setStationLights } from "./lights";
 import {
+  createMeshoptWorkerDecoder,
+  type CancellableMeshoptDecoder,
+  type MeshoptWorkerController,
+} from "./meshoptWorkerDecoder";
+import {
   createRequestPool,
   loadModelRequestAttempt,
   runModelResourceAttempts,
 } from "./modelRequest";
 import {
   createParseScheduler,
-  runWithTimeout,
-  runWithTimeoutFallback,
+  ParseGenerationCancelledError,
   type ParseGeneration,
 } from "./parseScheduler";
 import { createStationRelease } from "./stationLiveness";
@@ -225,10 +229,17 @@ function finishOf(url: string): Finish {
    path twenty years old that cannot take a tab with it. */
 
 /** Wire the loader's decoders. Idempotent; runs before any model loads. */
-export function primeLoaders(_gl: THREE.WebGLRenderer) {
+const RENDERER_PARSE_OWNERS = new WeakMap<THREE.WebGLRenderer, ParseGeneration>();
+
+export function primeLoaders(gl: THREE.WebGLRenderer) {
   /* Nothing needs the live renderer any more. Kept as the one seam where a
      decoder that does would be wired in. */
-  void _gl;
+  // Mount ownership is immutable. A stream notification can re-render an old
+  // Canvas after its successor begins; remapping it would let late cleanup
+  // invalidate the successor's generation.
+  if (!RENDERER_PARSE_OWNERS.has(gl)) {
+    RENDERER_PARSE_OWNERS.set(gl, parseScheduler.captureGeneration());
+  }
 }
 
 /**
@@ -247,32 +258,67 @@ export function primeLoaders(_gl: THREE.WebGLRenderer) {
  * reader to be still. It is the general form of the fix, so a model added next
  * year gets it for free.
  */
-/* ── One parse at a time, per Canvas generation ────────────────────────────
+/* ── One parse at a time across every Canvas generation ───────────────────
    Waiting for stillness is not enough on its own. Half a dozen files land
    within a second of each other, every one of their loaders sees the same
    quiet moment, and they all start parsing in the same tick — six models'
    worth of main-thread work chained back to back, which a profile caught as a
    SIX-SECOND frame with the reader's finger on the glass.
 
-   The queue makes it one at a time, but the whole Canvas generation shares a
-   single bounded motion courtesy. Continuous scroll can delay the first parse
-   briefly; it cannot multiply that delay by every model in the route. */
+   The queue makes it one at a time globally. A replacement Canvas cancels the
+   active worker and inherits the same lane, so old/new generations can never
+   decode concurrently or race the decoder mode. Each generation still owns
+   bounded bay courtesies; continuous scroll cannot multiply them per model. */
 
 const parseScheduler = createParseScheduler({
   waitForCourtesy: () => untilIdle(1200, true),
   yieldControl: () => wait(0),
+  cancelActive: resetMeshoptParseGeneration,
 });
 
 function beginParseGeneration() {
   parseScheduler.beginGeneration();
 }
 
+function endParseGeneration(owner: ParseGeneration) {
+  parseScheduler.endGeneration(owner);
+}
+
 function queueParse<T>(
   owner: ParseGeneration,
   url: string,
-  run: () => Promise<T>,
+  run: (executionOwner: ParseGeneration) => Promise<T>,
 ): Promise<T> {
   return parseScheduler.enqueue(owner, parseCourtesyKey(url), run);
+}
+
+const ACTIVE_MODEL_DEMANDS = new Set<string>();
+const MODEL_DEMAND_WAITERS = new Map<string, Set<() => void>>();
+
+function resetModelDemands() {
+  ACTIVE_MODEL_DEMANDS.clear();
+}
+
+function noteModelDemand(resource: string, owner: ParseGeneration | undefined) {
+  if (!owner?.active || owner !== parseScheduler.captureGeneration()) return;
+  if (ACTIVE_MODEL_DEMANDS.has(resource)) return;
+  ACTIVE_MODEL_DEMANDS.add(resource);
+  const waiters = MODEL_DEMAND_WAITERS.get(resource);
+  if (!waiters) return;
+  MODEL_DEMAND_WAITERS.delete(resource);
+  for (const resolve of waiters) resolve();
+}
+
+function waitForModelDemand(resource: string) {
+  if (ACTIVE_MODEL_DEMANDS.has(resource)) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    let waiters = MODEL_DEMAND_WAITERS.get(resource);
+    if (!waiters) {
+      waiters = new Set();
+      MODEL_DEMAND_WAITERS.set(resource, waiters);
+    }
+    waiters.add(resolve);
+  });
 }
 
 /* ── Asking for the compressed twin by name ─────────────────────────────────
@@ -301,8 +347,9 @@ const MODEL_REQUEST_RETRY_DELAY_MS = 160;
 const MODEL_RESOURCE_ATTEMPTS = 2;
 const MODEL_RESOURCE_RETRY_DELAY_MS = 600;
 const MODEL_PARSE_TIMEOUT_MS = 15_000;
-const MODEL_PARSE_FALLBACK_TIMEOUT_MS = 30_000;
 const PROGRAM_COMPILE_PATIENCE_MS = 15_000;
+const SHELL_FINALIZER_ATTEMPTS = 3;
+const SHELL_FINALIZER_RETRY_DELAY_MS = 400;
 
 type ModelByteOptions = {
   manager?: THREE.LoadingManager;
@@ -445,68 +492,125 @@ class IdleGLTFLoader extends GLTFLoader {
       demanded: true,
     };
     // Match GLTFLoader's manager contract even when the network bytes came
-    // from our early cache: this item ends only after the expensive parse.
-    this.manager.itemStart(url);
+    // from our early cache. Route parking closes the current manager cycle;
+    // a revisit opens a fresh one rather than leaving global progress hung.
+    let managerActive = false;
+    const startManagerItem = () => {
+      if (managerActive) return;
+      managerActive = true;
+      this.manager.itemStart(url);
+    };
+    const endManagerItem = () => {
+      if (!managerActive) return;
+      managerActive = false;
+      this.manager.itemEnd(url);
+    };
+    const waitForLiveModelDemand = async () => {
+      while (true) {
+        while (!parseScheduler.captureGeneration().active) {
+          endManagerItem();
+          await parseScheduler.waitForActiveGeneration();
+        }
+        if (!ACTIVE_MODEL_DEMANDS.has(url)) {
+          endManagerItem();
+          await waitForModelDemand(url);
+          continue;
+        }
+        startManagerItem();
+        return;
+      }
+    };
+    startManagerItem();
     let settled = false;
     const fail = (error: unknown) => {
       if (settled) return;
       settled = true;
       if (onError) onError(error);
       else console.error(error);
-      this.manager.itemError(url);
-      this.manager.itemEnd(url);
+      if (managerActive) this.manager.itemError(url);
+      endManagerItem();
     };
     void runModelResourceAttempts({
       attempts: MODEL_RESOURCE_ATTEMPTS,
       retryDelayMs: MODEL_RESOURCE_RETRY_DELAY_MS,
       run: async () => {
-        const byteRequest = fetchModelBytes(url, options);
-        try {
-          const data = await byteRequest;
-          const parseOwner = parseScheduler.captureGeneration();
-          // `useLoader` owns a global URL cache. A byte request created by an
-          // old Canvas can be reused by its replacement, so parsing joins the
-          // generation that is live when the context-neutral bytes arrive.
-          // Rejecting those bytes as "stale" would permanently cache that
-          // rejection across every later remount.
-          const parseOnce = () =>
-            new Promise<GLTF>((resolve, reject) => {
-              const started = DEBUG ? performance.now() : 0;
-              this.parse(
-                data,
-                this.resourcePath || this.path || "",
-                (gltf) => {
-                  if (DEBUG) {
-                    const ms = Math.round(performance.now() - started);
-                    if (ms > 30) console.log(`[shop] parse ${url.split("/").pop()} ${ms} ms`);
+        // A route-away drains queued CPU work and waits without retaining its
+        // model buffers. A revisit reuses the browser's exact-byte HTTP cache
+        // and joins the newly active Canvas without poisoning useLoader.
+        while (true) {
+          await waitForLiveModelDemand();
+          const byteRequest = fetchModelBytes(url, options);
+          try {
+            const data = await byteRequest;
+            const parseOwner = parseScheduler.captureGeneration();
+            if (!parseOwner.active || !ACTIVE_MODEL_DEMANDS.has(url)) continue;
+            // `useLoader` owns a global URL cache. If the Canvas changed while
+            // bytes were in flight, release this reference and re-enter only
+            // through the replacement renderer's exact-tier demand gate.
+            const parseOnce = (decoder: CancellableMeshoptDecoder | typeof MeshoptDecoder) =>
+              new Promise<GLTF>((resolve, reject) => {
+                const started = DEBUG ? performance.now() : 0;
+                // R3F memoizes one loader instance for every URL. A dedicated
+                // parser per attempt prevents a fallback from mutating decoder
+                // state underneath another cached resource.
+                const parser = new GLTFLoader(this.manager);
+                parser.setCrossOrigin(this.crossOrigin);
+                parser.setRequestHeader(this.requestHeader);
+                parser.setWithCredentials(this.withCredentials);
+                parser.setMeshoptDecoder(decoder as typeof MeshoptDecoder);
+                parser.parse(
+                  data,
+                  this.resourcePath || this.path || "",
+                  (gltf) => {
+                    if (DEBUG) {
+                      const ms = Math.round(performance.now() - started);
+                      if (ms > 30) console.log(`[shop] parse ${url.split("/").pop()} ${ms} ms`);
+                    }
+                    resolve(gltf);
+                  },
+                  reject,
+                );
+              });
+            try {
+              // Bytes are here. The expensive half waits its turn in the queue
+              // for stillness and every earlier model to finish.
+              return await queueParse(
+                parseOwner,
+                url,
+                async (executionOwner) => {
+                  if (!meshoptWorkersEnabled) {
+                    try {
+                      return await parseOnce(MeshoptDecoder);
+                    } catch (error) {
+                      if (!executionOwner.active) throw new ParseGenerationCancelledError();
+                      throw error;
+                    }
                   }
-                  resolve(gltf);
+                  try {
+                    // The decoder owns the timeout so it can finish this exact
+                    // GLTF parser locally instead of launching a duplicate.
+                    return await parseOnce(activeMeshoptWorkerDecoder());
+                  } catch {
+                    if (!executionOwner.active) throw new ParseGenerationCancelledError();
+                    disableMeshoptWorkers();
+                    // The worker parser settled. A clean exact-byte local parse
+                    // is now safe and cannot overlap the abandoned attempt.
+                    try {
+                      return await parseOnce(MeshoptDecoder);
+                    } catch (localError) {
+                      if (!executionOwner.active) throw new ParseGenerationCancelledError();
+                      throw localError;
+                    }
+                  }
                 },
-                reject,
               );
-            });
-          // Bytes are here. The expensive half waits its turn in the queue —
-          // for stillness, and for every other model to be finished with the
-          // main thread.
-          return await queueParse(
-            parseOwner,
-            url,
-            () =>
-              meshoptWorkersEnabled
-                ? runWithTimeoutFallback({
-                    runPrimary: parseOnce,
-                    runFallback: parseOnce,
-                    beforeFallback: disableMeshoptWorkers,
-                    timeoutMs: MODEL_PARSE_TIMEOUT_MS,
-                    fallbackTimeoutMs: MODEL_PARSE_FALLBACK_TIMEOUT_MS,
-                  })
-                : runWithTimeout({
-                    run: parseOnce,
-                    timeoutMs: MODEL_PARSE_FALLBACK_TIMEOUT_MS,
-                  }),
-          );
-        } finally {
-          releaseModelBytes(url, options, byteRequest);
+            } catch (error) {
+              if (error instanceof ParseGenerationCancelledError) continue;
+              throw error;
+            }
+          } finally {
+            releaseModelBytes(url, options, byteRequest);
+          }
         }
       },
     }).then(
@@ -515,50 +619,70 @@ class IdleGLTFLoader extends GLTFLoader {
         reportOpeningModelParsed(url);
         settled = true;
         onLoad(gltf);
-        this.manager.itemEnd(url);
+        endManagerItem();
       },
       fail,
     );
   }
 }
 
-const configureMeshoptWorkerCount =
-  typeof MeshoptDecoder.useWorkers === "function"
-    ? MeshoptDecoder.useWorkers.bind(MeshoptDecoder)
-    : null;
+const MESHOPT_WORKER_COUNT = 2;
+let meshoptWorkerController: MeshoptWorkerController | null = null;
 let meshoptWorkersConfigured = false;
 let meshoptWorkersEnabled = false;
+let meshoptWorkerFallbackLatched = false;
+
+function activeMeshoptWorkerDecoder() {
+  if (!meshoptWorkerController) {
+    meshoptWorkerController = createMeshoptWorkerDecoder({
+      count: MESHOPT_WORKER_COUNT,
+      decodeTimeoutMs: MODEL_PARSE_TIMEOUT_MS,
+      onFallback: () => {
+        // The controller has already moved every outstanding request onto the
+        // exact local decoder inside the same GLTF parser. Only latch future
+        // parses here; cancelling it would abort the recovery we just began.
+        meshoptWorkersEnabled = false;
+        meshoptWorkerFallbackLatched = true;
+      },
+    });
+  }
+  return meshoptWorkerController.decoder;
+}
 
 function enableMeshoptWorkers() {
   if (meshoptWorkersConfigured || typeof window === "undefined") return;
   meshoptWorkersConfigured = true;
-  if (typeof Worker === "undefined" || !configureMeshoptWorkerCount) return;
+  if (
+    meshoptWorkerFallbackLatched ||
+    typeof Worker === "undefined" ||
+    !MeshoptDecoder.supported
+  ) return;
   try {
-    configureMeshoptWorkerCount(2);
+    activeMeshoptWorkerDecoder();
     meshoptWorkersEnabled = true;
   } catch {
     // A restrictive worker-src policy or older WebKit keeps the exact
     // single-thread decoder path. Geometry bytes and decoded output match.
-    // `useWorkers(2)` is not atomic: worker zero may exist when worker one
-    // throws, so explicitly tear any partial pool down before local decoding.
     disableMeshoptWorkers();
   }
 }
 
 function disableMeshoptWorkers() {
   meshoptWorkersEnabled = false;
-  if (!configureMeshoptWorkerCount) return;
-  try {
-    configureMeshoptWorkerCount(0);
-  } catch {
-    // The decoder already falls back to its local WASM path when worker
-    // teardown is unavailable. The model bytes and decoded geometry are exact.
-  }
+  meshoptWorkerFallbackLatched = true;
+  meshoptWorkerController?.cancel(new Error("Meshopt worker parse cancelled for exact local fallback"));
+  meshoptWorkerController = null;
 }
 
-function extendLoader(loader: GLTFLoader) {
+function resetMeshoptParseGeneration() {
+  meshoptWorkersEnabled = false;
+  meshoptWorkersConfigured = false;
+  meshoptWorkerController?.cancel(new Error("Meshopt worker parse superseded by a new Canvas"));
+  meshoptWorkerController = null;
+}
+
+function extendLoader() {
   enableMeshoptWorkers();
-  loader.setMeshoptDecoder(MeshoptDecoder);
 }
 /* ── The stream ─────────────────────────────────────────────────────────────
    Stations mount in order, never more than one new bay in flight, and each one
@@ -630,11 +754,17 @@ let loaderGeneration = 0;
 export function beginLoaderStream() {
   loaderGeneration += 1;
   resetModelRecoveries();
+  // Demand belongs to the exact tier and renderer generation about to mount.
+  // Parked full/lite promises resume only if this Canvas asks for their URL.
+  resetModelDemands();
   // Do not put a new renderer behind promises queued by a Canvas that no
   // longer exists. In-flight old work observes the generation and restores
   // its visibility snapshot before exiting at its next async boundary.
   warmQueue = Promise.resolve();
   beginParseGeneration();
+  // A shared useLoader promise may already be waiting from the prior Canvas,
+  // so configure its replacement pool before active-generation waiters resume.
+  enableMeshoptWorkers();
   unlocked = OPENING;
   PENDING.clear();
   for (const key of WARM_KEYS) PENDING.add(key);
@@ -1484,6 +1614,8 @@ export function preloadOpeningModels(lite: boolean) {
 
 function useShopModel(url: string) {
   const resource = shelf(url);
+  const gl = useThree((state) => state.gl);
+  noteModelDemand(resource, RENDERER_PARSE_OWNERS.get(gl));
   const gltf = useLoader(IdleGLTFLoader, resource, extendLoader) as unknown as GLTF;
   useEffect(() => {
     markModelResourceHealthy(resource);
@@ -2138,9 +2270,17 @@ function restoreComposerOvens() {
 /** Release the only strong renderer-owned cache when its Canvas goes away. */
 export function releaseLoaderRenderer(gl: THREE.WebGLRenderer) {
   const oven = COMPOSER_OVENS.get(gl);
-  if (!oven) return;
-  oven.dispose();
-  COMPOSER_OVENS.delete(gl);
+  if (oven) {
+    oven.dispose();
+    COMPOSER_OVENS.delete(gl);
+  }
+  // Invalidate only the generation this renderer actually owns. A late React
+  // cleanup from an old Canvas must never cancel its already-mounted successor.
+  const parseOwner = RENDERER_PARSE_OWNERS.get(gl);
+  if (parseOwner) {
+    RENDERER_PARSE_OWNERS.delete(gl);
+    endParseGeneration(parseOwner);
+  }
 }
 
 /**
@@ -3254,20 +3394,29 @@ export function WarmScene({
     setWorldFinalizer(finalizer);
     const finish = async () => {
       if (stale()) return;
-      try {
-        // Prove the exact full-size composer as soon as the shell is warm.
-        // This starts the real render loop behind a partially open photographic
-        // safety layer; the final dissolve still waits for station zero.
-        await finalizer();
-        if (stale() || worldFinalizer !== finalizer) return;
-        finalizedWorld = finalizer;
-        markShellWarm();
-        reportWarm("shell");
-      } catch (error) {
-        // Keep the finished photograph. Revealing an unverified renderer is
-        // never a recovery path; under ?perf the reason remains inspectable.
-        if (DEBUG) console.warn("[shop] final composed frame failed; retaining doorway", error);
+      for (let attempt = 1; attempt <= SHELL_FINALIZER_ATTEMPTS; attempt++) {
+        try {
+          // Prove the exact full-size composer as soon as the shell is warm.
+          // This starts the real render loop behind a partially open photographic
+          // safety layer; the final dissolve still waits for station zero.
+          await finalizer();
+          if (stale() || worldFinalizer !== finalizer) return;
+          finalizedWorld = finalizer;
+          markShellWarm();
+          reportWarm("shell");
+          return;
+        } catch (error) {
+          if (stale() || worldFinalizer !== finalizer) return;
+          if (DEBUG) {
+            console.warn(`[shop] shell composer proof ${attempt} failed`, error);
+          }
+          if (attempt < SHELL_FINALIZER_ATTEMPTS) {
+            await wait(SHELL_FINALIZER_RETRY_DELAY_MS * attempt);
+          }
+        }
       }
+      // Keep the finished photograph. Revealing an unverified renderer is
+      // never a recovery path; the bounded attempts remain visible under perf.
     };
 
     /* THE PASSES COMPILE TOO — and `gl.compile` cannot reach them.

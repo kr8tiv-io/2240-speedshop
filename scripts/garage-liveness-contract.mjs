@@ -10,6 +10,7 @@ const shopWorldPath = path.join(root, "components", "shop", "ShopWorld.tsx");
 const schedulerPath = path.join(root, "components", "shop", "parseScheduler.ts");
 const stationLivenessPath = path.join(root, "components", "shop", "stationLiveness.ts");
 const modelRequestPath = path.join(root, "components", "shop", "modelRequest.ts");
+const meshoptDecoderPath = path.join(root, "components", "shop", "meshoptWorkerDecoder.ts");
 
 const loaders = fs.readFileSync(loadersPath, "utf8");
 const walkthrough = fs.readFileSync(walkthroughPath, "utf8");
@@ -55,7 +56,11 @@ async function exerciseScheduler() {
     return;
   }
 
-  const { createParseScheduler, runWithTimeoutFallback } = await import(
+  const {
+    createParseScheduler,
+    ParseGenerationCancelledError,
+    runWithTimeoutFallback,
+  } = await import(
     `${pathToFileURL(schedulerPath).href}?contract=${Date.now()}`
   );
   contract(typeof createParseScheduler === "function", "parse scheduler exports createParseScheduler");
@@ -144,27 +149,117 @@ async function exerciseScheduler() {
     releaseOld = resolve;
   });
   let generationCourtesies = 0;
+  let activeParses = 0;
+  let peakParses = 0;
   const isolated = createParseScheduler({
     waitForCourtesy: async () => {
       generationCourtesies += 1;
     },
     yieldControl: async () => undefined,
+    cancelActive: () => releaseOld?.("cancelled"),
   });
   isolated.beginGeneration();
   const abandonedOwner = isolated.captureGeneration();
+  const abandoned = isolated.enqueue(abandonedOwner, "doorway", async () => {
+    activeParses += 1;
+    peakParses = Math.max(peakParses, activeParses);
+    try {
+      return await oldWork;
+    } finally {
+      activeParses -= 1;
+    }
+  });
+  const abandonedSettled = abandoned.then(
+    () => "resolved",
+    (error) => error?.name,
+  );
+  for (let turn = 0; turn < 6 && activeParses === 0; turn++) await Promise.resolve();
+  assert.equal(activeParses, 1, "old Canvas owns the global parse lane before remount");
   isolated.beginGeneration();
   const freshOwner = isolated.captureGeneration();
-  // A transport owned by the abandoned Canvas resolves late, after the fresh
-  // generation exists. It must still enter only its captured private queue.
-  const abandoned = isolated.enqueue(abandonedOwner, "doorway", () => oldWork);
-  const fresh = isolated.enqueue(freshOwner, "doorway", async () => "fresh");
+  const fresh = isolated.enqueue(freshOwner, "doorway", async () => {
+    activeParses += 1;
+    peakParses = Math.max(peakParses, activeParses);
+    activeParses -= 1;
+    return "fresh";
+  });
   assert.equal(
     await settlesWithin(fresh, 100, "new generation waited behind abandoned parse work"),
     "fresh",
   );
   assert.equal(generationCourtesies, 2, "each live generation owns one courtesy");
-  releaseOld("old");
-  await abandoned;
+  assert.equal(await abandonedSettled, "ParseGenerationCancelledError");
+  assert.equal(peakParses, 1, "old and replacement Canvas parses never overlap");
+
+  let rejectWorkerParse;
+  let hiddenLocalFallbacks = 0;
+  const workerParse = new Promise((_, reject) => {
+    rejectWorkerParse = reject;
+  });
+  const teardown = createParseScheduler({
+    waitForCourtesy: async () => undefined,
+    yieldControl: async () => undefined,
+    cancelActive: () => rejectWorkerParse?.(new Error("worker pool closed")),
+  });
+  teardown.beginGeneration();
+  const rendererOwner = teardown.captureGeneration();
+  let teardownParseStarted = false;
+  const teardownParse = teardown.enqueue(rendererOwner, "doorway", async (executionOwner) => {
+    teardownParseStarted = true;
+    try {
+      return await workerParse;
+    } catch {
+      if (!executionOwner.active) throw new ParseGenerationCancelledError();
+      hiddenLocalFallbacks += 1;
+      return "hidden-local-fallback";
+    }
+  });
+  for (let turn = 0; turn < 6 && !teardownParseStarted; turn++) await Promise.resolve();
+  assert.equal(teardownParseStarted, true);
+  assert.equal(teardown.endGeneration(rendererOwner), true);
+  await assert.rejects(
+    teardownParse,
+    (error) => error?.name === "ParseGenerationCancelledError",
+  );
+  assert.equal(hiddenLocalFallbacks, 0, "route teardown cannot launch a hidden local parse");
+  await assert.rejects(
+    teardown.enqueue(rendererOwner, "engine", async () => {
+      hiddenLocalFallbacks += 1;
+      return "should-not-run";
+    }),
+    (error) => error?.name === "ParseGenerationCancelledError",
+  );
+  assert.equal(hiddenLocalFallbacks, 0, "teardown drains queued model bytes without parsing");
+
+  let resumedOwner = null;
+  const awaitingRevisit = teardown.waitForActiveGeneration().then((activeOwner) => {
+    resumedOwner = activeOwner;
+    return activeOwner;
+  });
+  await Promise.resolve();
+  assert.equal(resumedOwner, null, "route-away resources wait without a live parse owner");
+  teardown.beginGeneration();
+  const replacementOwner = await awaitingRevisit;
+  assert.equal(replacementOwner.active, true);
+  assert.equal(
+    teardown.endGeneration(rendererOwner),
+    false,
+    "late old-renderer cleanup cannot cancel its replacement Canvas",
+  );
+  assert.equal(replacementOwner.active, true);
+  let staleTierParses = 0;
+  await assert.rejects(
+    teardown.enqueue(rendererOwner, "old-full-tier", async () => {
+      staleTierParses += 1;
+      return "wrong-tier";
+    }),
+    (error) => error?.name === "ParseGenerationCancelledError",
+  );
+  assert.equal(
+    staleTierParses,
+    0,
+    "a stale owner cannot migrate queued full-tier work into a lite replacement",
+  );
 
   contract(
     typeof runWithTimeoutFallback === "function",
@@ -222,6 +317,201 @@ async function exerciseScheduler() {
     doubleHangClock.fire(doubleHangClock.activeIds()[0]);
     await assert.rejects(doubleHang, (error) => error?.name === "OperationTimeoutError");
   }
+
+}
+
+async function exerciseMeshoptWorkerCancellation() {
+  if (!fs.existsSync(meshoptDecoderPath)) {
+    failures.push("cancellable Meshopt worker controller exists");
+    return;
+  }
+  const { createMeshoptWorkerDecoder } = await import(
+    `${pathToFileURL(meshoptDecoderPath).href}?contract=${Date.now()}`
+  );
+  contract(
+    typeof createMeshoptWorkerDecoder === "function",
+    "Meshopt worker controller is constructible",
+  );
+  if (typeof createMeshoptWorkerDecoder !== "function") return;
+
+  const workers = [];
+  const createWorker = () => {
+    const worker = {
+      onmessage: null,
+      onerror: null,
+      messages: [],
+      terminated: false,
+      postMessage(message) {
+        this.messages.push(message);
+      },
+      terminate() {
+        this.terminated = true;
+      },
+    };
+    workers.push(worker);
+    return worker;
+  };
+  const controller = createMeshoptWorkerDecoder({ count: 2, createWorker });
+  const first = controller.decoder.decodeGltfBufferAsync(
+    4,
+    3,
+    new Uint8Array([1, 2, 3]),
+    "ATTRIBUTES",
+  );
+  const second = controller.decoder.decodeGltfBufferAsync(
+    3,
+    2,
+    new Uint8Array([4, 5, 6]),
+    "TRIANGLES",
+  );
+  assert.equal(controller.pendingCount(), 2);
+  controller.cancel(new Error("superseded Canvas"));
+  await assert.rejects(first, /superseded Canvas/);
+  await assert.rejects(second, /superseded Canvas/);
+  assert.equal(controller.pendingCount(), 0);
+  assert.ok(workers.every((worker) => worker.terminated), "cancellation terminates the full pool");
+  await assert.rejects(
+    controller.decoder.decodeGltfBufferAsync(1, 1, new Uint8Array([1]), "INDICES"),
+    /closed/,
+  );
+
+  const successWorkers = [];
+  const successful = createMeshoptWorkerDecoder({
+    count: 1,
+    createWorker: () => {
+      const worker = createWorker();
+      successWorkers.push(worker);
+      return worker;
+    },
+  });
+  const decoded = successful.decoder.decodeGltfBufferAsync(
+    2,
+    2,
+    new Uint8Array([7, 8]),
+    "ATTRIBUTES",
+  );
+  const request = successWorkers[0].messages[0];
+  const exact = new Uint8Array([9, 10, 11, 12]);
+  successWorkers[0].onmessage({ data: { id: request.id, ok: true, value: exact } });
+  assert.strictEqual(await decoded, exact);
+  assert.equal(successful.pendingCount(), 0);
+  successful.cancel();
+
+  const fallbackClock = createFakeClock();
+  const fallbackWorkers = [];
+  const localCalls = [];
+  let fallbackNotices = 0;
+  const fallback = createMeshoptWorkerDecoder({
+    count: 2,
+    decodeTimeoutMs: 15_000,
+    clock: fallbackClock.clock,
+    createWorker: () => {
+      const worker = createWorker();
+      fallbackWorkers.push(worker);
+      return worker;
+    },
+    decodeLocal: async (count, size, source, mode) => {
+      localCalls.push({ count, size, source: [...source], mode });
+      return new Uint8Array(count * size).fill(source[0]);
+    },
+    onFallback: () => {
+      fallbackNotices += 1;
+    },
+  });
+  const timedFirst = fallback.decoder.decodeGltfBufferAsync(
+    2,
+    2,
+    new Uint8Array([11, 12]),
+    "ATTRIBUTES",
+  );
+  const timedSecond = fallback.decoder.decodeGltfBufferAsync(
+    3,
+    1,
+    new Uint8Array([21, 22]),
+    "TRIANGLES",
+  );
+  assert.equal(fallbackClock.activeIds().length, 2, "each worker decode owns a deadline");
+  const timedFirstRequest = fallbackWorkers[0].messages[0];
+  fallbackClock.fire(fallbackClock.activeIds()[0]);
+  fallbackWorkers[0].onmessage({
+    data: {
+      id: timedFirstRequest.id,
+      ok: true,
+      value: new Uint8Array([99, 99, 99, 99]),
+    },
+  });
+  assert.deepEqual([...await timedFirst], [11, 11, 11, 11]);
+  assert.deepEqual([...await timedSecond], [21, 21, 21]);
+  assert.equal(fallbackNotices, 1, "one timeout switches the whole parser exactly once");
+  assert.equal(localCalls.length, 2, "outstanding requests continue locally in the same parser");
+  assert.equal(fallback.pendingCount(), 0);
+  assert.equal(fallbackClock.activeIds().length, 0, "fallback clears every worker deadline");
+  assert.ok(
+    fallbackWorkers.every((worker) => worker.terminated),
+    "in-parser fallback terminates the full worker pool",
+  );
+  const workerMessages = fallbackWorkers.reduce(
+    (total, worker) => total + worker.messages.length,
+    0,
+  );
+  assert.deepEqual(
+    [...await fallback.decoder.decodeGltfBufferAsync(
+      2,
+      1,
+      new Uint8Array([31]),
+      "INDICES",
+    )],
+    [31, 31],
+  );
+  assert.equal(
+    fallbackWorkers.reduce((total, worker) => total + worker.messages.length, 0),
+    workerMessages,
+    "future requests stay local without restarting the dead pool",
+  );
+  fallback.cancel();
+
+  const localCancelClock = createFakeClock();
+  let releaseLocalReady;
+  let cancelledLocalDecodes = 0;
+  const localCancellation = createMeshoptWorkerDecoder({
+    count: 1,
+    clock: localCancelClock.clock,
+    createWorker,
+    localReady: new Promise((resolve) => {
+      releaseLocalReady = resolve;
+    }),
+    decodeLocal: () => {
+      cancelledLocalDecodes += 1;
+      return new Uint8Array([41, 41]);
+    },
+  });
+  const locallyRecovering = localCancellation.decoder.decodeGltfBufferAsync(
+    2,
+    1,
+    new Uint8Array([41]),
+    "ATTRIBUTES",
+  );
+  localCancelClock.fire(localCancelClock.activeIds()[0]);
+  await Promise.resolve();
+  const localCancellationAssertion = assert.rejects(
+    locallyRecovering,
+    /replacement Canvas owns the route/,
+  );
+  localCancellation.cancel(new Error("replacement Canvas owns the route"));
+  await localCancellationAssertion;
+  releaseLocalReady?.();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(
+    cancelledLocalDecodes,
+    0,
+    "cancelled local readiness cannot wake old-Canvas decode work",
+  );
+  assert.equal(
+    localCancellation.pendingCount(),
+    0,
+    "generation cancellation also releases an in-parser local recovery",
+  );
 }
 
 async function exerciseStationLiveness() {
@@ -471,25 +761,55 @@ contract(
   "model parsing does not wait 1.2 seconds for every model",
 );
 contract(
-  /beginLoaderStream\(\)[\s\S]{0,500}beginParseGeneration\(\)/.test(loaders),
-  "new Canvas lifecycle begins an isolated parse generation",
+  /cancelActive: resetMeshoptParseGeneration/.test(loaders) &&
+    /beginLoaderStream\(\)[\s\S]{0,500}beginParseGeneration\(\)/.test(loaders),
+  "new Canvas lifecycle cancels the old worker before inheriting the global parse lane",
 );
 contract(
-  /run: async \(\) => \{[\s\S]{0,180}const data = await byteRequest;[\s\S]{0,120}const parseOwner = parseScheduler\.captureGeneration\(\)/.test(loaders) &&
+  /await parseScheduler\.waitForActiveGeneration\(\)/.test(loaders) &&
+    /const data = await byteRequest;[\s\S]{0,180}const parseOwner = parseScheduler\.captureGeneration\(\)/.test(loaders) &&
+    /if \(!parseOwner\.active \|\| !ACTIVE_MODEL_DEMANDS\.has\(url\)\) continue/.test(loaders) &&
     /queueParse\(\s*parseOwner,\s*url,/.test(loaders) &&
+    /error instanceof ParseGenerationCancelledError\) continue/.test(loaders) &&
     !/ownerGeneration/.test(loaders),
-  "late shared useLoader bytes join the live parse generation instead of poisoning its cache",
+  "late shared bytes release while parked and rejoin a live generation without poisoning cache",
+);
+contract(
+  /RENDERER_PARSE_OWNERS = new WeakMap/.test(loaders) &&
+    /if \(!RENDERER_PARSE_OWNERS\.has\(gl\)\)[\s\S]{0,120}RENDERER_PARSE_OWNERS\.set\(gl, parseScheduler\.captureGeneration\(\)\)/.test(loaders) &&
+    /const parseOwner = RENDERER_PARSE_OWNERS\.get\(gl\)/.test(loaders) &&
+    /endParseGeneration\(parseOwner\)/.test(loaders),
+  "immutable renderer ownership prevents late old cleanup from cancelling its successor",
+);
+contract(
+  /let managerActive = false/.test(loaders) &&
+    /const startManagerItem = \(\)/.test(loaders) &&
+    /const endManagerItem = \(\)/.test(loaders) &&
+    /while \(!parseScheduler\.captureGeneration\(\)\.active\)[\s\S]{0,180}endManagerItem\(\);[\s\S]{0,180}await parseScheduler\.waitForActiveGeneration\(\)/.test(loaders) &&
+    /await waitForLiveModelDemand\(\);[\s\S]{0,180}const byteRequest = fetchModelBytes/.test(loaders),
+  "parked loader promises close global manager progress and reopen only on a live Canvas",
+);
+contract(
+  /resetModelDemands\(\);[\s\S]{0,420}beginParseGeneration\(\)/.test(loaders) &&
+    /if \(!owner\?\.active \|\| owner !== parseScheduler\.captureGeneration\(\)\) return/.test(loaders) &&
+    /if \(!ACTIVE_MODEL_DEMANDS\.has\(url\)\)[\s\S]{0,180}await waitForModelDemand\(url\)/.test(loaders) &&
+    /const data = await byteRequest;[\s\S]{0,180}if \(!parseOwner\.active \|\| !ACTIVE_MODEL_DEMANDS\.has\(url\)\) continue/.test(loaders) &&
+    /noteModelDemand\(resource, RENDERER_PARSE_OWNERS\.get\(gl\)\);[\s\S]{0,120}useLoader\(IdleGLTFLoader, resource/.test(loaders),
+  "parked resources resume only when the new renderer demands the same exact tier URL",
 );
 contract(
   /return \(\) => \{[\s\S]{0,180}if \(worldFinalizer === finalizer\) setWorldFinalizer\(null\);[\s\S]{0,120}if \(finalizedWorld === finalizer\) finalizedWorld = null;[\s\S]{0,260}revealFinalizing = null;/.test(loaders),
   "WarmScene unmount releases finalizer closures that retain the disposed renderer",
 );
 contract(
-  /configureMeshoptWorkerCount\(2\)/.test(loaders) &&
+  /createMeshoptWorkerDecoder/.test(loaders) &&
+    /MESHOPT_WORKER_COUNT = 2/.test(loaders) &&
     /MODEL_PARSE_TIMEOUT_MS = 15_000/.test(loaders) &&
-    /runWithTimeoutFallback/.test(loaders) &&
-    /disableMeshoptWorkers/.test(loaders),
-  "meshopt uses two workers with a bounded exact-byte single-thread fallback",
+    /decodeTimeoutMs: MODEL_PARSE_TIMEOUT_MS/.test(loaders) &&
+    /onFallback: \(\) => \{[\s\S]{0,420}meshoptWorkersEnabled = false;[\s\S]{0,160}meshoptWorkerFallbackLatched = true;/.test(loaders) &&
+    /return await parseOnce\(MeshoptDecoder\)/.test(loaders) &&
+    !/configureMeshoptWorkerCount/.test(loaders),
+  "meshopt uses two cancellable workers with an in-parser exact local fallback",
 );
 contract(
   /function parseCourtesyKey\(url: string\)/.test(loaders) &&
@@ -610,9 +930,19 @@ contract(
   "transient model failures retry once per exact resource without clone races",
 );
 contract(
-  /meshoptWorkersEnabled[\s\S]{0,700}fallbackTimeoutMs: MODEL_PARSE_FALLBACK_TIMEOUT_MS/.test(loaders) &&
-    /: runWithTimeout\(\{[\s\S]{0,180}run: parseOnce,[\s\S]{0,180}timeoutMs: MODEL_PARSE_FALLBACK_TIMEOUT_MS/.test(loaders),
-  "worker and exact single-thread parse paths both have independent liveness bounds",
+  /return await parseOnce\(activeMeshoptWorkerDecoder\(\)\)/.test(loaders) &&
+    /if \(!executionOwner\.active\) throw new ParseGenerationCancelledError\(\)/.test(loaders) &&
+    /disableMeshoptWorkers\(\);[\s\S]{0,420}return await parseOnce\(MeshoptDecoder\)/.test(loaders) &&
+    !/onTimeout: disableMeshoptWorkers/.test(loaders) &&
+    !/MODEL_PARSE_FALLBACK_TIMEOUT_MS/.test(loaders),
+  "worker timeout continues inside one parser and stale generations settle before retry",
+);
+contract(
+  /SHELL_FINALIZER_ATTEMPTS = 3/.test(loaders) &&
+    /for \(let attempt = 1; attempt <= SHELL_FINALIZER_ATTEMPTS; attempt\+\+\)/.test(loaders) &&
+    /await finalizer\(\)[\s\S]{0,240}finalizedWorld = finalizer;[\s\S]{0,160}reportWarm\("shell"\)/.test(loaders) &&
+    /await wait\(SHELL_FINALIZER_RETRY_DELAY_MS \* attempt\)/.test(loaders),
+  "a transient shell composer failure cannot permanently park the doorway",
 );
 contract(
   /const nextFrameWithin[\s\S]{0,420}window\.requestAnimationFrame\(finish\)[\s\S]{0,160}window\.setTimeout\(finish, timeoutMs\)/.test(loaders) &&
@@ -644,6 +974,7 @@ await exerciseScheduler();
 if (!schedulerOnly) {
   await exerciseStationLiveness();
   await exerciseModelRequestLiveness();
+  await exerciseMeshoptWorkerCancellation();
 }
 
 if (failures.length > 0) {

@@ -53,6 +53,11 @@ assert.match(
   "The doorway dissolve must submit the complete route through the proved composer.",
 );
 assert.match(
+  loaders,
+  /SHELL_FINALIZER_ATTEMPTS = 3[\s\S]*for \(let attempt = 1; attempt <= SHELL_FINALIZER_ATTEMPTS; attempt\+\+\)[\s\S]{0,700}await finalizer\(\)[\s\S]{0,500}reportWarm\("shell"\)[\s\S]{0,700}SHELL_FINALIZER_RETRY_DELAY_MS \* attempt/,
+  "A transient bootstrap composer failure must retry before the doorway can remain parked.",
+);
+assert.match(
   walkthrough,
   /const preloadShopWorld = \(\)/,
   "The split garage runtime needs a cached proximity preload.",
@@ -67,9 +72,15 @@ assert.match(
   /preloadOpeningGarage/,
   "The exact opening models should warm their bytes before the doorway.",
 );
+const idleLoaderSource = loaders.slice(
+  loaders.indexOf("class IdleGLTFLoader extends GLTFLoader"),
+  loaders.indexOf("const MESHOPT_WORKER_COUNT"),
+);
+assert.match(loaders, /const MODEL_BYTE_CACHE = new Map<string, Promise<ArrayBuffer>>\(\)/);
+assert.match(loaders, /function fetchModelBytes/);
 assert.match(
-  loaders,
-  /const MODEL_BYTE_CACHE = new Map<string, Promise<ArrayBuffer>>\(\)[\s\S]*function fetchModelBytes[\s\S]*class IdleGLTFLoader extends GLTFLoader[\s\S]{0,1400}fetchModelBytes\(url/,
+  idleLoaderSource,
+  /fetchModelBytes\(url/,
   "Opening and mounted loads must consume the same lossless byte cache.",
 );
 assert.match(
