@@ -59,6 +59,10 @@ const POST_HERO_PRELOAD_TIMEOUT_MS = 1_200;
 /** A reader may keep scrolling. Stillness is the preferred compile window,
  * not permission to leave the real garage unstarted indefinitely. */
 const MOUNT_DEADLINE_MS = 3_200;
+/** Once the reader is inside the shop's seven-viewport lead corridor, the
+ * upcoming world outranks an opening hero that still has not proved a frame.
+ * The shop remains offscreen and frame-parked while its sliced warm-up starts. */
+const PROXIMITY_MOUNT_TIMEOUT_MS = 1_200;
 
 const ShopWorld = dynamic(() => (shopWorldModule ??= import("./ShopWorld")).then((m) => m.ShopWorld), {
   ssr: false,
@@ -187,20 +191,22 @@ export function WalkthroughWorld() {
        A fast scroller keeps the fully graded boot-light until they stop. */
     let warmTimer = 0;
     let mountDeadline = 0;
+    let proximityDeadline = 0;
     let warmNear = false;
     let warmLatched = false;
     let heroSettled = (() => {
       const boot = getHeroBootSnapshot();
       return boot.sceneReady || boot.failed;
     })();
-    const mountWorld = (deadline = false) => {
-      if (!run || warmLatched || !heroSettled) return;
-      if (deadline || (warmNear && stillFor() >= 900)) {
+    const mountWorld = (forced = false) => {
+      if (!run || warmLatched || (!heroSettled && !forced)) return;
+      if (forced || (warmNear && stillFor() >= 900)) {
         warmLatched = true;
         setMounted(true);
         warm.disconnect();
         window.clearTimeout(warmTimer);
         window.clearTimeout(mountDeadline);
+        window.clearTimeout(proximityDeadline);
         return;
       }
       if (warmNear) warmTimer = window.setTimeout(() => mountWorld(false), 150);
@@ -224,6 +230,15 @@ export function WalkthroughWorld() {
         warmNear = entry.isIntersecting;
         if (warmNear) {
           if (run) void preloadShopWorld();
+          if (!warmLatched && !proximityDeadline) {
+            proximityDeadline = window.setTimeout(
+              () => mountWorld(true),
+              PROXIMITY_MOUNT_TIMEOUT_MS,
+            );
+          }
+        } else {
+          window.clearTimeout(proximityDeadline);
+          proximityDeadline = 0;
         }
         window.clearTimeout(warmTimer);
         if (warmNear) warmTimer = window.setTimeout(() => mountWorld(false), 150);
@@ -287,6 +302,7 @@ export function WalkthroughWorld() {
       warm.disconnect();
       window.clearTimeout(warmTimer);
       window.clearTimeout(mountDeadline);
+      window.clearTimeout(proximityDeadline);
       draw.disconnect();
       document.removeEventListener("scroll", fade, { capture: true });
       window.removeEventListener("resize", measure);

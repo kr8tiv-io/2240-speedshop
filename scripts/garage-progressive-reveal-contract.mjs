@@ -44,6 +44,16 @@ assert.match(
   /MOUNT_DEADLINE_MS/,
   "Continuous scrolling needs a bounded shop mount deadline.",
 );
+assert.match(
+  walkthrough,
+  /PROXIMITY_MOUNT_TIMEOUT_MS/,
+  "The garage lead corridor must outrank an opening hero that has not settled.",
+);
+assert.match(
+  walkthrough,
+  /\(!heroSettled && !forced\)/,
+  "A bounded proximity mount must be allowed to proceed before hero readiness.",
+);
 assert.doesNotMatch(
   walkthrough,
   /heroSettled && stillFor\(\) >= 900/,

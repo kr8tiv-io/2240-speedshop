@@ -46,6 +46,55 @@ async function scrollTo(page, selector, progress = 0) {
   assert.ok(found, `${selector} was not found`);
 }
 
+async function continuouslyScrollTo(page, selector, progress, duration) {
+  const result = await page.evaluate(
+    ({ selector, progress, duration }) =>
+      new Promise((resolve) => {
+        const element = document.querySelector(selector);
+        if (!element) return resolve(null);
+        const rect = element.getBoundingClientRect();
+        const from = window.scrollY;
+        const to =
+          rect.top +
+          window.scrollY +
+          progress * Math.max(1, rect.height - window.innerHeight);
+        const started = performance.now();
+        let frames = 0;
+        const tick = (now) => {
+          const t = Math.min(1, (now - started) / duration);
+          const eased = t * t * (3 - 2 * t);
+          const y = from + (to - from) * eased;
+          window.__lenis2240?.scrollTo(y, { immediate: true, force: true });
+          window.scrollTo(0, y);
+          frames += 1;
+          if (t < 1) requestAnimationFrame(tick);
+          else {
+            resolve({
+              frames,
+              elapsed: performance.now() - started,
+              stage: document.querySelector("[data-shop-stage]")?.getAttribute("data-shop-stage"),
+              mounted: Boolean(document.querySelector("[data-shop-world]")),
+              heroRuntime: document
+                .querySelector("[data-hero-runtime]")
+                ?.getAttribute("data-hero-runtime"),
+              heroSceneReady: document
+                .querySelector("[data-hero-scene-ready]")
+                ?.getAttribute("data-hero-scene-ready"),
+              stages: window.__releaseAudit?.shopStages || [],
+              shopResources: performance
+                .getEntriesByType("resource")
+                .filter((entry) => /ShopWorld|models-(?:opt|mobile)/i.test(entry.name)).length,
+            });
+          }
+        };
+        requestAnimationFrame(tick);
+      }),
+    { selector, progress, duration },
+  );
+  assert.ok(result, `${selector} was not found`);
+  return result;
+}
+
 async function auditSize(browser, size) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
@@ -187,7 +236,21 @@ async function auditSize(browser, size) {
   );
 
   if (size.garage) {
-    await scrollTo(page, "#walkthrough-runway", 0.18);
+    const arrival = await continuouslyScrollTo(
+      page,
+      "#walkthrough-runway",
+      0.18,
+      size.name === "desktop" ? 6_000 : 9_000,
+    );
+    assert.ok(
+      arrival.mounted,
+      `${size.name}: continuous scrolling reached the garage before its real runtime mounted: ${JSON.stringify(arrival)}`,
+    );
+    pass(
+      size.name,
+      "continuous scrolling cannot outrun garage startup",
+      `${Math.round(arrival.elapsed)} ms / ${arrival.frames} frames; arrival stage ${arrival.stage}`,
+    );
     await page.waitForFunction(
       () => {
         const host = document.querySelector("[data-shop-stage]");
