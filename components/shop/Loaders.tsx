@@ -483,12 +483,10 @@ const WARM_KEYS = [
   ...Array.from({ length: STATION_COUNT }, (_, i) => String(i)),
   "5-gallery",
 ];
-/* The photograph protects the only dangerous transition: building the first
-   full-size composed frame. Keep it for the shell and the doorway subject, so
-   neither can submit hundreds of cold bindings on the frame after the final
-   dissolve. The shell begins moving beneath a partial safety layer as soon as
-   its exact composer is proved; later bays continue behind that moving world. */
-const REVEAL_WARM_KEYS = ["shell", "0"];
+/* Keep the elegant photograph until the route the visitor can immediately
+   scroll is complete. The camera frontier remains as a safety invariant, but
+   an ordinary entry never sees it pause on a cold downstream bay. */
+const REVEAL_WARM_KEYS = [...WARM_KEYS];
 const PENDING = new Set<string>(WARM_KEYS);
 const REVEAL_PENDING = new Set<string>(REVEAL_WARM_KEYS);
 const WARMED = new Set<string>();
@@ -1134,8 +1132,12 @@ function orientOf(box: THREE.Box3, orient: Orient): THREE.Euler {
    stay the desktop paths, so the `PAINTED`/`BARE` finish lookups still match. */
 const MOBILE_BASE = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/models-mobile${VERSION}/`;
 
+function tierUrl(url: string, lite: boolean) {
+  return lite ? url.replace(BASE, MOBILE_BASE) : url;
+}
+
 function shelf(url: string) {
-  return phoneTier ? url.replace(BASE, MOBILE_BASE) : url;
+  return tierUrl(url, phoneTier);
 }
 
 const OPENING_MODELS = [
@@ -1157,6 +1159,87 @@ const OPENING_PRELOAD_COUNT = OPENING_MODELS.length;
 const OPENING_MODEL_NAMES = new Set(
   OPENING_MODELS.map((url) => url.slice(url.lastIndexOf("/") + 1)),
 );
+
+/* Exact first-use order for the remaining route. Every entry is introduced
+   once, in the first bay that needs it; repeated scene instances still share
+   the same R3F resource. This preserves opening vehicle priority while the
+   two transport workers continue through all 71 lossless model files. */
+const ROUTE_MODEL_GROUPS = [
+  OPENING_MODELS,
+  [
+    M.challenger,
+    M.coupeHoodUp,
+    M.wheelStack,
+    M.tirePump,
+    M.oilCan,
+    M.funnel,
+    M.droplight,
+    M.powerBox,
+    M.toolCart,
+  ],
+  [
+    M.hookChain,
+    M.sparkPlug,
+    M.battery,
+    M.metalJug,
+    M.pipesIndustrial,
+    M.jumperCables,
+    M.benchCluttered,
+    M.partsCabinet,
+    M.toolChest,
+    M.drill,
+    M.hammer,
+    M.pliers,
+    M.barrel,
+    M.gasTank,
+    M.crate,
+    M.boxes,
+  ],
+  [
+    M.benchVice,
+    M.lubricantSpray,
+    M.wrenchAdjustable,
+    M.ammoBox,
+    M.lampCaged,
+    M.benchAnvil,
+    M.benchGrinder,
+    M.prewarDonor,
+    M.weldingCart,
+    M.propaneBottle,
+    M.toolboxMetal,
+    M.barrelC,
+    M.primerShell,
+    M.rustedShell,
+    M.tyreBare,
+    M.ladder,
+    M.stool,
+  ],
+  [
+    M.compressor,
+    M.stoolB,
+    M.gasCan,
+    M.storageCart,
+    M.barrelA,
+    M.convertible,
+  ],
+  [
+    M.desk,
+    M.rack,
+    M.shelving,
+    M.tyreStack,
+    M.palletJack,
+    M.metalDoor,
+    M.shelfWooden,
+    M.coveredProject,
+  ],
+  [
+    M.drumsRow,
+    M.serviceRamp,
+    M.tyreTruck,
+    M.gasBottle,
+  ],
+] as const;
+const ROUTE_PREFETCH_MODELS = [...new Set(ROUTE_MODEL_GROUPS.flat())];
 type OpeningTier = "full" | "lite";
 const PARSED_OPENING_MODELS: Record<OpeningTier, Set<string>> = {
   full: new Set<string>(),
@@ -1190,25 +1273,24 @@ function reportOpeningModelParsed(url: string) {
   PARSED_OPENING_MODELS[tier].add(canonical);
   if ((phoneTier ? "lite" : "full") === tier) reportParsedOpeningProgress(tier);
 }
-const PRELOADED_OPENING_TIERS = new Set<"full" | "lite">();
+const PRELOADED_ROUTE_TIERS = new Set<"full" | "lite">();
 const PREFETCH_CONCURRENCY = 2;
 
 /**
- * Fill the exact byte cache consumed by station zero while the visitor is
- * still in the film. The mounted loader awaits these same promises, so it
- * cannot race or duplicate a request.
+ * Fill the exact byte cache in first-use tour order while the visitor is still
+ * approaching the garage. The mounted loader awaits these same promises, so
+ * it cannot race or duplicate a request.
  * Parsing remains one-file-at-a-time and no GPU upload or shader work begins
  * until the real Canvas reaches its existing warm gate.
  */
 export function preloadOpeningModels(lite: boolean) {
   const tier = lite ? "lite" : "full";
-  if (PRELOADED_OPENING_TIERS.has(tier)) return;
-  PRELOADED_OPENING_TIERS.add(tier);
-  const base = lite ? MOBILE_BASE : BASE;
-  const urls = OPENING_MODELS.map((url) => url.replace(BASE, base));
+  if (PRELOADED_ROUTE_TIERS.has(tier)) return;
+  PRELOADED_ROUTE_TIERS.add(tier);
+  const urls = ROUTE_PREFETCH_MODELS.map((url) => tierUrl(url, lite));
   // Two lossless transfers at a time keep cellular congestion low. This fills
-  // the exact byte cache IdleGLTFLoader consumes later; parsing remains behind
-  // the real 900ms-still garage mount gate instead of interrupting the film.
+  // the exact byte cache IdleGLTFLoader consumes later; parsing remains serial
+  // in the parked Canvas instead of interrupting the visible film in a burst.
   const pending = [...urls];
   for (let worker = 0; worker < Math.min(PREFETCH_CONCURRENCY, pending.length); worker++) {
     void (async () => {

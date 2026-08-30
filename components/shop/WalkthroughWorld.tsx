@@ -10,7 +10,7 @@ import {
   subscribeHeroBoot,
 } from "@/components/home/hero-boot";
 import { useUIOverlay } from "@/components/ui-overlay";
-import { beginWorldBoot, markWorldSkipped, noteMotion, stillFor, subscribeBoot } from "./boot";
+import { beginWorldBoot, markWorldSkipped, noteMotion, subscribeBoot } from "./boot";
 import {
   RUNWAY_ID,
   measureRunway,
@@ -186,12 +186,9 @@ export function WalkthroughWorld() {
 
     measureRunway();
 
-    /* Warm gate: five viewports out, but only after the reader has paused.
-       Linking the full HDR/AO/lens graph is the shop's one non-interruptible
-       driver task. Starting it on a fixed clock froze the hero film; starting
-       it inside a continuous scroll merely moved that freeze later. Proximity
-       supplies lead time, and real scroll stillness supplies a safe moment.
-       A fast scroller keeps the fully graded boot-light until they stop. */
+    /* Warm gate: five viewports out, after the hero has settled. The Canvas is
+       parked and hidden, so proximity supplies maximum lead time while its
+       scheduler continues to pace exact parse/upload/compile work. */
     let warmTimer = 0;
     let warmNear = false;
     let warmLatched = false;
@@ -202,24 +199,21 @@ export function WalkthroughWorld() {
     })();
     const mountWorld = () => {
       if (!run || warmLatched || !heroSettled) return;
-      if (warmNear && stillFor() >= 900) {
-        warmLatched = true;
-        warm.disconnect();
-        window.clearTimeout(warmTimer);
-        void preloadShopWorld()
-          .then((module) => {
-            if (cancelled) return;
-            module.prepareGarageMount();
-            setMounted(true);
-          })
-          .catch(() => {
-            if (cancelled) return;
-            warmLatched = false;
-            if (warmNear) warmTimer = window.setTimeout(mountWorld, 500);
-          });
-        return;
-      }
-      if (warmNear) warmTimer = window.setTimeout(mountWorld, 150);
+      if (!warmNear) return;
+      warmLatched = true;
+      warm.disconnect();
+      window.clearTimeout(warmTimer);
+      void preloadShopWorld()
+        .then((module) => {
+          if (cancelled) return;
+          module.prepareGarageMount();
+          setMounted(true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          warmLatched = false;
+          if (warmNear) warmTimer = window.setTimeout(mountWorld, 500);
+        });
     };
     const unsubscribeHero = subscribeHeroBoot(() => {
       const boot = getHeroBootSnapshot();

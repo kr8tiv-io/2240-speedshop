@@ -37,8 +37,8 @@ assert.match(
 
 assert.match(
   loaders,
-  /const REVEAL_WARM_KEYS = \["shell", "0"\]/,
-  "The doorway may wait for the verified shell and first subject, not the unrelated second bay.",
+  /const REVEAL_WARM_KEYS = \[\.\.\.WARM_KEYS\]/,
+  "The doorway must hold its elegant veil until the complete seven-stop route is warm.",
 );
 
 const warmScene = loaders.slice(loaders.indexOf("export function WarmScene"));
@@ -50,7 +50,7 @@ assert.match(
 assert.match(
   loaders,
   /finalizedWorld === worldFinalizer[\s\S]{0,180}REVEAL_PENDING\.size === 0[\s\S]{0,180}markWorldReady\(\)/,
-  "The final doorway dissolve must require both a proved composer and the opening subject.",
+  "The final doorway dissolve must require a proved composer and every route warm key.",
 );
 assert.match(
   walkthrough,
@@ -104,8 +104,8 @@ assert.match(
 );
 assert.match(
   walkthrough,
-  /if \(warmNear && stillFor\(\) >= 900\)/,
-  "The full garage must mount in the lead corridor after a real reading pause.",
+  /if \(!warmNear\) return;[\s\S]{0,300}preloadShopWorld\(\)/,
+  "The parked garage must mount in the lead corridor without waiting for scroll stillness.",
 );
 assert.doesNotMatch(
   walkthrough,

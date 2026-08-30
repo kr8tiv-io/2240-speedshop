@@ -15,6 +15,20 @@ const shopWorld = fs.readFileSync(shopWorldPath, "utf8");
 const failures = [];
 const schedulerOnly = process.argv.includes("--scheduler");
 
+function keysBetween(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  if (start < 0 || end < 0) return [];
+  return [...source.slice(start, end).matchAll(/\bM\.([A-Za-z0-9_]+)/g)].map((match) => match[1]);
+}
+
+function modelLibraryKeys() {
+  const start = loaders.indexOf("export const M = {");
+  const end = loaders.indexOf("} as const;", start);
+  if (start < 0 || end < 0) return [];
+  return [...loaders.slice(start, end).matchAll(/^\s{2}([A-Za-z0-9_]+):/gm)].map((match) => match[1]);
+}
+
 function contract(condition, message) {
   if (!condition) failures.push(message);
 }
@@ -146,13 +160,26 @@ contract(
   /const REVEAL_WARM_KEYS = (?:\[\.\.\.WARM_KEYS\]|WARM_KEYS)/.test(loaders),
   "garage reveal waits for the complete warm route",
 );
+const libraryKeys = modelLibraryKeys();
+const openingKeys = keysBetween(loaders, "const OPENING_MODELS", "const OPENING_PRELOAD_COUNT");
+const routeKeys = keysBetween(loaders, "const ROUTE_MODEL_GROUPS", "const ROUTE_PREFETCH_MODELS");
+const manifestKeys = [...openingKeys, ...routeKeys];
 contract(
-  /const ROUTE_PREFETCH_MODELS = [\s\S]{0,1000}new Set/.test(loaders) &&
-    /OPENING_MODELS[\s\S]{0,500}Object\.values\(M\)/.test(loaders),
-  "lossless byte prefetch covers every current model with opening priority and deduplication",
+  /const ROUTE_MODEL_GROUPS = \[\s*OPENING_MODELS,/.test(loaders) &&
+    /const ROUTE_PREFETCH_MODELS = \[\.\.\.new Set\(ROUTE_MODEL_GROUPS\.flat\(\)\)\]/.test(loaders) &&
+    libraryKeys.length === 71 &&
+    manifestKeys.length === libraryKeys.length &&
+    new Set(manifestKeys).size === manifestKeys.length &&
+    libraryKeys.every((key) => manifestKeys.includes(key)),
+  "lossless byte prefetch covers all 71 models once, in opening-first tour order",
 );
 contract(
-  /const mountWorld = \(\) => \{[\s\S]{0,400}if \(warmNear\) \{[\s\S]{0,300}preloadShopWorld/.test(walkthrough) &&
+  /const PREFETCH_CONCURRENCY = 2/.test(loaders) &&
+    /ROUTE_PREFETCH_MODELS\.map\(\(url\) => tierUrl\(url, lite\)\)/.test(loaders),
+  "full-route transport remains bounded to two exact tier-matched requests",
+);
+contract(
+  /const mountWorld = \(\) => \{[\s\S]{0,300}if \(!warmNear\) return;[\s\S]{0,300}preloadShopWorld/.test(walkthrough) &&
     !/mountWorld[\s\S]{0,500}stillFor\(\) >= 900/.test(walkthrough),
   "parked Canvas mounts on approach without a 900 ms stillness prerequisite",
 );

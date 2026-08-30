@@ -105,22 +105,22 @@ assert.ok(
   "The shop may not start on a fixed clock while the opening film is still compiling.",
 );
 assert.ok(
-  /const REVEAL_WARM_KEYS = \["shell", "0"\]/.test(loaders) &&
+  /const REVEAL_WARM_KEYS = \[\.\.\.WARM_KEYS\]/.test(loaders) &&
     /const REVEAL_PENDING = new Set<string>\(REVEAL_WARM_KEYS\)/.test(loaders),
-  "The final photographic dissolve must wait for the verified building and doorway subject, not the unrelated second bay.",
+  "The final photographic dissolve must wait for the verified complete garage route.",
 );
 assert.ok(
   /REVEAL_PENDING\.delete\(key\)/.test(loaders) &&
     /finalizedWorld === worldFinalizer[\s\S]*REVEAL_PENDING\.size === 0[\s\S]*markWorldReady\(\)/.test(loaders),
-  "The doorway may dissolve only after the shell's composed-frame proof and station-zero first-use both exist.",
+  "The doorway may dissolve only after the shell proof and all seven station first-uses exist.",
 );
 assert.ok(
   /if \(PENDING\.size === 0\) restoreComposerOvens\(\)/.test(loaders),
   "The full-tour warm tracker must retain the cheap composer oven until every later bay is first-used.",
 );
 assert.ok(
-  !/finalizingWorld \|\| PENDING\.size !== 0 \|\| !worldFinalizer/.test(loaders),
-  "Full-tour readiness may not hold the already-warm 3D entrance behind a static photograph.",
+  /const WARM_KEYS = \[[\s\S]{0,180}STATION_COUNT[\s\S]{0,180}"5-gallery"/.test(loaders),
+  "Complete-route readiness must include every numbered bay and the gallery.",
 );
 assert.ok(
   /const OVEN_START_BATCH = phoneTier \? 12 : 1/.test(pacedWarm) &&
