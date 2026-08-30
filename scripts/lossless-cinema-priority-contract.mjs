@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
 const root = new URL("../", import.meta.url);
@@ -35,8 +36,8 @@ const [cinema, intentLink, nav, hero, cropScript, purgeScript, deployScript] =
   ]);
 
 const [desktopStill, mobileStill] = await Promise.all([
-  sharp(new URL("public/shop/hero-still-desktop.jpg", root)).metadata(),
-  sharp(new URL("public/shop/hero-still-mobile.jpg", root)).metadata(),
+  sharp(fileURLToPath(new URL("public/shop/hero-still-desktop.jpg", root))).metadata(),
+  sharp(fileURLToPath(new URL("public/shop/hero-still-mobile.jpg", root))).metadata(),
 ]);
 assert.deepEqual(
   [desktopStill.width, desktopStill.height],
@@ -80,5 +81,38 @@ assert.match(purgeScript, /method:\s*"DELETE"/);
 assert.match(purgeScript, /Authorization:\s*`Bearer \$\{token\}`/);
 assert.doesNotMatch(purgeScript, /console\.(?:log|error)\([^\n]*token/);
 assert.match(deployScript, /purge-hostinger-cache\.mjs/);
+
+const { purgeHostingerCache } = await import(
+  new URL("scripts/purge-hostinger-cache.mjs", root)
+);
+let request = null;
+const purged = await purgeHostingerCache({
+  env: {
+    HOSTINGER_API_TOKEN: "contract-secret",
+    HOSTINGER_USERNAME: "u2240",
+    HOSTINGER_DOMAIN: "example.test",
+  },
+  fetchImpl: async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200 };
+  },
+  log: () => {},
+});
+assert.equal(purged.status, "purged");
+assert.equal(request.options.method, "DELETE");
+assert.equal(request.options.headers.Authorization, "Bearer contract-secret");
+assert.match(request.url, /\/accounts\/u2240\/websites\/example\.test\/cache\/clear$/);
+
+let skippedFetch = false;
+const skipped = await purgeHostingerCache({
+  env: {},
+  fetchImpl: async () => {
+    skippedFetch = true;
+    return { ok: true, status: 200 };
+  },
+  log: () => {},
+});
+assert.equal(skipped.status, "skipped");
+assert.equal(skippedFetch, false, "missing credentials must never make a request");
 
 console.log("lossless cinema priority contract: PASS");

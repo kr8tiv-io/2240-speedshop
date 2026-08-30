@@ -6,6 +6,7 @@
     "dev": "next dev -p 3117",
     "build": "node --use-system-ca node_modules/next/dist/bin/next build --webpack",
     "build:hero-stills": "node scripts/build-hero-stills.mjs",
+    "ops:purge-hostinger-cache": "node scripts/purge-hostinger-cache.mjs",
     "start": "next start -p 3117",
     "lint": "eslint",
     "audit:elevation": "node scripts/elevation-checks.mjs",

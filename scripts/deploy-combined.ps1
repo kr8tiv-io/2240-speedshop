@@ -157,3 +157,12 @@ $pushUrl = $originUrl -replace "^https://github\.com/", "https://x-access-token:
 git -C $Repo push $pushUrl HEAD:main
 if ($LASTEXITCODE -ne 0) { throw "push failed" }
 Write-Host "== pushed - Hostinger webhook redeploys on its own"
+
+# The helper is intentionally credential-gated. On an unconfigured machine it
+# exits cleanly and prints which variable names are missing; it never prints a
+# token. Hostinger's endpoint clears server cache and purges the enabled CDN.
+Write-Host "== requesting optional Hostinger cache purge"
+node scripts/purge-hostinger-cache.mjs
+if ($LASTEXITCODE -ne 0) {
+  Write-Warning "source deployed, but Hostinger cache purge was not accepted"
+}
