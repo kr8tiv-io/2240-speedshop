@@ -36,9 +36,9 @@ import { site } from "@/lib/site";
 const STATION_HEAD =
   "text-balance font-display text-[clamp(2.1rem,5.6vw,4.8rem)] uppercase leading-[0.92] tracking-wide text-bone";
 const STATION_BODY =
-  "mt-5 max-w-md font-body text-[15px] leading-[1.7] text-steel sm:mt-6 sm:text-base";
+  "wt-station-body mt-5 max-w-[34rem] font-body text-[clamp(1.0625rem,2.2vw,1.125rem)] leading-[1.68] text-bone/[0.78] sm:mt-6";
 const STATION_LIST =
-  "mt-6 space-y-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-steel/90";
+  "wt-station-list mt-6 space-y-2 font-mono text-[clamp(0.75rem,1.45vw,0.8125rem)] uppercase leading-[1.62] tracking-[0.14em] text-bone/[0.72]";
 
 function Station({
   station,
@@ -65,7 +65,9 @@ function Station({
 
   const plate = (
     <div className={`wt-cascade copy-plate max-w-xl ${seat}`}>
-      <p className="corner-note text-tungsten">{eyebrow}</p>
+      <p className="wt-station-eyebrow font-mono text-[clamp(0.75rem,1.45vw,0.8125rem)] uppercase leading-none tracking-[0.16em] text-tungsten">
+        {eyebrow}
+      </p>
       {children}
     </div>
   );
@@ -92,8 +94,12 @@ function Glide({ note, line }: { note: string; line: string }) {
     <div className="flex min-h-[42vh] items-center px-5 sm:px-8">
       <div className="mx-auto w-full max-w-[92rem]">
         <div className="wt-glide-copy w-fit max-w-md">
-          <p className="corner-note">{note}</p>
-          <p className="mt-2 max-w-sm font-body text-sm leading-relaxed text-steel/70">{line}</p>
+          <p className="font-mono text-[0.75rem] uppercase tracking-[0.16em] text-tungsten/80">
+            {note}
+          </p>
+          <p className="wt-glide-body mt-2 max-w-sm font-body text-base leading-[1.65] text-bone/[0.7]">
+            {line}
+          </p>
         </div>
       </div>
     </div>
@@ -130,7 +136,7 @@ export function WalkthroughSections() {
           Finished paint under honest light. The Charger turns so every gap, reflection, and body
           line has nowhere to hide. Past it: bare metal, open engines, and work in progress.
         </p>
-        <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.18em] text-steel/70">
+        <p className={STATION_LIST}>
           Walk on. The bays are open.
         </p>
       </Station>
