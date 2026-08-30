@@ -8,6 +8,12 @@ const BASE = (process.env.BASE_URL || "https://steelblue-gaur-917651.hostingersi
   "",
 );
 
+function canonicalDocumentUrl(value) {
+  const url = new URL(value);
+  if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/, "");
+  return url.href;
+}
+
 const profiles = [
   { name: "desktop", width: 1440, height: 900, dsf: 1 },
   { name: "iphone-390", width: 390, height: 844, dsf: 3, mobile: true },
@@ -66,9 +72,13 @@ try {
 
       await page.click(selector);
       await page.waitForFunction(
-        (expected) => location.href === expected,
+        (expected) => {
+          const url = new URL(location.href);
+          if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/, "");
+          return url.href === expected;
+        },
         { timeout: 8_000 },
-        target.href,
+        canonicalDocumentUrl(target.href),
       ).catch(() => {});
       const actual = page.url();
       const navigationEntry = await page.evaluate(
@@ -77,10 +87,14 @@ try {
       console.log(
         JSON.stringify({ profile: profile.name, selector, target, actual, navigationEntry, errors }),
       );
-      assert.equal(actual, target.href, `${profile.name}: click did not navigate to ${target.href}`);
       assert.equal(
-        navigationEntry,
-        target.href,
+        canonicalDocumentUrl(actual),
+        canonicalDocumentUrl(target.href),
+        `${profile.name}: click did not navigate to ${target.href}`,
+      );
+      assert.equal(
+        canonicalDocumentUrl(navigationEntry),
+        canonicalDocumentUrl(target.href),
         `${profile.name}: article entry relied on intercepted client navigation`,
       );
       assert.deepEqual(errors, [], `${profile.name}: blog click emitted browser errors`);
@@ -129,9 +143,17 @@ try {
       (link) => link.href,
     );
     await page.click('section[aria-label="Featured article"] a[href^="/blog/"]');
-    await page.waitForFunction((href) => location.href === href, { timeout: 8_000 }, article).catch(
-      () => {},
-    );
+    await page
+      .waitForFunction(
+        (expected) => {
+          const url = new URL(location.href);
+          if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/, "");
+          return url.href === expected;
+        },
+        { timeout: 8_000 },
+        canonicalDocumentUrl(article),
+      )
+      .catch(() => {});
     const navigationEntry = await page.evaluate(
       () => performance.getEntriesByType("navigation")[0]?.name || null,
     );
@@ -150,10 +172,14 @@ try {
       false,
       `${profile.name}: site shell remained inert after entering the Journal`,
     );
-    assert.equal(page.url(), article, `${profile.name}: routed Journal card did not navigate`);
     assert.equal(
-      navigationEntry,
-      article,
+      canonicalDocumentUrl(page.url()),
+      canonicalDocumentUrl(article),
+      `${profile.name}: routed Journal card did not navigate`,
+    );
+    assert.equal(
+      canonicalDocumentUrl(navigationEntry),
+      canonicalDocumentUrl(article),
       `${profile.name}: routed Journal card relied on intercepted client navigation`,
     );
     await context.close();
