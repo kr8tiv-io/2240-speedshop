@@ -55,7 +55,8 @@ assert.ok(
 assert.ok(
   /const generation = loaderGeneration/.test(station) &&
     /const stale = \(\) => dead \|\| generation !== loaderGeneration/.test(station) &&
-    /warmSubtree\(gl, node, camera, scene, stale\)[\s\S]{0,900}if \(stale\(\)\) return;[\s\S]{0,900}openGate\(station \+ 2\)/.test(station),
+    /const releaseNextGate = createStationRelease\(\{[\s\S]{0,180}isStale: stale[\s\S]{0,180}openGate\(station \+ 2\)/.test(station) &&
+    /warmSubtree\(gl, node, camera, scene, stale\)[\s\S]{0,1100}if \(stale\(\)\) return;[\s\S]{0,1100}releaseNextGate\(\)/.test(station),
   "A completed warm owned by an old StationBundle must never unlock the fresh stream.",
 );
 assert.ok(

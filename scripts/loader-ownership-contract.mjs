@@ -196,7 +196,7 @@ assert.ok(
   "Texture identity must not multiply geometry/program representatives once uploads are owned separately.",
 );
 assert.ok(
-  /warmSubtree\(gl, node, camera, scene, stale\)\.then\(\(\) => \{[\s\S]*openGate\(station \+ 2\);[\s\S]*void finish\(\);/.test(loaders),
+  /warmSubtree\(gl, node, camera, scene, stale\)\.then\(\(\) => \{[\s\S]*releaseNextGate\(\);[\s\S]*void finish\(\);/.test(loaders),
   "A compiled bay must release download credit before its serialized first-use so later copy panels do not outrun their models.",
 );
 assert.ok(

@@ -42,8 +42,9 @@ assert.ok(
   "One transient Brotli-twin failure must not disable compressed delivery for every model.",
 );
 assert.ok(
-  /for \(let attempt = 0; attempt < 2; attempt\+\+\)/.test(loaders),
-  "A transient edge miss should retry the lossless Brotli twin once before falling back to heavier bytes.",
+  /return await retry\(`\$\{url\}\.br`, 2\)/.test(loaders) &&
+    /return retry\(url, 2\)/.test(loaders),
+  "Transient edge misses must retry both the lossless Brotli twin and exact plain fallback once.",
 );
 assert.ok(
   /function releaseModelBytes/.test(loaders) &&

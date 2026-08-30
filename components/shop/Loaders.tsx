@@ -23,7 +23,9 @@ import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.j
 import { ContactShadow } from "./materials";
 import { getBoot, markShellWarm, markWorldReady, reportBootProgress, stillFor, subscribeBoot } from "./boot";
 import { countLights, installLightPad, lightBudget, setStationLights } from "./lights";
+import { loadModelRequestAttempt } from "./modelRequest";
 import { createParseScheduler, type ParseGeneration } from "./parseScheduler";
+import { createStationRelease } from "./stationLiveness";
 import { stationAt } from "./world";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -275,6 +277,9 @@ function queueParse<T>(owner: ParseGeneration, run: () => Promise<T>): Promise<T
    on the visible film's main thread. A later loader consumes the exact same
    ArrayBuffer promise, so there is no duplicate transfer. */
 const MODEL_BYTE_CACHE = new Map<string, Promise<ArrayBuffer>>();
+const MODEL_REQUEST_TIMEOUT_MS = 8_000;
+const MODEL_REQUEST_HARD_TIMEOUT_MS = 45_000;
+const MODEL_REQUEST_RETRY_DELAY_MS = 160;
 
 type ModelByteOptions = {
   manager?: THREE.LoadingManager;
@@ -285,7 +290,11 @@ type ModelByteOptions = {
 };
 
 function modelByteCacheKey(url: string, options: ModelByteOptions = {}) {
-  return `${options.path ?? ""}|${url}|${options.withCredentials ? 1 : 0}`;
+  const headers = Object.entries(options.requestHeader ?? {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, value]) => `${name}:${value}`)
+    .join("\n");
+  return `${options.path ?? ""}|${url}|${options.withCredentials ? 1 : 0}|${headers}`;
 }
 
 function releaseModelBytes(
@@ -303,42 +312,55 @@ function fetchModelBytes(url: string, options: ModelByteOptions = {}) {
   const cached = MODEL_BYTE_CACHE.get(key);
   if (cached) return cached;
 
-  const file = new THREE.FileLoader(options.manager);
-  file.setResponseType("arraybuffer");
-  file.setRequestHeader(options.requestHeader ?? {});
-  file.setPath(path);
-  file.setWithCredentials(options.withCredentials ?? false);
-
-  const load = (target: string) =>
-    new Promise<ArrayBuffer>((resolve, reject) => {
-      file.load(
-        target,
-        (data) => {
-          if (data instanceof ArrayBuffer) resolve(data);
-          else reject(new TypeError(`Expected model bytes for ${target}`));
-        },
-        options.onProgress,
-        reject,
-      );
+  const loadAttempt = (target: string) => {
+    // FileLoader owns an AbortController, so every retry needs a fresh loader.
+    const file = new THREE.FileLoader(options.manager);
+    file.setResponseType("arraybuffer");
+    file.setRequestHeader(options.requestHeader ?? {});
+    file.setPath(path);
+    file.setWithCredentials(options.withCredentials ?? false);
+    return loadModelRequestAttempt({
+      target,
+      start: ({ onLoad, onProgress, onError }) => {
+        file.load(target, onLoad, onProgress, onError);
+      },
+      abort: () => {
+        file.abort();
+      },
+      onProgress: options.onProgress,
+      idleTimeoutMs: MODEL_REQUEST_TIMEOUT_MS,
+      hardTimeoutMs: MODEL_REQUEST_HARD_TIMEOUT_MS,
     });
+  };
+
+  const retry = async (target: string, attempts: number) => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        return await loadAttempt(target);
+      } catch (error) {
+        lastError = error;
+        if (attempt + 1 < attempts) {
+          await new Promise<void>((resolve) =>
+            globalThis.setTimeout(resolve, MODEL_REQUEST_RETRY_DELAY_MS),
+          );
+        }
+      }
+    }
+    throw lastError ?? new Error(`Unable to load model bytes for ${target}`);
+  };
 
   const request = (async () => {
     if (url.endsWith(".glb") && VERSION) {
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          return await load(`${url}.br`);
-        } catch {
-          // One short edge retry is far cheaper than immediately transferring
-          // the heavier plain GLB after a transient CDN miss.
-          if (attempt === 0) {
-            await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 160));
-          }
-        }
+      try {
+        return await retry(`${url}.br`, 2);
+      } catch {
+        // A persistently missing twin affects this URL only. Never poison
+        // compressed delivery for the rest of the session.
       }
-      // A persistently missing twin affects this URL only. Never poison
-      // compressed delivery for the rest of the session.
     }
-    return load(url);
+    // The exact plain twin also gets one recovery attempt on a dead edge.
+    return retry(url, 2);
   })();
 
   MODEL_BYTE_CACHE.set(key, request);
@@ -2690,6 +2712,10 @@ function WarmStation({
     let finishing = false;
     const generation = loaderGeneration;
     const stale = () => dead || generation !== loaderGeneration;
+    const releaseNextGate = createStationRelease({
+      isStale: stale,
+      release: () => openGate(station + 2),
+    });
 
     const finish = async () => {
       if (stale() || finishing || warm.current) return;
@@ -2790,13 +2816,19 @@ function WarmStation({
       // One completed bay earns exactly one look-ahead bay on every device.
       // Phones used to open two, creating more cellular and parse contention
       // than the desktop path.
-      openGate(station + 2);
+      releaseNextGate();
       void finish();
     }).catch((error) => {
-      if (DEBUG && !stale()) console.warn(`[shop] station ${station} warm failed`, error);
+      if (stale()) return;
+      if (DEBUG) console.warn(`[shop] station ${station} warm failed`, error);
+      releaseNextGate();
+      void finish();
     });
     // A driver that never reports back cannot be allowed to stall the queue.
-    const failsafe = window.setTimeout(finish, 9000);
+    const failsafe = window.setTimeout(() => {
+      releaseNextGate();
+      void finish();
+    }, 9000);
 
     return () => {
       dead = true;
