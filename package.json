@@ -18,6 +18,7 @@
     "test:gl-images-idle": "node scripts/gl-images-idle-contract.mjs",
     "test:loader-ownership": "node scripts/loader-ownership-contract.mjs",
     "test:loader-generation": "node scripts/loader-generation-contract.mjs",
+    "test:garage-liveness": "node scripts/garage-liveness-contract.mjs",
     "test:mobile-menu": "node scripts/mobile-menu-contract.mjs",
     "test:hero-runtime": "node scripts/hero-runtime-contract.mjs",
     "test:home-copy": "node scripts/home-copy-contract.mjs",
