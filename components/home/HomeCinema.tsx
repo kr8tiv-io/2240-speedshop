@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import { site } from "@/lib/site";
 import { splitChars } from "@/lib/split";
@@ -811,14 +810,22 @@ function ChapterZeroCopy({ kinetic = false }: { kinetic?: boolean; ready?: boole
 function StaticBackdrop() {
   return (
     <div className="absolute inset-0" aria-hidden="true">
-      <Image
-        src="/shop/IMG_0434-black-muscle-car.jpeg"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="graded object-cover"
-      />
+      {/* These are lossless MCU crops from the same approved master. The
+          desktop file carries eight original pixels beyond each visible
+          vertical edge so object-cover lands on the exact former framing. */}
+      <picture className="absolute inset-0">
+        <source media="(max-width: 767px)" srcSet="/shop/hero-still-mobile.jpg" />
+        <source media="(min-width: 768px)" srcSet="/shop/hero-still-desktop.jpg" />
+        <img
+          src="/shop/IMG_0434-black-muscle-car.jpeg"
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          fetchPriority="high"
+          loading="eager"
+          className="graded h-full w-full object-cover"
+        />
+      </picture>
       <div className="absolute inset-0 bg-gradient-to-t from-bay-black via-bay-black/70 to-bay-black/30" />
     </div>
   );

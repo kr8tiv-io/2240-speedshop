@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3117",
     "build": "node --use-system-ca node_modules/next/dist/bin/next build --webpack",
+    "build:hero-stills": "node scripts/build-hero-stills.mjs",
     "start": "next start -p 3117",
     "lint": "eslint",
     "audit:elevation": "node scripts/elevation-checks.mjs",
@@ -60,9 +61,15 @@
     "@types/three": "^0.185.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "jpegtran-bin": "7.0.0",
     "puppeteer-core": "^25.5.0",
     "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "jpegtran-bin"
+    ]
   }
 }

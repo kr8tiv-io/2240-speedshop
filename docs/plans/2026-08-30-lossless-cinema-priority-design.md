@@ -12,10 +12,10 @@ The existing static Next.js export remains the production architecture. The curr
 
 The opening poster currently downloads a full portrait JPEG even though `object-cover` only exposes a predictable desktop or mobile slice. Generate two JPEG crops from the same master using lossless MCU-aligned `jpegtran` cropping:
 
-- desktop: `1920x1200+0+680`
+- desktop: `1920x1216+0+672`, with the browser trimming the extra eight source pixels at each vertical edge to reproduce the exact `1920x1200+0+680` cover composition
 - mobile: `1184x2560+368+0`
 
-Both crop rectangles align to JPEG block boundaries, so the compressed image data is copied rather than re-encoded. A `<picture>` element selects the correct crop by viewport and keeps the original master as a fallback. This changes transfer size and decode work, not the visible pixels.
+Both stored crop rectangles align to the JPEG's actual MCU boundaries, so the compressed image data is copied rather than re-encoded. A `<picture>` element selects the correct crop by viewport and keeps the original master as a fallback. This changes transfer size and decode work, not the visible pixels.
 
 The generation script is deterministic and verifies output dimensions. The source master remains in the repository.
 

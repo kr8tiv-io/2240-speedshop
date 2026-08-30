@@ -55,7 +55,7 @@ Add `jpegtran-bin` as a development dependency. Invoke its binary from Node with
 
 Run: `npm run build:hero-stills`
 
-Expected: both outputs exist with dimensions `1920x1200` and `1184x2560`; decoded crop comparison shows the same source pixels at the visible crop boundaries.
+Expected: both outputs exist with dimensions `1920x1216` and `1184x2560`; the desktop cover trims eight source pixels per vertical edge and therefore presents the exact approved `1920x1200+0+680` composition without re-encoding.
 
 **Step 3: Select the crop in markup**
 

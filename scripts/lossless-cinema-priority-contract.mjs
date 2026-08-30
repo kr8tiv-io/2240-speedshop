@@ -40,8 +40,8 @@ const [desktopStill, mobileStill] = await Promise.all([
 ]);
 assert.deepEqual(
   [desktopStill.width, desktopStill.height],
-  [1920, 1200],
-  "desktop still must preserve the exact visible source crop",
+  [1920, 1216],
+  "desktop still must losslessly enclose the exact visible source crop",
 );
 assert.deepEqual(
   [mobileStill.width, mobileStill.height],
@@ -49,7 +49,7 @@ assert.deepEqual(
   "mobile still must preserve the exact visible source crop",
 );
 assert.match(cropScript, /jpegtran/i);
-assert.match(cropScript, /1920x1200\+0\+680/);
+assert.match(cropScript, /1920x1216\+0\+672/);
 assert.match(cropScript, /1184x2560\+368\+0/);
 assert.match(cropScript, /-perfect/);
 
