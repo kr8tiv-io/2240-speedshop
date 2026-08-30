@@ -39,25 +39,20 @@ assert.match(
   /POST_HERO_PRELOAD_TIMEOUT_MS/,
   "A verified hero frame needs a bounded background shop preload.",
 );
-assert.match(
-  walkthrough,
-  /MOUNT_DEADLINE_MS/,
-  "Continuous scrolling needs a bounded shop mount deadline.",
-);
-assert.match(
-  walkthrough,
-  /PROXIMITY_MOUNT_TIMEOUT_MS/,
-  "The garage lead corridor must outrank an opening hero that has not settled.",
-);
-assert.match(
-  walkthrough,
-  /\(!heroSettled && !forced\)/,
-  "A bounded proximity mount must be allowed to proceed before hero readiness.",
-);
 assert.doesNotMatch(
   walkthrough,
-  /heroSettled && stillFor\(\) >= 900/,
-  "Reader stillness may be preferred, but it cannot remain a hard garage mount prerequisite.",
+  /MOUNT_DEADLINE_MS|PROXIMITY_MOUNT_TIMEOUT_MS|mountWorld\(true\)/,
+  "No timer may force the second WebGL compiler into an active scroll.",
+);
+assert.match(
+  walkthrough,
+  /if \(!run \|\| warmLatched \|\| !heroSettled\) return/,
+  "The garage must not create its renderer before the opening film settles.",
+);
+assert.match(
+  walkthrough,
+  /if \(warmNear && stillFor\(\) >= 900\)/,
+  "The full garage must mount in the lead corridor after a real reading pause.",
 );
 assert.doesNotMatch(
   walkthrough,

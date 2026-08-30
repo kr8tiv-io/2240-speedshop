@@ -144,7 +144,7 @@ async function seek(page, selector, progress) {
 }
 
 async function auditMenu(page, size) {
-  const trigger = await page.$('button[aria-controls="mobile-nav"]');
+  const trigger = await page.$('[aria-controls="mobile-nav"]');
   if (!trigger) {
     check(
       size.name,
@@ -157,9 +157,15 @@ async function auditMenu(page, size) {
 
   let opened = false;
   try {
-    await page.click('button[aria-controls="mobile-nav"]');
+    await page.click('[aria-controls="mobile-nav"]');
     await page.waitForFunction(
-      () => document.querySelector('button[aria-controls="mobile-nav"]')?.getAttribute("aria-expanded") === "true",
+      () => {
+        const trigger = document.querySelector('[aria-controls="mobile-nav"]');
+        return (
+          trigger?.getAttribute("aria-expanded") === "true" ||
+          trigger?.closest("details")?.open === true
+        );
+      },
       { timeout: 2_000 },
     );
     await sleep(380);
@@ -179,7 +185,7 @@ async function auditMenu(page, size) {
 
   const targetAudit = await page.evaluate(() => {
     const menu = document.getElementById("mobile-nav");
-    const toggle = document.querySelector('button[aria-controls="mobile-nav"]');
+    const toggle = document.querySelector('[aria-controls="mobile-nav"]');
     if (!menu || !toggle) return null;
     const selector = [
       "a[href]",
@@ -316,10 +322,12 @@ async function auditMenu(page, size) {
   await page.keyboard.press("Escape");
   await sleep(350);
   const restored = await page.evaluate(() => {
-    const toggle = document.querySelector('button[aria-controls="mobile-nav"]');
+    const toggle = document.querySelector('[aria-controls="mobile-nav"]');
     const shell = document.getElementById("site-shell");
     return {
-      closed: toggle?.getAttribute("aria-expanded") === "false",
+      closed:
+        toggle?.getAttribute("aria-expanded") === "false" ||
+        toggle?.closest("details")?.open === false,
       focusReturned: document.activeElement === toggle,
       overlay: document.documentElement.getAttribute("data-ui-overlay"),
       shellInert: shell?.inert === true,
@@ -583,13 +591,13 @@ async function auditHeroBoot(browser) {
           sleep(8_000).then(() => false),
         ]);
         const beforeResize = await page.evaluate(() => {
-          const preloader = document.querySelector("[data-preloader]");
-          const progress = preloader?.getAttribute("data-progress");
-          const generation = preloader?.getAttribute("data-boot-generation");
+          const runtime = document.querySelector("[data-hero-runtime]");
+          if (runtime) runtime.setAttribute("data-elevation-boot-instance", "held-runtime");
           return {
-            progress: progress === null || progress === undefined ? null : Number(progress),
-            generation:
-              generation === null || generation === undefined ? null : Number(generation),
+            present: !!runtime,
+            sceneReady: runtime?.getAttribute("data-hero-scene-ready") === "true",
+            profile: runtime?.getAttribute("data-runtime-profile") ?? null,
+            mounts: window.__elevationHeroBoot?.mounts.length ?? 0,
           };
         });
         await page.setViewport({
@@ -609,25 +617,27 @@ async function auditHeroBoot(browser) {
           .catch(() => {});
         await sleep(250);
         const afterResize = await page.evaluate(() => {
-          const preloader = document.querySelector("[data-preloader]");
-          const progress = preloader?.getAttribute("data-progress");
-          const generation = preloader?.getAttribute("data-boot-generation");
+          const runtime = document.querySelector("[data-hero-runtime]");
           return {
-            progress: progress === null || progress === undefined ? null : Number(progress),
-            generation:
-              generation === null || generation === undefined ? null : Number(generation),
+            present: !!runtime,
+            sameInstance:
+              runtime?.getAttribute("data-elevation-boot-instance") === "held-runtime",
+            sceneReady: runtime?.getAttribute("data-hero-scene-ready") === "true",
+            profile: runtime?.getAttribute("data-runtime-profile") ?? null,
+            mounts: window.__elevationHeroBoot?.mounts.length ?? 0,
           };
         });
         check(
           scenario.name,
           "active mobile-breakpoint resize preserves in-flight hero readiness",
           held &&
-            Number.isFinite(beforeResize.progress) &&
-            Number.isFinite(afterResize.progress) &&
-            Number.isFinite(beforeResize.generation) &&
-            beforeResize.generation === afterResize.generation &&
-            afterResize.progress >= beforeResize.progress,
-          `held charger=${held}; generation ${beforeResize.generation ?? "missing"}→${afterResize.generation ?? "missing"}; progress ${beforeResize.progress ?? "missing"}→${afterResize.progress ?? "missing"}`,
+            beforeResize.present &&
+            afterResize.present &&
+            afterResize.sameInstance &&
+            afterResize.profile === "desktop" &&
+            afterResize.mounts === beforeResize.mounts &&
+            (!beforeResize.sceneReady || afterResize.sceneReady),
+          `held charger=${held}; runtime ${beforeResize.present ? beforeResize.profile : "missing"}→${afterResize.present ? afterResize.profile : "missing"}; same=${afterResize.sameInstance}; mounts ${beforeResize.mounts}→${afterResize.mounts}; ready ${beforeResize.sceneReady}→${afterResize.sceneReady}`,
         );
         releaseHeldHeroRequest?.();
       }
@@ -739,6 +749,7 @@ async function auditSize(browserContext, size) {
   await page.setCacheEnabled(false);
   const pageErrors = [];
   const consoleErrors = [];
+  const httpErrors = [];
   // Kept inside this invocation so editorial request evidence cannot leak
   // across viewport audits even if Puppeteer changes context cache semantics.
   const requests = [];
@@ -753,6 +764,9 @@ async function auditSize(browserContext, size) {
     }
   });
   page.on("request", (request) => requests.push(request.url()));
+  page.on("response", (response) => {
+    if (response.status() >= 400) httpErrors.push(`HTTP ${response.status()} ${response.url()}`);
+  });
 
   await page.setViewport({
     width: size.width,
@@ -765,9 +779,11 @@ async function auditSize(browserContext, size) {
     window.__elevationWebGLErrors = [];
     window.__elevationPreloader = {
       seen: false,
-      sceneReady: false,
+      normalReady: false,
       readyReason: null,
       domState: null,
+      runtimeSeen: false,
+      runtimeSceneReady: false,
       emergency: false,
       emergencyReason: null,
       inlineEscape: false,
@@ -775,15 +791,17 @@ async function auditSize(browserContext, size) {
       goneObserved: false,
       genericGone: false,
       removed: false,
-      removedAfterScene: false,
-      goneAfterScene: false,
+      removedNormally: false,
+      goneNormally: false,
     };
 
-    /* A computed opacity of zero proves only that the CSS dead-man timer ran.
-       Record explicit runtime provenance instead. ONLY data-ready-reason=
-       "scene" establishes a normal origin; data-state="gone" or DOM removal
-       can confirm clearance only after that origin. Emergency is monotonic. */
+    /* The light brand plate intentionally clears on its progressive ceiling,
+       then the lazy WebGL runtime mounts underneath and proves its own scene
+       readiness. Track those two explicit stages independently: loader
+       clearance is normal only after a named non-emergency reason, and the
+       film is ready only when its authoritative runtime marker turns true. */
     const preloaderSelector = ".preloader-veil, [data-preloader]";
+    const runtimeSelector = "[data-hero-runtime]";
     const instrumentation = window.__elevationPreloader;
     const isEmergency = (value) =>
       /(?:emergency|escape|timeout|hard[-_ ]?cap|css|dead[-_ ]?man)/i.test(value || "");
@@ -797,10 +815,13 @@ async function auditSize(browserContext, size) {
         const reason = (veil.getAttribute("data-ready-reason") || "").trim().toLowerCase();
         if (reason) instrumentation.readyReason = reason;
         if (isEmergency(reason)) markEmergency(`marker:${reason}`);
-        // Once an emergency was observed, a late scene marker cannot rewrite
+        // Once an emergency was observed, a late normal marker cannot rewrite
         // history and turn the emergency path into a normal handoff.
-        if (reason === "scene" && !instrumentation.emergency) {
-          instrumentation.sceneReady = true;
+        if (
+          (reason === "scene" || reason === "progressive-ceiling") &&
+          !instrumentation.emergency
+        ) {
+          instrumentation.normalReady = true;
         }
       }
       if (changedAttribute === null || changedAttribute === "data-state") {
@@ -809,8 +830,8 @@ async function auditSize(browserContext, size) {
         if (isEmergency(domState)) markEmergency(`marker:${domState}`);
         if (domState === "gone" && !instrumentation.goneObserved) {
           instrumentation.goneObserved = true;
-          if (instrumentation.sceneReady && !instrumentation.emergency) {
-            instrumentation.goneAfterScene = true;
+          if (instrumentation.normalReady && !instrumentation.emergency) {
+            instrumentation.goneNormally = true;
           } else {
             instrumentation.genericGone = true;
           }
@@ -835,14 +856,28 @@ async function auditSize(browserContext, size) {
         if (removed) {
           instrumentation.removed = true;
           if (
-            instrumentation.sceneReady &&
+            instrumentation.normalReady &&
             !instrumentation.emergency &&
             !instrumentation.genericGone
           ) {
-            instrumentation.removedAfterScene = true;
+            instrumentation.removedNormally = true;
           }
         }
       }
+    };
+    const inspectRuntime = (runtime) => {
+      instrumentation.runtimeSeen = true;
+      if (runtime.getAttribute("data-hero-scene-ready") === "true") {
+        instrumentation.runtimeSceneReady = true;
+      }
+    };
+    const visitRuntimes = (node) => {
+      if (!(node instanceof Element)) return;
+      const runtimes = [
+        ...(node.matches(runtimeSelector) ? [node] : []),
+        ...node.querySelectorAll(runtimeSelector),
+      ];
+      for (const runtime of runtimes) inspectRuntime(runtime);
     };
     const preloaderObserver = new MutationObserver((records) => {
       for (const record of records) {
@@ -853,7 +888,17 @@ async function auditSize(browserContext, size) {
         ) {
           inspectPreloader(record.target, record.attributeName);
         }
-        for (const node of record.addedNodes) visitPreloaders(node);
+        if (
+          record.type === "attributes" &&
+          record.target instanceof Element &&
+          record.target.matches(runtimeSelector)
+        ) {
+          inspectRuntime(record.target);
+        }
+        for (const node of record.addedNodes) {
+          visitPreloaders(node);
+          visitRuntimes(node);
+        }
         for (const node of record.removedNodes) visitPreloaders(node, true);
       }
     });
@@ -861,9 +906,12 @@ async function auditSize(browserContext, size) {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-ready-reason", "data-state", "style"],
+      attributeFilter: ["data-ready-reason", "data-state", "data-hero-scene-ready", "style"],
     });
-    if (document.documentElement) visitPreloaders(document.documentElement);
+    if (document.documentElement) {
+      visitPreloaders(document.documentElement);
+      visitRuntimes(document.documentElement);
+    }
 
     // globals.css attaches this exact animation to `.preloader-veil` as the
     // final 19 s CSS dead-man. If it starts on an existing veil, the fallback has
@@ -912,7 +960,7 @@ async function auditSize(browserContext, size) {
         const state = window.__elevationPreloader;
         if (!state) return false;
         const sceneCleared =
-          state.sceneReady && (state.goneAfterScene || state.removedAfterScene);
+          state.runtimeSceneReady && (state.goneNormally || state.removedNormally);
         return !state.emergency && sceneCleared;
       },
       { timeout: budgetRemaining },
@@ -929,7 +977,7 @@ async function auditSize(browserContext, size) {
     .waitForFunction(
       () => {
         const state = window.__elevationPreloader;
-        if (state?.sceneReady && !state.emergency && state.goneAfterScene) return true;
+        if (state?.runtimeSceneReady && !state.emergency && state.goneNormally) return true;
         const veil = document.querySelector(".preloader-veil, [data-preloader]");
         if (!veil) return true;
         return veil.style.display === "none";
@@ -952,16 +1000,16 @@ async function auditSize(browserContext, size) {
   });
   const normalSceneClearance =
     !!preloaderState &&
-    preloaderState.sceneReady &&
-    (preloaderState.goneAfterScene || preloaderState.removedAfterScene) &&
+    preloaderState.runtimeSceneReady &&
+    (preloaderState.goneNormally || preloaderState.removedNormally) &&
     !preloaderState.genericGone &&
     !preloaderState.emergency;
   check(
     size.name,
-    `preloader proves scene-ready clearance within ${PRELOADER_BUDGET_MS}ms`,
+    `progressive loader clears and live scene is ready within ${PRELOADER_BUDGET_MS}ms`,
     preloaderReady && normalSceneClearance && preloaderElapsed <= PRELOADER_BUDGET_MS + 50,
     preloaderState
-      ? `elapsed=${preloaderElapsed}ms; scene=${preloaderState.sceneReady}, gone-after-scene=${preloaderState.goneAfterScene}, removed-after-scene=${preloaderState.removedAfterScene}, generic-gone=${preloaderState.genericGone}, emergency=${preloaderState.emergency}${preloaderState.emergencyReason ? ` (${preloaderState.emergencyReason})` : ""}`
+      ? `elapsed=${preloaderElapsed}ms; loader=${preloaderState.readyReason ?? "missing"}, runtime-seen=${preloaderState.runtimeSeen}, scene=${preloaderState.runtimeSceneReady}, gone-normally=${preloaderState.goneNormally}, removed-normally=${preloaderState.removedNormally}, generic-gone=${preloaderState.genericGone}, emergency=${preloaderState.emergency}${preloaderState.emergencyReason ? ` (${preloaderState.emergencyReason})` : ""}`
       : `preloader readiness instrumentation missing at ${preloaderElapsed}ms`,
   );
   await sleep(450);
@@ -1185,7 +1233,7 @@ async function auditSize(browserContext, size) {
     }
     return errors;
   });
-  const runtimeErrors = [...new Set([...pageErrors, ...consoleErrors, ...webgl])];
+  const runtimeErrors = [...new Set([...pageErrors, ...consoleErrors, ...httpErrors, ...webgl])];
   check(
     size.name,
     "no page, console, or WebGL errors",

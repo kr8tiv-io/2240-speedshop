@@ -1652,6 +1652,28 @@ async function yieldForHeroWarmup() {
   });
 }
 
+/** EffectComposer owns programs that scene.compileAsync cannot discover.
+ * After its hidden warm draw creates those programs, wait on the driver's
+ * non-blocking parallel-compile status so LINK_STATUS cannot become a scroll
+ * frame's first synchronous query. Browsers without the extension keep Three's
+ * ordinary behavior. */
+async function waitForParallelPrograms(gl: THREE.WebGLRenderer) {
+  const context = gl.getContext();
+  const parallel = context.getExtension("KHR_parallel_shader_compile") as
+    | { COMPLETION_STATUS_KHR: number }
+    | null;
+  if (!parallel) return;
+
+  for (let frame = 0; frame < 240; frame++) {
+    const programs = gl.info.programs ?? [];
+    const complete = programs.every((entry) =>
+      context.getProgramParameter(entry.program as WebGLProgram, parallel.COMPLETION_STATUS_KHR),
+    );
+    if (complete) return;
+    await yieldForHeroWarmup();
+  }
+}
+
 function heroActRoots(scene: THREE.Scene) {
   return ACTS.map((_, index) => scene.getObjectByName(`hero-act-${index}`)).filter(
     (root): root is THREE.Object3D => Boolean(root),
@@ -1682,10 +1704,10 @@ function restoreVisibility(visibility: Map<THREE.Object3D, boolean>) {
  *
  * compileAsync only walks visible objects. Each pass therefore exposes every
  * shared stage object plus exactly one named act root, restores the complete
- * visibility snapshot, then yields. The full composer is warmed once on the
- * opening act; later acts upload geometry into its off-screen input target.
- * Every model, shader and post effect is still ready before the handoff, but
- * the former all-at-once main-thread burst is split into schedulable work.
+ * visibility snapshot, exercises the shipped composer path, waits for the
+ * driver's parallel compile queue, then yields. Every model, shader and post
+ * effect is ready before the handoff, but the former all-at-once main-thread
+ * burst is split into schedulable work.
  */
 function ScenePrimer({
   onReady,
@@ -1717,7 +1739,6 @@ function ScenePrimer({
 
       const actRoots = heroActRoots(scene);
       const warmTarget = composer.current?.inputBuffer ?? null;
-      let openingPass = true;
 
       for (const actRoot of actRoots) {
         if (cancelled) return;
@@ -1759,13 +1780,23 @@ function ScenePrimer({
           await gl.compileAsync(actRoot, camera, scene);
           if (cancelled) return;
 
-          if (openingPass && composer.current) {
-            /* Builds bloom, film, vignette and tone mapping once. The runtime
-               wrapper is still opacity:0, so this complete pass cannot flash. */
+          if (composer.current) {
+            /* Exercise the exact shipped RenderPass state for every act as
+               well as the shared bloom/film/vignette/tone chain. A direct
+               renderer draw misses composer-owned program state and leaves a
+               driver completion query at the Act I→II scroll handoff. The
+               runtime wrapper is still opacity:0, so no warm frame can flash. */
+            composer.current.render(0);
+            await waitForParallelPrograms(gl);
+            if (cancelled) return;
+            /* Three defers its final LINK_STATUS validation until a program is
+               used again. Perform that cheap validation behind the poster too;
+               otherwise ANGLE can turn the first Act II frame into a 200–270ms
+               synchronous query even after parallel compilation reported done. */
             composer.current.render(0);
           } else {
-            /* Later cars only need their geometry/material upload. Keep the
-               draw in the composer's off-screen input buffer. */
+            /* Ref installation failed; retain the off-screen base-renderer
+               fallback so a driver quirk cannot strand the experience. */
             if (warmTarget) gl.setRenderTarget(warmTarget);
             gl.render(scene, camera);
           }
@@ -1781,7 +1812,6 @@ function ScenePrimer({
           SCENE_PRIMER.active = false;
         }
 
-        openingPass = false;
         if (actRoot !== actRoots[actRoots.length - 1]) {
           await yieldForHeroWarmup();
         }

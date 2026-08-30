@@ -91,6 +91,7 @@ export function Nav() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        if (disclosureRef.current) disclosureRef.current.open = false;
         setOpen(false);
         return;
       }

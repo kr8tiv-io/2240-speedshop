@@ -243,13 +243,13 @@ async function auditSize(browser, size) {
       size.name === "desktop" ? 6_000 : 9_000,
     );
     assert.ok(
-      arrival.mounted,
-      `${size.name}: continuous scrolling reached the garage before its real runtime mounted: ${JSON.stringify(arrival)}`,
+      !arrival.mounted,
+      `${size.name}: garage compiler started during continuous motion: ${JSON.stringify(arrival)}`,
     );
     pass(
       size.name,
-      "continuous scrolling cannot outrun garage startup",
-      `${Math.round(arrival.elapsed)} ms / ${arrival.frames} frames; arrival stage ${arrival.stage}`,
+      "continuous scrolling keeps the garage compiler parked",
+      `${Math.round(arrival.elapsed)} ms / ${arrival.frames} frames; arrival stage ${arrival.stage}; ${arrival.shopResources} prefetched resource(s)`,
     );
     await page.waitForFunction(
       () => {

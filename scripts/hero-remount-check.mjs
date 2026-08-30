@@ -9,9 +9,10 @@ const browser = await puppeteer.launch({
   headless: false,
   protocolTimeout: 180_000,
   args: [
-    "--window-position=-2400,0",
+    "--window-position=40,40",
     "--window-size=500,950",
     "--disable-backgrounding-occluded-windows",
+    "--disable-features=CalculateNativeWinOcclusion",
     "--disable-renderer-backgrounding",
     "--disable-background-timer-throttling",
     "--mute-audio",
@@ -35,6 +36,7 @@ try {
   });
   await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
   await page.goto(`${BASE}/?tune=1`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+  console.log("hero remount: opening route loaded");
 
   const waitForHero = () =>
     page.waitForFunction(
@@ -44,17 +46,20 @@ try {
       { timeout: 25_000 },
     );
   await waitForHero();
+  console.log("hero remount: first mobile scene ready");
   await page.evaluate(() => {
     window.__ownershipFirstScene = window.__film?.three?.scene || null;
-    document.querySelector("a[href='/about']")?.click();
+    document.querySelector("a[href='/about/'], a[href='/about']")?.click();
   });
   await page.waitForFunction(() => location.pathname === "/about/" || location.pathname === "/about", {
     timeout: 15_000,
   });
   await page.waitForFunction(() => !document.querySelector("[data-hero-runtime]"), { timeout: 8_000 });
-  await page.evaluate(() => document.querySelector("a[href='/']")?.click());
+  console.log("hero remount: about route released the scene");
+  await page.goBack({ timeout: 15_000 });
   await page.waitForFunction(() => location.pathname === "/", { timeout: 15_000 });
   await waitForHero();
+  console.log("hero remount: second mobile scene ready");
 
   await page.evaluate(() => {
     const runway = document.querySelector("[data-runway-c]");
@@ -64,6 +69,7 @@ try {
     scrollTo(0, y);
   });
   await page.waitForFunction(() => window.__film?.stage?.act === 2, { timeout: 8_000 });
+  console.log("hero remount: remounted scene reached Act III");
   await new Promise((resolve) => setTimeout(resolve, 1_500));
   const result = await page.evaluate(() => {
     const currentScene = window.__film?.three?.scene || null;

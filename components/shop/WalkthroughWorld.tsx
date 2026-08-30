@@ -56,14 +56,6 @@ const preloadShopWorld = () => (shopWorldModule ??= import("./ShopWorld"));
  * frame. Mounting remains separately scheduled so download never implies a
  * competing WebGL context during the opening interaction window. */
 const POST_HERO_PRELOAD_TIMEOUT_MS = 1_200;
-/** A reader may keep scrolling. Stillness is the preferred compile window,
- * not permission to leave the real garage unstarted indefinitely. */
-const MOUNT_DEADLINE_MS = 3_200;
-/** Once the reader is inside the shop's seven-viewport lead corridor, the
- * upcoming world outranks an opening hero that still has not proved a frame.
- * The shop remains offscreen and frame-parked while its sliced warm-up starts. */
-const PROXIMITY_MOUNT_TIMEOUT_MS = 1_200;
-
 const ShopWorld = dynamic(() => (shopWorldModule ??= import("./ShopWorld")).then((m) => m.ShopWorld), {
   ssr: false,
   loading: () => null,
@@ -190,58 +182,39 @@ export function WalkthroughWorld() {
        supplies lead time, and real scroll stillness supplies a safe moment.
        A fast scroller keeps the fully graded boot-light until they stop. */
     let warmTimer = 0;
-    let mountDeadline = 0;
-    let proximityDeadline = 0;
     let warmNear = false;
     let warmLatched = false;
     let heroSettled = (() => {
       const boot = getHeroBootSnapshot();
       return boot.sceneReady || boot.failed;
     })();
-    const mountWorld = (forced = false) => {
-      if (!run || warmLatched || (!heroSettled && !forced)) return;
-      if (forced || (warmNear && stillFor() >= 900)) {
+    const mountWorld = () => {
+      if (!run || warmLatched || !heroSettled) return;
+      if (warmNear && stillFor() >= 900) {
         warmLatched = true;
         setMounted(true);
         warm.disconnect();
         window.clearTimeout(warmTimer);
-        window.clearTimeout(mountDeadline);
-        window.clearTimeout(proximityDeadline);
         return;
       }
-      if (warmNear) warmTimer = window.setTimeout(() => mountWorld(false), 150);
-    };
-    const scheduleMountDeadline = () => {
-      if (!run || warmLatched || !heroSettled || mountDeadline) return;
-      mountDeadline = window.setTimeout(() => mountWorld(true), MOUNT_DEADLINE_MS);
+      if (warmNear) warmTimer = window.setTimeout(mountWorld, 150);
     };
     const unsubscribeHero = subscribeHeroBoot(() => {
       const boot = getHeroBootSnapshot();
       heroSettled = boot.sceneReady || boot.failed;
-      if (heroSettled) scheduleMountDeadline();
       if (heroSettled && warmNear && !warmLatched) {
         window.clearTimeout(warmTimer);
-        warmTimer = window.setTimeout(() => mountWorld(false), 150);
+        warmTimer = window.setTimeout(mountWorld, 150);
       }
     });
-    scheduleMountDeadline();
     const warm = new IntersectionObserver(
       ([entry]) => {
         warmNear = entry.isIntersecting;
         if (warmNear) {
           if (run) void preloadShopWorld();
-          if (!warmLatched && !proximityDeadline) {
-            proximityDeadline = window.setTimeout(
-              () => mountWorld(true),
-              PROXIMITY_MOUNT_TIMEOUT_MS,
-            );
-          }
-        } else {
-          window.clearTimeout(proximityDeadline);
-          proximityDeadline = 0;
         }
         window.clearTimeout(warmTimer);
-        if (warmNear) warmTimer = window.setTimeout(() => mountWorld(false), 150);
+        if (warmNear) warmTimer = window.setTimeout(mountWorld, 150);
       },
       { rootMargin: "700% 0px 700% 0px" },
     );
@@ -301,8 +274,6 @@ export function WalkthroughWorld() {
       unsubscribeHero();
       warm.disconnect();
       window.clearTimeout(warmTimer);
-      window.clearTimeout(mountDeadline);
-      window.clearTimeout(proximityDeadline);
       draw.disconnect();
       document.removeEventListener("scroll", fade, { capture: true });
       window.removeEventListener("resize", measure);

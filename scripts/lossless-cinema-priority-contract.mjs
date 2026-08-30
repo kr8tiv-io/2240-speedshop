@@ -71,7 +71,13 @@ assert.match(hero, /name=\{`hero-act-\$\{index\}`\}/);
 assert.match(hero, /yieldForHeroWarmup/);
 assert.match(hero, /for \(const actRoot of actRoots\)/);
 assert.match(hero, /gl\.compileAsync\(actRoot, camera, scene\)/);
-assert.match(hero, /composer\.current\.render\(0\)/);
+assert.match(hero, /for \(const actRoot of actRoots\)[\s\S]*if \(composer\.current\)[\s\S]*composer\.current\.render\(0\)/);
+assert.doesNotMatch(hero, /openingPass/, "Every act must exercise the shipped composer path.");
+assert.match(hero, /waitForParallelPrograms/);
+assert.match(
+  hero,
+  /composer\.current\.render\(0\);\s*await waitForParallelPrograms\(gl\);[\s\S]{0,800}composer\.current\.render\(0\)/,
+);
 assert.match(hero, /gl\.setRenderTarget\(warmTarget\)/);
 
 assert.match(purgeScript, /HOSTINGER_API_TOKEN/);
