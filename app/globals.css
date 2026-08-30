@@ -1230,50 +1230,44 @@ html[data-ui-overlay="menu"] .grain {
     rgb(10 10 11 / 0.06);
 }
 
-/* The shop's compile-safe doorway. This is visible only until boot.ready and
-   gives a fast-scroll phone a photographed room—not an empty black canvas—
-   while its exact same full-quality world finishes linking behind it. */
+/* The shop's compile-safe doorway. No photograph: this is the same bay before
+   the fixtures come up, drawn as a zero-request architectural light field
+   while the exact full-quality world finishes linking behind it. */
 .wt-world-boot-light {
   pointer-events: none;
   overflow: hidden;
-  background: rgb(20 18 19 / 0.96);
+  background:
+    radial-gradient(72% 46% at 72% -4%, rgba(255, 166, 92, 0.25), transparent 68%),
+    radial-gradient(76% 54% at 8% 104%, rgba(90, 129, 188, 0.18), transparent 70%),
+    linear-gradient(180deg, #171210 0%, #111116 58%, #0b0c10 100%);
 }
 
-/* An authentic room while the exact 3D room links behind it. The image is
-   proximity-mounted by WalkthroughWorld, so these 99/294 KiB never compete
-   with the opening film. A single compositor layer dissolves into the canvas;
-   no blur, blend mode, or animated filter taxes mobile Safari. */
-.wt-world-boot-photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 58% 50%;
-  opacity: 0.52;
-  filter: brightness(0.58) saturate(0.82) contrast(1.1);
-}
-
+.wt-world-boot-light::before,
 .wt-world-boot-light::after {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    /* overhead tungsten pool */
-    radial-gradient(78% 44% at 74% 4%, rgba(255, 157, 78, 0.42), transparent 68%),
-    /* open-door moon across the concrete */
-    radial-gradient(72% 52% at 12% 92%, rgba(90, 133, 204, 0.34), transparent 67%),
-    /* one angled inspection-light streak makes this read as a room, not a fill */
-    linear-gradient(124deg, transparent 30%, rgba(255, 176, 102, 0.14) 43%, transparent 58%),
-    linear-gradient(180deg, rgba(35, 20, 17, 0.78), rgba(16, 18, 25, 0.88)),
-    rgb(20 18 19 / 0.24);
 }
 
-@media (max-width: 767px) {
-  .wt-world-boot-photo {
-    object-position: 61% 50%;
-    opacity: 0.48;
-  }
+.wt-world-boot-light::before {
+  opacity: 0.34;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent calc(12.5% - 1px),
+      rgba(242, 240, 236, 0.11) calc(12.5% - 1px),
+      rgba(242, 240, 236, 0.11) 12.5%
+    ),
+    linear-gradient(180deg, rgba(242, 240, 236, 0.06), transparent 46%);
+  clip-path: polygon(12% 8%, 88% 8%, 97% 94%, 3% 94%);
+}
+
+.wt-world-boot-light::after {
+  background:
+    linear-gradient(112deg, transparent 34%, rgba(255, 176, 102, 0.1) 47%, transparent 58%),
+    linear-gradient(180deg, transparent 64%, rgba(4, 5, 8, 0.68)),
+    radial-gradient(130% 96% at 50% 44%, transparent 42%, rgba(5, 5, 7, 0.64) 100%);
 }
 
 /* ── Station cascade — the content of a revealed plate arrives in beats ─────

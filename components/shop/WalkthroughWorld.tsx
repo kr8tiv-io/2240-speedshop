@@ -52,6 +52,14 @@ import {
 let shopWorldModule: Promise<typeof import("./ShopWorld")> | null = null;
 const preloadShopWorld = () => (shopWorldModule ??= import("./ShopWorld"));
 
+/** Start transferring the split shop shortly after the hero proves its first
+ * frame. Mounting remains separately scheduled so download never implies a
+ * competing WebGL context during the opening interaction window. */
+const POST_HERO_PRELOAD_TIMEOUT_MS = 1_200;
+/** A reader may keep scrolling. Stillness is the preferred compile window,
+ * not permission to leave the real garage unstarted indefinitely. */
+const MOUNT_DEADLINE_MS = 3_200;
+
 const ShopWorld = dynamic(() => (shopWorldModule ??= import("./ShopWorld")).then((m) => m.ShopWorld), {
   ssr: false,
   loading: () => null,
@@ -71,10 +79,6 @@ export function WalkthroughWorld() {
       film above. Never unlatches — recompiling the shop is the single most
       expensive thing this page can do, so once built it only ever parks. */
   const [mounted, setMounted] = useState(false);
-  /** The photographic doorway is requested only when the runway enters the
-      warm corridor. It stays latched so a reader who reverses direction never
-      watches the browser decode the same plate twice. */
-  const [doorwayNear, setDoorwayNear] = useState(false);
   /** True around the runway and its crossfades: the only time frames are
       actually drawn. */
   const [active, setActive] = useState(false);
@@ -134,6 +138,38 @@ export function WalkthroughWorld() {
 
   const run = verdict === "run-full" || verdict === "run-lite";
 
+  /* Network overlap starts from verified hero provenance, not from garage
+     proximity. The import only fetches/evaluates the split runtime; the
+     separate mount gate below still owns models, shaders and the WebGL
+     context. This gives the browser useful work during a quiet hero frame
+     without letting the shop compete with first paint. */
+  useEffect(() => {
+    if (!run) return;
+    let scheduled = false;
+    let idle = 0;
+    let timer = 0;
+    const schedule = () => {
+      if (scheduled) return;
+      const hero = getHeroBootSnapshot();
+      if (!hero.sceneReady && !hero.failed) return;
+      scheduled = true;
+      if (typeof window.requestIdleCallback === "function") {
+        idle = window.requestIdleCallback(() => void preloadShopWorld(), {
+          timeout: POST_HERO_PRELOAD_TIMEOUT_MS,
+        });
+      } else {
+        timer = window.setTimeout(() => void preloadShopWorld(), 180);
+      }
+    };
+    schedule();
+    const unsubscribe = subscribeHeroBoot(schedule);
+    return () => {
+      unsubscribe();
+      if (idle) window.cancelIdleCallback(idle);
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [run]);
+
   /* Runway gating + the edge fade. This effect also owns the shared runway
      measurement, so every consumer (camera rig, reveals, rail) reads fresh
      numbers even on machines where the canvas never mounts. */
@@ -150,41 +186,49 @@ export function WalkthroughWorld() {
        supplies lead time, and real scroll stillness supplies a safe moment.
        A fast scroller keeps the fully graded boot-light until they stop. */
     let warmTimer = 0;
+    let mountDeadline = 0;
     let warmNear = false;
     let warmLatched = false;
     let heroSettled = (() => {
       const boot = getHeroBootSnapshot();
       return boot.sceneReady || boot.failed;
     })();
-    const mountWhenIdle = () => {
-      if (!run || warmLatched || !warmNear) return;
-      if (heroSettled && stillFor() >= 900) {
+    const mountWorld = (deadline = false) => {
+      if (!run || warmLatched || !heroSettled) return;
+      if (deadline || (warmNear && stillFor() >= 900)) {
         warmLatched = true;
         setMounted(true);
         warm.disconnect();
+        window.clearTimeout(warmTimer);
+        window.clearTimeout(mountDeadline);
         return;
       }
-      warmTimer = window.setTimeout(mountWhenIdle, 150);
+      if (warmNear) warmTimer = window.setTimeout(() => mountWorld(false), 150);
+    };
+    const scheduleMountDeadline = () => {
+      if (!run || warmLatched || !heroSettled || mountDeadline) return;
+      mountDeadline = window.setTimeout(() => mountWorld(true), MOUNT_DEADLINE_MS);
     };
     const unsubscribeHero = subscribeHeroBoot(() => {
       const boot = getHeroBootSnapshot();
       heroSettled = boot.sceneReady || boot.failed;
+      if (heroSettled) scheduleMountDeadline();
       if (heroSettled && warmNear && !warmLatched) {
         window.clearTimeout(warmTimer);
-        warmTimer = window.setTimeout(mountWhenIdle, 150);
+        warmTimer = window.setTimeout(() => mountWorld(false), 150);
       }
     });
+    scheduleMountDeadline();
     const warm = new IntersectionObserver(
       ([entry]) => {
         warmNear = entry.isIntersecting;
         if (warmNear) {
-          setDoorwayNear(true);
           if (run) void preloadShopWorld();
         }
         window.clearTimeout(warmTimer);
-        if (warmNear) warmTimer = window.setTimeout(mountWhenIdle, 150);
+        if (warmNear) warmTimer = window.setTimeout(() => mountWorld(false), 150);
       },
-      { rootMargin: "500% 0px 500% 0px" },
+      { rootMargin: "700% 0px 700% 0px" },
     );
     warm.observe(runway);
 
@@ -242,6 +286,7 @@ export function WalkthroughWorld() {
       unsubscribeHero();
       warm.disconnect();
       window.clearTimeout(warmTimer);
+      window.clearTimeout(mountDeadline);
       draw.disconnect();
       document.removeEventListener("scroll", fade, { capture: true });
       window.removeEventListener("resize", measure);
@@ -279,27 +324,10 @@ export function WalkthroughWorld() {
           then dissolve it away once the full world is ready. */}
       <div
         className={`wt-world-boot-light absolute inset-0 transition-opacity duration-1000 ${
-          worldReady ? "opacity-0" : worldWarm ? "opacity-[0.46]" : "opacity-100"
+          worldReady ? "opacity-0" : worldWarm ? "opacity-[0.18]" : "opacity-100"
         }`}
-        data-shop-doorway={doorwayNear ? "near" : "parked"}
-      >
-        {doorwayNear ? (
-          <picture>
-            <source
-              media="(max-width: 767px)"
-              srcSet="/shop/opt/shop-showroom-neon-800.webp"
-            />
-            <img
-              className="wt-world-boot-photo"
-              src="/shop/opt/shop-showroom-neon-1600.webp"
-              alt=""
-              loading="eager"
-              decoding="async"
-              fetchPriority="low"
-            />
-          </picture>
-        ) : null}
-      </div>
+        data-shop-doorway={worldReady ? "open" : worldWarm ? "warming" : "dark"}
+      />
     </div>
   );
 }
