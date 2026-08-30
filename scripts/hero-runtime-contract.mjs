@@ -25,8 +25,8 @@ const contracts = [
     /diagnostics\.current\.camera\[0\]\s*=\s*camera\.position\.x/,
   ],
   [
-    "the primer readiness gate admits the 18-primitive third hero",
-    /return n >= 10/,
+    "the primer readiness gate uses stable named act roots",
+    /scene\.getObjectByName\(`hero-act-\$\{index\}`\)/,
   ],
   [
     "the full composer stays parked behind the preloader until priming commits",
@@ -43,10 +43,10 @@ assert.doesNotMatch(
   /useFrame\([\s\S]*?window\.__film\s*=\s*\{/,
   "useFrame must not allocate a fresh diagnostics object every rendered frame",
 );
-assert.doesNotMatch(
+assert.match(
   source,
-  /return n > 20/,
-  "Act III has 18 primitives; a >20 gate burns the full 240-frame timeout on every load",
+  /for \(const actRoot of actRoots\)/,
+  "hero acts must warm in discrete passes",
 );
 
 console.log("hero runtime contract: PASS");

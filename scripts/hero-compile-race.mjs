@@ -91,8 +91,9 @@ try {
     const sceneReady = await page
       .waitForFunction(
         () =>
-          document.querySelector("[data-preloader]")?.getAttribute("data-ready-reason") ===
-          "scene",
+          document
+            .querySelector("[data-hero-runtime]")
+            ?.getAttribute("data-hero-scene-ready") === "true",
         { timeout: 25_000 },
       )
       .then(() => true)

@@ -69,6 +69,7 @@ assert.match(cinema, /IntentLink/);
 assert.match(hero, /name=\{`hero-act-\$\{index\}`\}/);
 assert.match(hero, /yieldForHeroWarmup/);
 assert.match(hero, /for \(const actRoot of actRoots\)/);
+assert.match(hero, /gl\.compileAsync\(actRoot, camera, scene\)/);
 assert.match(hero, /composer\.current\.render\(0\)/);
 assert.match(hero, /gl\.setRenderTarget\(warmTarget\)/);
 

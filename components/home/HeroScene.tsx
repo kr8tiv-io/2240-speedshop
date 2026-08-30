@@ -1012,7 +1012,12 @@ function ActStage({
   const ss = 1 / built.fit.scale;
 
   return (
-    <group ref={group} visible={false}>
+    <group
+      ref={group}
+      name={`hero-act-${index}`}
+      userData={{ heroAct: index }}
+      visible={false}
+    >
       <group position={built.fit.offset} scale={built.fit.scale}>
         <group ref={spinRef} rotation={[0, built.fit.rotY, 0]}>
           <primitive object={scene} />
@@ -1633,8 +1638,39 @@ function cornerEdge(
   return worst;
 }
 
+/** Give the main thread a paint/input opportunity between GPU warmup acts. */
+async function yieldForHeroWarmup() {
+  const scheduler = (
+    globalThis as typeof globalThis & { scheduler?: { yield?: () => Promise<void> } }
+  ).scheduler;
+  if (scheduler?.yield) {
+    await scheduler.yield();
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => window.setTimeout(resolve, 0));
+  });
+}
+
+function heroActRoots(scene: THREE.Scene) {
+  return ACTS.map((_, index) => scene.getObjectByName(`hero-act-${index}`)).filter(
+    (root): root is THREE.Object3D => Boolean(root),
+  );
+}
+
+function snapshotVisibility(scene: THREE.Scene) {
+  const visibility = new Map<THREE.Object3D, boolean>();
+  scene.traverse((object) => visibility.set(object, object.visible));
+  return visibility;
+}
+
+function restoreVisibility(visibility: Map<THREE.Object3D, boolean>) {
+  for (const [object, visible] of visibility) object.visible = visible;
+}
+
 /**
- * Compile every shader in the film BEFORE the preloader lifts.
+ * Compile every shader in the film BEFORE the preloader lifts, one act at a
+ * time so the browser gets a scheduling boundary between expensive passes.
  *
  * MEASURED: on every run, at every width, on both builds, the first scroll
  * froze for 3.1–3.3 SECONDS at about y=450 — one stall, always in the same
@@ -1644,14 +1680,12 @@ function cornerEdge(
  * compiles a program the first time it has to DRAW with it — which is the
  * first frame the visitor scrolls, the worst possible moment.
  *
- * compileAsync walks the graph and builds the programs up front. Two details
- * matter. Acts II and III sit with `visible = false` until their turn, and
- * three only compiles what it would render, so everything is forced visible
- * for the pass and restored afterwards — otherwise two thirds of the stall
- * just moves to the act transitions (which is where the remaining 300–600 ms
- * stalls were coming from). And it must be awaited before the loader hands
- * off, which is the whole point: the client said plainly that if it needs time
- * at the start, take the time.
+ * compileAsync only walks visible objects. Each pass therefore exposes every
+ * shared stage object plus exactly one named act root, restores the complete
+ * visibility snapshot, then yields. The full composer is warmed once on the
+ * opening act; later acts upload geometry into its off-screen input target.
+ * Every model, shader and post effect is still ready before the handoff, but
+ * the former all-at-once main-thread burst is split into schedulable work.
  */
 function ScenePrimer({
   onReady,
@@ -1676,43 +1710,37 @@ function ScenePrimer({
          that runs once the GLTF resolves, so the pass has to hold until their
          meshes are actually in the graph or it compiles nothing that matters.
          Measured: without this the first-scroll freeze only fell 3.3 s -> 2.6 s. */
-      const built = () =>
-        scene.children.filter((c) => {
-          let n = 0;
-          c.traverse((o) => {
-            if ((o as THREE.Mesh).isMesh) n++;
-          });
-          /* The three hero roots contain 44, 49 and 18 primitives. The old
-             >20 heuristic could never count the Charger, so every cold load
-             waited the full 240-frame timeout after all assets were ready. */
-          return n >= 10;
-        }).length;
-      for (let i = 0; i < 240 && built() < ACTS.length; i++) {
+      for (let i = 0; i < 240 && heroActRoots(scene).length < ACTS.length; i++) {
         await new Promise((r) => requestAnimationFrame(r));
         if (cancelled) return;
       }
 
-      const hidden: THREE.Object3D[] = [];
-      SCENE_PRIMER.active = true;
-      scene.traverse((o) => {
-        if (!o.visible) {
-          hidden.push(o);
-          o.visible = true;
-        }
-      });
-      try {
-        /* Compile the variant the film ACTUALLY ships. EffectComposer renders
-           the scene into its half-float input buffer; compiling against the
-           default canvas creates a different ANGLE program and leaves a
-           multi-second COMPLETION_STATUS query on first scroll. */
-        const target = composer.current?.inputBuffer ?? null;
+      const actRoots = heroActRoots(scene);
+      const warmTarget = composer.current?.inputBuffer ?? null;
+      let openingPass = true;
+
+      for (const actRoot of actRoots) {
+        if (cancelled) return;
+        const visibility = snapshotVisibility(scene);
         const previousTarget = gl.getRenderTarget();
-        const compileMaterials = collectSceneMaterials(scene);
+        SCENE_PRIMER.active = true;
+        scene.traverse((object) => {
+          object.visible = true;
+        });
+        for (const root of actRoots) root.visible = root === actRoot;
+
+        /* Three's compile() traverses the compile object regardless of
+           visibility. Compile exactly this act root, and use the full scene
+           only as lighting/environment context, so another act can neither
+           inflate this pass nor enter its asynchronous polling set. */
+        const compileMaterials = collectSceneMaterials(actRoot);
         const releaseMaterialDisposals = deferMaterialDisposal(compileMaterials);
         const traceCompile = window.location.search.includes("compiletrace");
         const traceCleanups: Array<() => void> = [];
         if (traceCompile) {
-          console.log(`[hero-compile] polling ${compileMaterials.size} scene materials`);
+          console.log(
+            `[hero-compile] polling ${compileMaterials.size} scene materials for ${actRoot.name}`,
+          );
           for (const material of compileMaterials) {
             const disposed = () => {
               console.warn(
@@ -1723,32 +1751,40 @@ function ScenePrimer({
             traceCleanups.push(() => material.removeEventListener("dispose", disposed));
           }
         }
+
         try {
-          if (target) gl.setRenderTarget(target);
-          await gl.compileAsync(scene, camera);
+          /* Compile the exact half-float variant used by EffectComposer.
+             ANGLE otherwise builds a second program on the first film draw. */
+          if (warmTarget) gl.setRenderTarget(warmTarget);
+          await gl.compileAsync(actRoot, camera, scene);
+          if (cancelled) return;
+
+          if (openingPass && composer.current) {
+            /* Builds bloom, film, vignette and tone mapping once. The runtime
+               wrapper is still opacity:0, so this complete pass cannot flash. */
+            composer.current.render(0);
+          } else {
+            /* Later cars only need their geometry/material upload. Keep the
+               draw in the composer's off-screen input buffer. */
+            if (warmTarget) gl.setRenderTarget(warmTarget);
+            gl.render(scene, camera);
+          }
+        } catch {
+          /* A driver compile failure must never strand the page behind the
+             loader. Continue warming the remaining acts; the failed pass can
+             still fall back to Three's former first-use behavior. */
         } finally {
           for (const cleanup of traceCleanups) cleanup();
           releaseMaterialDisposals();
           gl.setRenderTarget(previousTarget);
+          restoreVisibility(visibility);
+          SCENE_PRIMER.active = false;
         }
-        /* AND DRAW ONE COMPLETE COMPOSED FRAME. compileAsync builds the
-           scene PROGRAMS; it does not
-           upload the geometry. Vertex and index buffers go to the GPU the
-           first time a mesh is actually drawn, and until first scroll no car
-           is drawn at all (they sit at reveal 0), so three uploaded three
-           cars' worth of buffers during the opening scroll. Compiling alone
-           only moved the freeze 3.3 s -> 2.6 s; the rest was upload. Running
-           the real composer also builds bloom, film, vignette and tone-map
-           shaders under the loader veil, so the first visible film frame is
-           genuinely the second composed frame. */
-        if (composer.current) composer.current.render(0);
-        else gl.render(scene, camera);
-      } catch {
-        // A compile failure must not strand the page behind the loader —
-        // the film still plays, it just pays the stall it used to pay.
-      } finally {
-        for (const o of hidden) o.visible = false;
-        SCENE_PRIMER.active = false;
+
+        openingPass = false;
+        if (actRoot !== actRoots[actRoots.length - 1]) {
+          await yieldForHeroWarmup();
+        }
       }
       if (!cancelled) onReady?.();
     };
