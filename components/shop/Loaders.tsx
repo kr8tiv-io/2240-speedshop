@@ -161,6 +161,7 @@ export const M = {
  * How a file wants to be finished.
  *
  *   paint — a car someone has finished: coloured base under a full clearcoat
+ *   raw-metal — the fab-corner shell: worked steel, scuffed and reflective
  *   matte — a car nobody has finished: primer and rust, flat and thirsty
  *   prop  — everything else, graded to sit with the PBR set
  *
@@ -169,7 +170,7 @@ export const M = {
  * different objects, and the shop reads as a place where work is IN PROGRESS
  * rather than a showroom where every panel has the same finish.
  */
-type Finish = "paint" | "matte" | "prop";
+type Finish = "paint" | "raw-metal" | "matte" | "prop";
 
 const PAINTED: ReadonlySet<string> = new Set<string>([
   M.challenger,
@@ -180,14 +181,18 @@ const PAINTED: ReadonlySet<string> = new Set<string>([
   M.convertible,
 ]);
 
-const BARE: ReadonlySet<string> = new Set<string>([
+const RAW_METAL: ReadonlySet<string> = new Set<string>([
   M.primerShell,
+]);
+
+const BARE: ReadonlySet<string> = new Set<string>([
   M.rustedShell,
   M.prewarDonor,
 ]);
 
 function finishOf(url: string): Finish {
   if (PAINTED.has(url)) return "paint";
+  if (RAW_METAL.has(url)) return "raw-metal";
   if (BARE.has(url)) return "matte";
   return "prop";
 }
@@ -547,6 +552,78 @@ function unify(material: THREE.MeshStandardMaterial) {
 }
 
 /**
+ * A tiny, shared roughness field for unfinished steel. The shell source has no
+ * texture coordinates, so `ensureRawSteelUVs` supplies box-projected UVs after
+ * its normals are softened. Long directional passes and a few harder scuffs
+ * break the otherwise uniform grey response without another request, mesh, or
+ * draw call. The pattern is deterministic, so it never crawls or shimmers.
+ */
+function rawSteelRoughness() {
+  const size = 64;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const brushed = Math.sin(y * 1.73 + Math.sin(x * 0.31) * 1.8) * 17;
+      const broad = Math.sin(x * 0.34 + y * 0.08) * 11;
+      const scratch = (x * 17 + y * 29) % 47 === 0 ? -38 : 0;
+      const value = THREE.MathUtils.clamp(Math.round(208 + brushed + broad + scratch), 142, 244);
+      const offset = (y * size + x) * 4;
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.name = "2240 raw-steel micro-roughness";
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(3.5, 11);
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.anisotropy = 4;
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const RAW_STEEL_ROUGHNESS = rawSteelRoughness();
+
+function ensureRawSteelUVs(geometry: THREE.BufferGeometry) {
+  if (geometry.getAttribute("uv")) return;
+  const position = geometry.getAttribute("position");
+  const normal = geometry.getAttribute("normal");
+  if (!position || !normal) return;
+
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  if (!box) return;
+  const span = box.getSize(new THREE.Vector3());
+  span.set(Math.max(span.x, 1e-5), Math.max(span.y, 1e-5), Math.max(span.z, 1e-5));
+  const uv = new Float32Array(position.count * 2);
+
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i);
+    const y = position.getY(i);
+    const z = position.getZ(i);
+    const nx = Math.abs(normal.getX(i));
+    const ny = Math.abs(normal.getY(i));
+    const nz = Math.abs(normal.getZ(i));
+    if (ny >= nx && ny >= nz) {
+      uv[i * 2] = (x - box.min.x) / span.x;
+      uv[i * 2 + 1] = (z - box.min.z) / span.z;
+    } else if (nx >= nz) {
+      uv[i * 2] = (z - box.min.z) / span.z;
+      uv[i * 2 + 1] = (y - box.min.y) / span.y;
+    } else {
+      uv[i * 2] = (x - box.min.x) / span.x;
+      uv[i * 2 + 1] = (y - box.min.y) / span.y;
+    }
+  }
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+}
+
+/**
  * The same treatment for the hand-built building.
  *
  * The shell is a hundred-odd primitives with inline materials — a colour here,
@@ -744,6 +821,7 @@ function grade(scene: THREE.Object3D, finish: Finish) {
   GRADED.add(scene);
 
   const isVehicle = finish !== "prop";
+  const rawMetal = finish === "raw-metal";
 
   // One physical material per source material, so a body panel shared by nine
   // meshes still compiles one program and issues one uniform upload.
@@ -801,7 +879,11 @@ function grade(scene: THREE.Object3D, finish: Finish) {
         material.transparent ||
         material.opacity < 1 ||
         /glass|window|windscreen|windshield|screen/.test(name);
-      const isRubber = luma < 0.045 || /tyre|tire|rubber|wheel/.test(name);
+      /* The raw shell source contains one material for the entire body and its
+         author named that slot `Tire_Rubber`. Trusting the name turned every
+         panel into dead-black rubber. Raw-metal ownership is file-level and
+         therefore outranks that malformed material label. */
+      const isRubber = !rawMetal && (luma < 0.045 || /tyre|tire|rubber|wheel/.test(name));
 
       if (isGlass) {
         // Dark, hard, reflective. Glass is the one place a low-poly car gets a
@@ -844,10 +926,10 @@ function grade(scene: THREE.Object3D, finish: Finish) {
 
       const paint = new THREE.MeshPhysicalMaterial({
         name: material.name,
-        color: material.color.clone(),
+        color: rawMetal ? new THREE.Color("#929aa3") : material.color.clone(),
         map: material.map,
         normalMap: material.normalMap,
-        roughnessMap: material.roughnessMap,
+        roughnessMap: rawMetal ? RAW_STEEL_ROUGHNESS : material.roughnessMap,
         metalnessMap: material.metalnessMap,
         vertexColors: material.vertexColors,
         side: material.side,
@@ -856,24 +938,27 @@ function grade(scene: THREE.Object3D, finish: Finish) {
         // turns a silver body into a black one — which is exactly what
         // happened on the first pass. A little flake, a coloured base, and let
         // the coat below do the shine.
-        metalness: chromeish ? 1 : bare ? 0.06 : 0.14,
-        roughness: chromeish ? 0.09 : bare ? 0.78 : 0.44,
+        metalness: chromeish ? 1 : rawMetal ? 0.82 : bare ? 0.06 : 0.14,
+        roughness: chromeish ? 0.09 : rawMetal ? 0.46 : bare ? 0.78 : 0.44,
         // The whole point. A coloured base under a near-mirror second layer is
         // what a painted panel physically IS; without it the same colour is
         // just a lump of tinted plastic, which is precisely how these bodies
         // have been reading. Primer and rust get almost none of it — a shell
         // that has not been painted yet must not be the shiniest thing in the
         // building, which is exactly what it became on the first pass.
-        clearcoat: chromeish ? 0 : bare ? 0.08 : 1,
+        clearcoat: chromeish ? 0 : rawMetal ? 0 : bare ? 0.08 : 1,
         // Hard. Once the bay lights were moved off the cars' centrelines the
         // blown circle in the middle of every bonnet went with them, and a
         // tight coat is what turns the overhead strips into the long clean
         // streak down a wing that says "this paint is three feet deep".
         clearcoatRoughness: 0.07,
-        envMapIntensity: chromeish ? 1.35 : bare ? 0.6 : 1,
+        envMapIntensity: chromeish ? 1.35 : rawMetal ? 1.28 : bare ? 0.6 : 1,
       });
       if (chromeish) {
         // nothing to tame — trim keeps its brightness
+      } else if (rawMetal) {
+        // Keep the steel neutral. The roughness field and shop reflections do
+        // the panel work; a coloured clearcoat would turn it back into paint.
       } else if (bare) {
         tame(paint.color, 0.5, 0.42);
       } else {
@@ -889,6 +974,7 @@ function grade(scene: THREE.Object3D, finish: Finish) {
     // Softer crease on bodywork than on dressing: a car is mostly one big
     // swept surface and wants to hold together across it.
     smooth(mesh, isVehicle ? THREE.MathUtils.degToRad(55) : THREE.MathUtils.degToRad(42));
+    if (rawMetal) ensureRawSteelUVs(mesh.geometry);
 
     if (replaced) {
       mesh.material = Array.isArray(mesh.material) ? rebuilt : rebuilt[0];
