@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { site } from "@/lib/site";
+import { IntentLink } from "@/components/IntentLink";
 import { Roll } from "@/components/fx/Roll";
 import { setUIOverlay } from "@/components/ui-overlay";
 
@@ -150,20 +150,20 @@ export function Nav() {
           scrolled && !open ? "py-2" : "py-3.5"
         }`}
       >
-        <Link href="/" className="group flex items-baseline gap-3" onClick={closeMenu}>
+        <IntentLink href="/" className="group flex items-baseline gap-3" onClick={closeMenu}>
           <span className="font-display text-[26px] leading-none tracking-[0.02em] text-bone transition-colors group-hover:text-ember">
             2240
           </span>
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.3em] text-steel sm:block">
             Speed Shop / Edmonton AB
           </span>
-        </Link>
+        </IntentLink>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
           {links.map((l) => {
             const active = pathname === l.href || pathname.startsWith(`${l.href}/`);
             return (
-              <Link
+              <IntentLink
                 key={l.href}
                 href={l.href}
                 aria-current={active ? "page" : undefined}
@@ -176,12 +176,12 @@ export function Nav() {
                 </span>
                 <Roll text={l.label} />
                 <span className="nav-underline" aria-hidden="true" />
-              </Link>
+              </IntentLink>
             );
           })}
-          <Link href="/quote" data-magnetic className="cta ml-4 !px-6 !py-3 !text-[11px]">
+          <IntentLink href="/quote" data-magnetic className="cta ml-4 !px-6 !py-3 !text-[11px]">
             Start your build
-          </Link>
+          </IntentLink>
         </nav>
 
         {/* Native disclosure first, React enhancement second. A tap between
@@ -224,12 +224,12 @@ export function Nav() {
           >
             <div className="mx-auto flex min-h-full w-full max-w-[42rem] flex-col">
               <div className="flex min-h-16 items-center justify-between border-b border-bone/10">
-                <Link href="/" onClick={closeMenu} className="flex min-h-12 items-center">
+                <IntentLink href="/" onClick={closeMenu} className="flex min-h-12 items-center">
                   <span className="font-display text-[26px] leading-none tracking-[0.02em] text-bone">2240</span>
                   <span className="ml-3 font-mono text-[9px] uppercase tracking-[0.24em] text-steel">
                     Edmonton AB
                   </span>
-                </Link>
+                </IntentLink>
                 <button
                   type="button"
                   aria-label="Close menu"
@@ -245,7 +245,7 @@ export function Nav() {
                 <ul>
                   {links.map((link, index) => (
                     <li key={link.href} className="border-b border-rust/50">
-                      <Link
+                      <IntentLink
                         href={link.href}
                         onClick={closeMenu}
                         className="mobile-menu-link flex min-h-12 items-center gap-4 py-2.5 outline-none focus-visible:bg-bone/[0.05]"
@@ -255,7 +255,7 @@ export function Nav() {
                         <span className="font-display text-[clamp(1.75rem,8.5vw,2.5rem)] uppercase leading-none tracking-[0.035em] text-bone">
                           {link.label}
                         </span>
-                      </Link>
+                      </IntentLink>
                     </li>
                   ))}
                 </ul>
@@ -263,9 +263,9 @@ export function Nav() {
 
               <div className="space-y-3 border-t border-bone/10 pt-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <Link href="/quote" onClick={closeMenu} className="cta min-h-12 text-center">
+                  <IntentLink href="/quote" onClick={closeMenu} className="cta min-h-12 text-center">
                     Start your build
-                  </Link>
+                  </IntentLink>
                   <a
                     href={`tel:${site.phone}`}
                     onClick={closeMenu}

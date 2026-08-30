@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { site } from "@/lib/site";
 import { splitChars } from "@/lib/split";
 import { supportsWebGL2 } from "@/lib/webgl-capability";
+import { IntentLink } from "@/components/IntentLink";
 import { useDeferredGSAP } from "@/components/fx/useDeferredGSAP";
 import { useUIOverlay } from "@/components/ui-overlay";
 import { Preloader } from "./Preloader";
@@ -493,12 +493,12 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
                 manners are right. The finish gets attention. The decisions underneath are why it
                 keeps it.
               </p>
-              <Link
+              <IntentLink
                 href="/builds"
                 className="pointer-events-auto mt-5 inline-block font-mono text-[11px] uppercase tracking-[0.24em] text-tungsten transition-colors hover:text-ember sm:mt-6"
               >
                 See the finished work →
-              </Link>
+              </IntentLink>
             </div>
           </div>
 
@@ -636,9 +636,9 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
                   </span>
                 </p>
                 <div className="pointer-events-auto mt-4 flex flex-wrap gap-2 sm:mt-6 sm:gap-4">
-                  <Link href="/quote" data-magnetic className="cta cta-compact cta-act-three">
+                  <IntentLink href="/quote" data-magnetic className="cta cta-compact cta-act-three">
                     Start your build
-                  </Link>
+                  </IntentLink>
                   <a href={`tel:${site.phone}`} className="cta cta-ghost cta-compact cta-act-three">
                     {site.phoneDisplay}
                   </a>
@@ -788,12 +788,12 @@ function ChapterZeroCopy({ kinetic = false }: { kinetic?: boolean; ready?: boole
           Built in Edmonton. Driven anywhere.
         </p>
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-          <Link href="/quote" data-magnetic className="cta cta-compact">
+          <IntentLink href="/quote" data-magnetic className="cta cta-compact">
             Start your build
-          </Link>
-          <Link href="/builds" className="cta cta-ghost cta-compact">
+          </IntentLink>
+          <IntentLink href="/builds" className="cta cta-ghost cta-compact">
             See the work
-          </Link>
+          </IntentLink>
         </div>
       </div>
       <p data-scroll-cue className="corner-note mt-6 flex items-center gap-3 sm:mt-10">
