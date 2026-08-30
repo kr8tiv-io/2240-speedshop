@@ -149,7 +149,7 @@ export function Preloader({ onDone }: { onDone?: () => void }) {
       data-ready-reason={loader.reason ?? undefined}
       data-progress={displayedProgress}
       data-boot-generation={getHeroBootGeneration()}
-      className={`preloader-veil fixed inset-0 z-[80] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[400ms] ease-out ${
+      className={`preloader-veil fixed inset-0 z-[120] flex flex-col items-center justify-center bg-bay-black transition-[opacity,transform] duration-[400ms] ease-out ${
         loader.phase === "exit" ? "-translate-y-6 opacity-0" : ""
       }`}
       /* Once genuine scene provenance exists, the CSS dead-man must not win

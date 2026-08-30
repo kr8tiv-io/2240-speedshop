@@ -12,6 +12,11 @@ const [preloader, runtime, cinema, css] = await Promise.all([
 assert.match(preloader, /PROGRESSIVE_CEILING_MS\s*=\s*1_200/);
 assert.match(preloader, /MIN_BRAND_MS\s*=\s*500/);
 assert.match(preloader, /data-loader-instrument/);
+assert.match(
+  preloader,
+  /preloader-veil fixed inset-0 z-\[120\]/,
+  "The opening plate must sit above navigation so the 2240 mark is not duplicated.",
+);
 assert.match(preloader, /OPENING THE SHOP/);
 assert.match(preloader, /EDMONTON \/ AFTER HOURS/);
 assert.doesNotMatch(
