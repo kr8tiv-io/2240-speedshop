@@ -34,6 +34,22 @@ export type BootState = {
 const state: BootState = { progress: 0, warm: false, ready: false, skipped: false };
 const listeners = new Set<(s: BootState) => void>();
 
+/**
+ * Begin the lifecycle of a new WebGL shop context.
+ *
+ * Model bytes and parsed GLTFs may safely remain in the browser cache between
+ * visits; GPU readiness may not. Safari in particular will hand a remounted
+ * Canvas a different WebGL context, so carrying `warm` or `ready` across a
+ * route revisit can remove the safety light before the new renderer exists.
+ */
+export function beginWorldBoot() {
+  state.progress = 0;
+  state.warm = false;
+  state.ready = false;
+  state.skipped = false;
+  emit();
+}
+
 function emit() {
   for (const listener of listeners) listener(state);
 }

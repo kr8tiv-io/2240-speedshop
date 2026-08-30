@@ -10,7 +10,7 @@ import {
   subscribeHeroBoot,
 } from "@/components/home/hero-boot";
 import { useUIOverlay } from "@/components/ui-overlay";
-import { getBoot, markWorldSkipped, noteMotion, stillFor, subscribeBoot } from "./boot";
+import { beginWorldBoot, markWorldSkipped, noteMotion, stillFor, subscribeBoot } from "./boot";
 import {
   RUNWAY_ID,
   measureRunway,
@@ -50,13 +50,23 @@ import {
  * answer engine — needs is server-rendered HTML in front of the canvas.
  */
 let shopWorldModule: Promise<typeof import("./ShopWorld")> | null = null;
-const preloadShopWorld = () => (shopWorldModule ??= import("./ShopWorld"));
+const preloadShopWorld = () => {
+  if (!shopWorldModule) {
+    shopWorldModule = import("./ShopWorld").catch((error) => {
+      // A transient CDN/chunk error must not poison every later attempt for
+      // the lifetime of this tab.
+      shopWorldModule = null;
+      throw error;
+    });
+  }
+  return shopWorldModule;
+};
 
 /** Start transferring the split shop shortly after the hero proves its first
  * frame. Mounting remains separately scheduled so download never implies a
  * competing WebGL context during the opening interaction window. */
 const POST_HERO_PRELOAD_TIMEOUT_MS = 1_200;
-const ShopWorld = dynamic(() => (shopWorldModule ??= import("./ShopWorld")).then((m) => m.ShopWorld), {
+const ShopWorld = dynamic(() => preloadShopWorld().then((m) => m.ShopWorld), {
   ssr: false,
   loading: () => null,
 });
@@ -78,20 +88,21 @@ export function WalkthroughWorld() {
   /** True around the runway and its crossfades: the only time frames are
       actually drawn. */
   const [active, setActive] = useState(false);
-  const [worldWarm, setWorldWarm] = useState(() => getBoot().warm);
-  const [worldReady, setWorldReady] = useState(() => getBoot().ready);
+  const [worldWarm, setWorldWarm] = useState(false);
+  const [worldReady, setWorldReady] = useState(false);
   const uiOverlay = useUIOverlay();
   const host = useRef<HTMLDivElement>(null);
   const opacityWritten = useRef(-1);
 
-  useEffect(
-    () =>
-      subscribeBoot((boot) => {
-        if (boot.warm) setWorldWarm(true);
-        if (boot.ready) setWorldReady(true);
-      }),
-    [],
-  );
+  useEffect(() => {
+    // Parsed model bytes can remain cached; these flags belong to the new GPU
+    // context and must always begin behind the safety light.
+    beginWorldBoot();
+    return subscribeBoot((boot) => {
+      setWorldWarm(boot.warm);
+      setWorldReady(boot.ready || boot.skipped);
+    });
+  }, []);
 
   /* Tier detection — verbatim from the original mount. */
   useEffect(() => {
@@ -150,11 +161,11 @@ export function WalkthroughWorld() {
       if (!hero.sceneReady && !hero.failed) return;
       scheduled = true;
       if (typeof window.requestIdleCallback === "function") {
-        idle = window.requestIdleCallback(() => void preloadShopWorld(), {
+        idle = window.requestIdleCallback(() => void preloadShopWorld().catch(() => undefined), {
           timeout: POST_HERO_PRELOAD_TIMEOUT_MS,
         });
       } else {
-        timer = window.setTimeout(() => void preloadShopWorld(), 180);
+        timer = window.setTimeout(() => void preloadShopWorld().catch(() => undefined), 180);
       }
     };
     schedule();
@@ -164,7 +175,7 @@ export function WalkthroughWorld() {
       if (idle) window.cancelIdleCallback(idle);
       if (timer) window.clearTimeout(timer);
     };
-  }, [run]);
+  }, [run, verdict]);
 
   /* Runway gating + the edge fade. This effect also owns the shared runway
      measurement, so every consumer (camera rig, reveals, rail) reads fresh
@@ -184,6 +195,7 @@ export function WalkthroughWorld() {
     let warmTimer = 0;
     let warmNear = false;
     let warmLatched = false;
+    let cancelled = false;
     let heroSettled = (() => {
       const boot = getHeroBootSnapshot();
       return boot.sceneReady || boot.failed;
@@ -192,9 +204,19 @@ export function WalkthroughWorld() {
       if (!run || warmLatched || !heroSettled) return;
       if (warmNear && stillFor() >= 900) {
         warmLatched = true;
-        setMounted(true);
         warm.disconnect();
         window.clearTimeout(warmTimer);
+        void preloadShopWorld()
+          .then((module) => {
+            if (cancelled) return;
+            module.prepareGarageMount();
+            setMounted(true);
+          })
+          .catch(() => {
+            if (cancelled) return;
+            warmLatched = false;
+            if (warmNear) warmTimer = window.setTimeout(mountWorld, 500);
+          });
         return;
       }
       if (warmNear) warmTimer = window.setTimeout(mountWorld, 150);
@@ -211,7 +233,16 @@ export function WalkthroughWorld() {
       ([entry]) => {
         warmNear = entry.isIntersecting;
         if (warmNear) {
-          if (run) void preloadShopWorld();
+          if (run) {
+            // Seven viewports of approach is enough to fill the shared model
+            // cache without charging the landing page for garage bytes a
+            // visitor may never request.
+            void preloadShopWorld()
+              .then((module) =>
+                module.preloadOpeningGarage(verdict === "run-full" ? "full" : "lite"),
+              )
+              .catch(() => undefined);
+          }
         }
         window.clearTimeout(warmTimer);
         if (warmNear) warmTimer = window.setTimeout(mountWorld, 150);
@@ -271,6 +302,7 @@ export function WalkthroughWorld() {
     observer.observe(runway);
 
     return () => {
+      cancelled = true;
       unsubscribeHero();
       warm.disconnect();
       window.clearTimeout(warmTimer);
@@ -280,7 +312,7 @@ export function WalkthroughWorld() {
       window.visualViewport?.removeEventListener("resize", measure);
       observer.disconnect();
     };
-  }, [run]);
+  }, [run, verdict]);
 
   return (
     <div

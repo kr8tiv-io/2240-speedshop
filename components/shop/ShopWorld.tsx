@@ -41,7 +41,10 @@ import {
   SheetLightning,
 } from "./Effects";
 import {
+  beginLoaderStream,
   DetailCull,
+  preloadOpeningModels,
+  releaseLoaderRenderer,
   StationBundle,
   WarmScene,
   highestContiguousWarmStation,
@@ -2326,8 +2329,8 @@ function SceneContents({
         <Dust count={lite ? 90 : 460} />
       </group>
 
-      {/* Everything in the bays. Stations 0 and 1 are up on first paint; the
-          rest fetch when the camera is within ~1.4 stations of them, so the
+      {/* Everything in the bays. Station 0 owns first paint; every later bay
+          enters through the warm-complete chain, so the
           reader never pays for a bay they have not scrolled to. */}
       <StationBundle station={0}>
         <StationDoorway />
@@ -2467,6 +2470,16 @@ function SceneContents({
    in front of it. The scrim keeps body copy legible over the shop — lightened
    along with the scene, because a shop nobody can see is not a backdrop. */
 
+/** Called by the lightweight page gate after the hero has settled. */
+export function preloadOpeningGarage(tier: WorldTier) {
+  preloadOpeningModels(tier === "lite");
+}
+
+/** Reset context-owned stream state immediately before a new Canvas mounts. */
+export function prepareGarageMount() {
+  beginLoaderStream();
+}
+
 export function ShopWorld({
   tier = "full",
   active = true,
@@ -2477,6 +2490,7 @@ export function ShopWorld({
       park — the scene stays warm, it just stops drawing. */
   active?: boolean;
 }) {
+  const renderer = useRef<THREE.WebGLRenderer | null>(null);
   const [lit, setLit] = useState(false);
   const [awake, setAwake] = useState(true);
   /* THE RENDERER STARTS PARKED.
@@ -2509,6 +2523,13 @@ export function ShopWorld({
     document.addEventListener("visibilitychange", visibility);
     return () => document.removeEventListener("visibilitychange", visibility);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (renderer.current) releaseLoaderRenderer(renderer.current);
+    },
+    [],
+  );
 
   /* Tell the streaming layer whether anyone can see this canvas — while the
      loop is parked its courtesies switch off, which is how the whole shop
@@ -2583,6 +2604,7 @@ export function ShopWorld({
         gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
         camera={{ fov: 40, near: 0.1, far: 130, position: CAM_START.toArray() }}
         onCreated={({ gl, scene, camera }) => {
+          renderer.current = gl;
           // ACES rolls the highlights off, and every true emissive in the shop
           // (bulbs, neon, headlights) is `toneMapped={false}`, so exposure lifts
           // the ROOM without touching the light sources — the mood survives.

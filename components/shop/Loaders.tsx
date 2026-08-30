@@ -42,7 +42,7 @@ import { stationAt } from "./world";
    on the main thread; the same texture as ETC1S is 0.7 MB, transcodes in a
    worker, and uploads as-is.
 
-   Station 0 and 1 download before the door rolls up. Everything behind them
+   Station 0 downloads before the door rolls up. Everything behind it
    streams one bay at a time while the reader is watching the cold start —
    fetched, parsed, SHADER-COMPILED off-frame, and only then handed to the
    renderer. Repeats are CLONES of a single load — one fetch per file, ever.
@@ -251,13 +251,13 @@ export function primeLoaders(_gl: THREE.WebGLRenderer) {
 let parseQueue: Promise<unknown> = Promise.resolve();
 
 function queueParse<T>(run: () => Promise<T>): Promise<T> {
-  // Before the door opens the queue is a straight-through pipe: the opening
-  // bay's models parse the moment their bytes land, in parallel, because
-  // nobody is looking at the shop yet to be disturbed by it.
-  if (racing()) return run();
-
   const next = parseQueue.then(async () => {
-    await untilIdle();
+    // The early model preload overlaps network with the hero film. Decode one
+    // file at a time so a cluster of completed responses can never turn into a
+    // cluster of main-thread parses. Before reveal there is no additional
+    // stillness delay; after reveal the existing courtesy still protects a
+    // moving reader.
+    if (!racing()) await untilIdle();
     const result = await run();
     // Hand the frame back before the next model gets its turn.
     await wait(0);
@@ -376,8 +376,8 @@ function extendLoader(loader: GLTFLoader) {
    unlocking must re-render exactly one component, not the scene graph. */
 
 const STATION_COUNT = 7;
-/** How many bays are up before the door rolls: the establishing shot and the hoist. */
-const OPENING = 2;
+/** Only the establishing bay owns the critical opening lane. */
+const OPENING = 1;
 
 let unlocked = OPENING;
 const streamListeners = new Set<() => void>();
@@ -418,6 +418,29 @@ const WARMED = new Set<string>();
 let contiguousWarmStation = -1;
 let worldFinalizer: (() => Promise<void>) | null = null;
 let finalizedWorld: (() => Promise<void>) | null = null;
+
+/**
+ * Reset renderer-owned progress before a new Canvas is created.
+ *
+ * The loader cache intentionally survives — identical GLTF bytes should be a
+ * cache hit on a revisit. These flags describe React/GPU work for one WebGL
+ * context, however, and inheriting them made every bay mount together while a
+ * brand-new Safari/Edge renderer was still blank.
+ */
+export function beginLoaderStream() {
+  unlocked = OPENING;
+  PENDING.clear();
+  for (const key of WARM_KEYS) PENDING.add(key);
+  REVEAL_PENDING.clear();
+  for (const key of REVEAL_WARM_KEYS) REVEAL_PENDING.add(key);
+  WARMED.clear();
+  contiguousWarmStation = -1;
+  worldFinalizer = null;
+  finalizedWorld = null;
+  worldParked = true;
+  restoreComposerOvens();
+  for (const listener of streamListeners) listener();
+}
 
 /** The furthest station the camera can enter without aiming at an empty bay. */
 export function highestContiguousWarmStation() {
@@ -475,31 +498,6 @@ function reportWarm(key: string) {
  * longer hold an already-finished moving garage hostage. There is still no
  * time-based path to `ready`.
  */
-if (typeof window !== "undefined") {
-  /* THE STREAM STARTS AS THE DOORWAY OPENS. The original gate chain — each bay
-     opens the next only once it is warm — assumed the reader started at
-     station 0 and scrolled linearly. The readiness-aware camera now makes
-     that assumption unnecessary: a fast reader holds on the last complete bay
-     instead of seeing an empty one. Starting every owner behind the photograph
-     overlapped GLB parsing badly enough to create a measured 34-second desktop
-     task. Start the next bay immediately at reveal, then pace the rest; the
-     serialized warm queue and camera frontier keep both work and pictures
-     honest. */
-  let streaming = false;
-  subscribeBoot((s) => {
-    if (!s.ready || streaming) return;
-    streaming = true;
-    openGate(unlocked + 1);
-    const stream = window.setInterval(() => {
-      if (unlocked >= STATION_COUNT) {
-        window.clearInterval(stream);
-        return;
-      }
-      openGate(unlocked + 1);
-    }, 2500);
-  });
-}
-
 /* ── Load, grade, measure ───────────────────────────────────────────────── */
 
 /* ── One program for the whole shop ─────────────────────────────────────────
@@ -1052,6 +1050,40 @@ function shelf(url: string) {
   return phoneTier ? url.replace(BASE, MOBILE_BASE) : url;
 }
 
+const OPENING_MODELS = [
+  M.pickup,
+  M.drum,
+  M.extinguisher,
+  M.pallet,
+  M.charger,
+  M.tyre,
+  M.rim,
+  M.camaro,
+  M.jerryCan,
+  M.jerrycanGreen,
+  M.wheelMag,
+] as const;
+const PRELOADED_OPENING_TIERS = new Set<"full" | "lite">();
+
+/**
+ * Fill the exact R3F loader cache used by station zero while the visitor is
+ * still in the film. This is deliberately the loader's own cache — never a
+ * second raw fetch — so mounting the bay cannot race or duplicate a request.
+ * Parsing remains one-file-at-a-time and no GPU upload or shader work begins
+ * until the real Canvas reaches its existing warm gate.
+ */
+export function preloadOpeningModels(lite: boolean) {
+  const tier = lite ? "lite" : "full";
+  if (PRELOADED_OPENING_TIERS.has(tier)) return;
+  PRELOADED_OPENING_TIERS.add(tier);
+  const base = lite ? MOBILE_BASE : BASE;
+  const urls = OPENING_MODELS.map((url) => url.replace(BASE, base));
+  // Cache each request under the same scalar key `useShopModel` will use.
+  // Preloading one aggregate array creates a different suspense key and makes
+  // the mounted bay download every file a second time.
+  for (const url of urls) useLoader.preload(IdleGLTFLoader, url, extendLoader);
+}
+
 function useShopModel(url: string) {
   const gltf = useLoader(IdleGLTFLoader, shelf(url), extendLoader) as unknown as GLTF;
   // Grading is idempotent and guarded by a WeakSet, so it is safe here — but
@@ -1547,6 +1579,14 @@ const COMPOSER_OVENS = new Map<THREE.WebGLRenderer, THREE.WebGLRenderTarget>();
 function restoreComposerOvens() {
   for (const target of COMPOSER_OVENS.values()) target.dispose();
   COMPOSER_OVENS.clear();
+}
+
+/** Release the only strong renderer-owned cache when its Canvas goes away. */
+export function releaseLoaderRenderer(gl: THREE.WebGLRenderer) {
+  const oven = COMPOSER_OVENS.get(gl);
+  if (!oven) return;
+  oven.dispose();
+  COMPOSER_OVENS.delete(gl);
 }
 
 /**
@@ -2121,9 +2161,9 @@ export function StationBundle({
      A bay is a couple of hundred objects, and React builds all of them in one
      commit: geometry, materials, matrices, the lot. Warming it was already
      paced and gated; CREATING it was not, so a bay unlocking while a thumb was
-     moving cost seconds in a single block. The opening two bays go up
-     immediately — nothing is on screen yet to disturb — and every bay after
-     them waits for the reader to be still. */
+     moving cost seconds in a single block. The opening bay goes up
+     immediately — nothing is on screen yet to disturb — and every later bay
+     waits for the reader to be still. */
   const [mounted, setMounted] = useState(station < OPENING);
 
   useEffect(() => {
@@ -2444,7 +2484,10 @@ function WarmStation({
          texture upload and shader compile. Exact geometry first-use remains
          serialized by finish(), but it must not prevent the next files from
          crossing the network: two bays ahead on a phone, one on desktop. */
-      openGate(station + (phoneTier ? 3 : 2));
+      // One completed bay earns exactly one look-ahead bay on every device.
+      // Phones used to open two, creating more cellular and parse contention
+      // than the desktop path.
+      openGate(station + 2);
       finish();
     });
     // A driver that never reports back cannot be allowed to stall the queue.

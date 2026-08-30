@@ -2,10 +2,38 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
-const [loaders, walkthrough] = await Promise.all([
+const [loaders, walkthrough, boot, shopWorld] = await Promise.all([
   readFile(new URL("components/shop/Loaders.tsx", root), "utf8"),
   readFile(new URL("components/shop/WalkthroughWorld.tsx", root), "utf8"),
+  readFile(new URL("components/shop/boot.ts", root), "utf8"),
+  readFile(new URL("components/shop/ShopWorld.tsx", root), "utf8"),
 ]);
+
+assert.match(
+  loaders,
+  /const OPENING = 1;/,
+  "Only the first bay may own the critical opening model lane.",
+);
+assert.doesNotMatch(
+  loaders,
+  /setInterval\([\s\S]{0,320}openGate/,
+  "A timer must not unlock unrelated bays regardless of camera or warm state.",
+);
+assert.match(
+  loaders,
+  /export function beginLoaderStream\(\)[\s\S]{0,700}unlocked = OPENING[\s\S]{0,700}PENDING\.clear\(\)[\s\S]{0,700}WARMED\.clear\(\)/,
+  "Every WebGL context needs fresh stream and GPU-readiness state.",
+);
+assert.match(
+  boot,
+  /export function beginWorldBoot\(\)[\s\S]{0,500}state\.warm = false[\s\S]{0,300}state\.ready = false/,
+  "A new garage mount must not inherit ready flags from an old renderer.",
+);
+assert.match(
+  shopWorld,
+  /beginLoaderStream\(\)/,
+  "ShopWorld must begin a fresh loader stream before its new Canvas mounts.",
+);
 
 assert.match(
   loaders,
@@ -28,6 +56,21 @@ assert.match(
   walkthrough,
   /const preloadShopWorld = \(\)/,
   "The split garage runtime needs a cached proximity preload.",
+);
+assert.match(
+  walkthrough,
+  /shopWorldModule = null/,
+  "A transient garage chunk failure must clear the cached rejected promise.",
+);
+assert.match(
+  walkthrough,
+  /preloadOpeningGarage/,
+  "The exact opening models should share the loader cache before the doorway.",
+);
+assert.match(
+  loaders,
+  /for \(const url of urls\) useLoader\.preload\(IdleGLTFLoader, url, extendLoader\)/,
+  "Opening preloads must use the same scalar suspense cache key as mounted models.",
 );
 assert.match(
   walkthrough,
