@@ -132,6 +132,15 @@ try {
       await page.click('nav[aria-label="Primary"] a[href^="/blog"]');
     }
     await page.waitForFunction(() => /^\/blog\/?$/.test(location.pathname), { timeout: 10_000 });
+    /* A native navigation updates `location` just before Chromium replaces the
+       old execution context. Waiting only on the path can therefore win that
+       tiny race and make the next evaluate run against a document being torn
+       down. The featured section exists only in the destination document, so
+       it is the stable readiness boundary for both native and client routes. */
+    await page.waitForSelector(
+      'section[aria-label="Featured article"] a[href^="/blog/"]',
+      { visible: true, timeout: 10_000 },
+    );
     const afterIndexRoute = await page.evaluate(() => ({
       inert: document.getElementById("site-shell")?.inert ?? false,
       ariaHidden: document.getElementById("site-shell")?.getAttribute("aria-hidden"),

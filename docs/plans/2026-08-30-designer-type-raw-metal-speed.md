@@ -60,7 +60,7 @@ Point `--font-serif` to the new variable and adjust only optical size, baseline,
 
 Run: `npm run test:designer-type-speed`
 
-Run: `npm run build`
+Run in PowerShell: `$env:EXPORT='1'; npm run build`
 
 Expected: PASS; all routes compile and generate.
 
@@ -145,7 +145,7 @@ Expected: all pass.
 
 **Step 2: Build and prepare the deployment artifact**
 
-Run: `npm run build`
+Run in PowerShell: `$env:EXPORT='1'; npm run build`
 
 Run: `node scripts/prepare-deploy.js`
 
@@ -194,4 +194,3 @@ Expected: all green with zero console errors.
 **Step 5: Report commit IDs and metrics**
 
 Provide the public URL, source commit, deploy commit, device results, loader/hero timings, CWV, and model byte-integrity result.
-
