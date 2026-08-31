@@ -38,6 +38,14 @@ html {
   background: #0a0a0b;
   /* Lenis owns the wheel; native smoothing would fight it. */
   scroll-behavior: auto;
+  /* The cinematic layers deliberately overscan, but the root itself must
+     never become a sideways runway. `clip` keeps window as the vertical
+     scroller; overscroll-behavior absorbs Safari's horizontal rubber band. */
+  inline-size: 100%;
+  max-inline-size: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -52,6 +60,29 @@ body {
      without creating a scroll container. Plain `hidden` first as fallback. */
   overflow-x: hidden;
   overflow-x: clip;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  overscroll-behavior-x: none;
+}
+
+/* On touch screens these are vertical films, not draggable canvases. Clip
+   wide shader/copy paint without creating an overflow scroll container, and
+   keep pinch zoom available while rejecting one-finger sideways travel. */
+@media (max-width: 767px) {
+  [data-film-runway],
+  #walkthrough-runway {
+    max-inline-size: 100%;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  [data-film-canvas],
+  [data-shop-ready] {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    overflow: clip;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -907,18 +938,21 @@ html[data-ui-overlay="menu"] .grain {
       rgba(10, 10, 11, 0.18) 84%,
       transparent 100%
     );
+    /* The background itself owns the approved vertical fade. One independent
+       side mask multiplies in the left/right feather without relying on the
+       multi-mask composite path that regressed on older iOS WebKit. */
     -webkit-mask-image: linear-gradient(
-      to bottom,
+      to right,
       transparent 0%,
-      #000 22%,
-      #000 78%,
+      #000 14%,
+      #000 86%,
       transparent 100%
     );
     mask-image: linear-gradient(
-      to bottom,
+      to right,
       transparent 0%,
-      #000 22%,
-      #000 78%,
+      #000 14%,
+      #000 86%,
       transparent 100%
     );
     pointer-events: none;
@@ -947,6 +981,20 @@ html[data-ui-overlay="menu"] .grain {
       rgba(10, 10, 11, 0.2) 22%,
       rgba(10, 10, 11, 0.78) 50%,
       rgba(10, 10, 11, 0.2) 78%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      #000 13%,
+      #000 87%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      #000 13%,
+      #000 87%,
       transparent 100%
     );
     pointer-events: none;

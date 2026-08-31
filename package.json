@@ -40,6 +40,7 @@
     "test:preloader-automotive": "node scripts/preloader-automotive-contract.mjs",
     "test:instagram-grid": "node scripts/instagram-grid-contract.mjs",
     "test:shop-copy-legibility": "node scripts/shop-copy-legibility-contract.mjs",
+    "test:mobile-cinema-containment": "node scripts/mobile-cinema-containment-contract.mjs",
     "test:station-reveal-proximity": "node scripts/station-reveal-proximity-contract.mjs",
     "test:blog-navigation": "node scripts/blog-navigation-check.mjs",
     "test:designer-type-speed": "node scripts/designer-type-speed-contract.mjs",
