@@ -77,6 +77,17 @@
   AddType model/gltf-binary .br
 </IfModule>
 
+# Bounded concatenations of original GLBs are binary packets, not single GLBs.
+# The full wire-content hash in each filename permits immutable caching.
+<FilesMatch "^[a-f0-9]{64}\.bin\.br$">
+  ForceType application/octet-stream
+  <IfModule mod_headers.c>
+    Header set Content-Encoding br
+    Header append Vary Accept-Encoding
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </IfModule>
+</FilesMatch>
+
 # ── Compression ─────────────────────────────────────────────────────────────
 # KTX2 and WOFF2 are already compressed — running deflate over them burns CPU on
 # both ends for nothing, so they are deliberately absent from this list. GLB is

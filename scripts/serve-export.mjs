@@ -23,6 +23,7 @@ const types = new Map([
   [".ico", "image/x-icon"],
   [".woff2", "font/woff2"],
   [".glb", "model/gltf-binary"],
+  [".bin", "application/octet-stream"],
   [".wasm", "application/wasm"],
 ]);
 

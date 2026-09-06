@@ -175,6 +175,10 @@ Write-Host "== precompressing model transport twins"
 node scripts/precompress.js
 if ($LASTEXITCODE -ne 0) { throw "precompress failed" }
 
+Write-Host "== grouping byte-identical small model transports"
+node scripts/build-model-packets.mjs
+if ($LASTEXITCODE -ne 0) { throw "packet generation failed" }
+
 Write-Host "== building static export"
 $env:EXPORT = "1"
 Remove-Item Env:HOSTINGER_PREVIEW -ErrorAction SilentlyContinue
@@ -228,6 +232,15 @@ $runtimeAssets = @([regex]::Matches($indexHtml, '(?:src|href)="(/_next/static/[^
   $_.Groups[1].Value.TrimStart("/")
 } | Select-Object -Unique)
 $criticalAssets += $runtimeAssets
+$packetManifest = Get-Content -LiteralPath (Join-Path $project "components/shop/modelPackets.generated.json") -Raw | ConvertFrom-Json
+foreach ($packet in @($packetManifest.shelves.full) + @($packetManifest.shelves.lite)) {
+  if (-not $packet.file) { continue }
+  if ($packet.file -notmatch '^[a-f0-9]{64}\.bin\.br$') { throw "invalid content-addressed model packet" }
+  if (-not (Test-Path -LiteralPath (Join-Path $out "model-packets/$($packet.file)") -PathType Leaf)) {
+    throw "missing critical model packet $($packet.file)"
+  }
+  $criticalAssets += "model-packets/$($packet.file)"
+}
 $garageChunk = Get-ChildItem -LiteralPath (Join-Path $out "_next\static\chunks") -Recurse -File -Filter "*.js" | Where-Object {
   $source = [System.IO.File]::ReadAllText($_.FullName)
   $source.Contains("data-shop-world") -or ($source.Contains("models-opt-") -and $source.Contains("models-mobile-"))

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { brotliDecompressSync } from "node:zlib";
 const release = JSON.parse(await readFile("output/release-prepared.json", "utf8"));
 const base = "https://2240speedshop.com";
 const root = path.resolve("out");
@@ -14,8 +15,14 @@ const get = async (url, options = {}) => {
 async function checkFile(relative, collection) {
   const { response, bytes } = await get(`${base}/${relative}`);
   assert.equal(response.status, 200, relative);
-  const local = relative.endsWith(".br") && response.headers.get("content-encoding") === "br" ? relative.slice(0, -3) : relative;
-  assert.equal(hash(bytes), hash(await readFile(path.join(root, local))), `Exact live bytes: ${relative}`);
+  if (relative.startsWith("model-packets/")) {
+    assert.equal(response.headers.get("content-encoding"), "br", `Packet encoding: ${relative}`);
+    assert.equal(response.headers.get("content-type")?.split(";")[0], "application/octet-stream", `Packet MIME: ${relative}`);
+    assert.match(response.headers.get("cache-control") || "", /max-age=31536000.*immutable/, `Packet cache: ${relative}`);
+  }
+  const local = await readFile(path.join(root, relative));
+  const expected = relative.endsWith(".br") && response.headers.get("content-encoding") === "br" ? brotliDecompressSync(local) : local;
+  assert.equal(hash(bytes), hash(expected), `Exact live bytes: ${relative}`);
   collection.push({ path: relative, status: response.status, bytes: bytes.length, contentType: response.headers.get("content-type"), encoding: response.headers.get("content-encoding"), cacheControl: response.headers.get("cache-control"), sha256: hash(bytes) });
 }
 async function parallel(items, action) {

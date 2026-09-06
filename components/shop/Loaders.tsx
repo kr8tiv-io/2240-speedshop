@@ -33,6 +33,8 @@ import {
   loadModelRequestAttempt,
   runModelResourceAttempts,
 } from "./modelRequest";
+import { createModelPacketStore, type ModelPacketResource } from "./modelPackets";
+import packetManifest from "./modelPackets.generated.json";
 import {
   createParseScheduler,
   ParseGenerationCancelledError,
@@ -345,6 +347,8 @@ const MODEL_REQUEST_HARD_TIMEOUT_MS = 45_000;
 const MODEL_REQUEST_TOTAL_TIMEOUT_MS = 60_000;
 const MODEL_REQUEST_BR_BUDGET_MS = 30_000;
 const MODEL_REQUEST_RETRY_DELAY_MS = 160;
+const MODEL_PACKET_TIMEOUT_MS = 8_000;
+let modelPacketStore: ReturnType<typeof createModelPacketStore> | null = null;
 const MODEL_RESOURCE_ATTEMPTS = 2;
 const MODEL_RESOURCE_RETRY_DELAY_MS = 600;
 const MODEL_PARSE_TIMEOUT_MS = 15_000;
@@ -361,6 +365,40 @@ type ModelByteOptions = {
   demanded?: boolean;
 };
 
+function getModelPacketStore() {
+  if (modelPacketStore) return modelPacketStore;
+  const packets: ModelPacketResource[] = [];
+  // Only the exact versioned shelf may use this manifest. Source/dev and
+  // mismatched deployments retain their existing independent-file path.
+  if (VERSION && packetManifest.format === 1 && packetManifest.modelsVersion === VERSION.slice(1)) {
+    for (const [shelf, modelBase] of [[packetManifest.shelves.full, BASE], [packetManifest.shelves.lite, MOBILE_BASE]] as const) {
+      for (const item of shelf) {
+        if ("entries" in item && item.entries) packets.push({
+          url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/model-packets/${item.file}`,
+          modelBase, decodedLength: item.decodedLength, entries: item.entries,
+        });
+      }
+    }
+  }
+  modelPacketStore = createModelPacketStore({
+    packets, pool: modelTransport, queueTimeoutMs: MODEL_PREFETCH_QUEUE_TIMEOUT_MS,
+    loadPacket: (url) => {
+      const file = new THREE.FileLoader();
+      file.setResponseType("arraybuffer");
+      // One bounded packet attempt, then the unchanged individual retry path.
+      // The store owns the pool slot; do not nest another pool request here.
+      return loadModelRequestAttempt({
+        target: url,
+        start: ({ onLoad, onProgress, onError }) => { file.load(url, onLoad, onProgress, onError); },
+        abort: () => { file.abort(); },
+        idleTimeoutMs: MODEL_PACKET_TIMEOUT_MS, hardTimeoutMs: MODEL_PACKET_TIMEOUT_MS,
+      });
+    },
+    loadIndividual: (url, demanded) => fetchIndividualModelBytes(url, { demanded }),
+  });
+  return modelPacketStore;
+}
+
 function modelByteCacheKey(url: string, options: ModelByteOptions = {}) {
   const headers = Object.entries(options.requestHeader ?? {})
     .sort(([a], [b]) => a.localeCompare(b))
@@ -376,10 +414,10 @@ function releaseModelBytes(
 ) {
   const key = modelByteCacheKey(url, options);
   if (MODEL_BYTE_CACHE.get(key) === owner) MODEL_BYTE_CACHE.delete(key);
+  modelPacketStore?.release(url, owner);
 }
 
 function fetchModelBytes(url: string, options: ModelByteOptions = {}) {
-  const path = options.path ?? "";
   const key = modelByteCacheKey(url, options);
   const cached = MODEL_BYTE_CACHE.get(key);
   if (cached) {
@@ -387,13 +425,29 @@ function fetchModelBytes(url: string, options: ModelByteOptions = {}) {
     // still parked behind speculative route work, move that exact promise to
     // the front without aborting any active CDN response.
     if (options.demanded) modelTransport.demand(cached);
+    if (options.demanded) modelPacketStore?.demand(cached);
     return cached;
   }
 
   // Register the promise before transport begins. Preload and mounted loaders
   // therefore share one exact ArrayBuffer owner, while the pool is the single
   // authority that admits at most two cellular/CDN requests at once.
-  const request = modelTransport.run(async () => {
+  const eligible = !options.path && !options.withCredentials &&
+    Object.keys(options.requestHeader ?? {}).length === 0 &&
+    (!options.manager || options.manager === THREE.DefaultLoadingManager);
+  const request = (eligible ? getModelPacketStore().request(url, options.demanded) : undefined)
+    ?? fetchIndividualModelBytes(url, options);
+  MODEL_BYTE_CACHE.set(key, request);
+  void request.catch(() => {
+    if (MODEL_BYTE_CACHE.get(key) === request) MODEL_BYTE_CACHE.delete(key);
+    modelPacketStore?.release(url, request);
+  });
+  return request;
+}
+
+function fetchIndividualModelBytes(url: string, options: ModelByteOptions = {}) {
+  const path = options.path ?? "";
+  return modelTransport.run(async () => {
     const deadline = Date.now() + MODEL_REQUEST_TOTAL_TIMEOUT_MS;
     const totalTimeout = (target: string) => {
       const error = new Error(`Timed out loading ${target} within the total request budget`);
@@ -466,11 +520,6 @@ function fetchModelBytes(url: string, options: ModelByteOptions = {}) {
     queueTimeoutMs: options.demanded ? undefined : MODEL_PREFETCH_QUEUE_TIMEOUT_MS,
   });
 
-  MODEL_BYTE_CACHE.set(key, request);
-  void request.catch(() => {
-    if (MODEL_BYTE_CACHE.get(key) === request) MODEL_BYTE_CACHE.delete(key);
-  });
-  return request;
 }
 
 function prefetchModelBytes(url: string) {
