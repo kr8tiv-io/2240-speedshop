@@ -47,7 +47,7 @@ const bring = [
 
 export default function ContactPage() {
   const addressQuery = encodeURIComponent(
-    `${site.street}, ${site.city}, ${site.region} ${site.postalCode}`,
+    `${site.name}, ${site.street}, ${site.city}, ${site.region} ${site.postalCode}`,
   );
   // Resolve the published address instead of displaying an unverified pin.
   const mapsEmbed = `https://www.google.com/maps?q=${addressQuery}&output=embed`;

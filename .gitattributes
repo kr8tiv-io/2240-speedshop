@@ -1,0 +1,2 @@
+# pnpm patch hashes must remain stable on Windows and Linux checkouts.
+patches/*.patch text eol=lf

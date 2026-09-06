@@ -31,7 +31,7 @@ const profiles = [
 ];
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: false, protocolTimeout: 120_000,
   args: ["--window-position=-2400,0", "--disable-features=CalculateNativeWinOcclusion",
-    "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding"] });
+    "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", "--disable-background-timer-throttling"] });
 
 async function newPage(profile) {
   const context = await browser.createBrowserContext();
@@ -47,7 +47,7 @@ async function newPage(profile) {
     // anonymous viewing session. Blocking every POST made the real map show
     // "Place info couldn't load"; retain the strict guard on lead submissions.
     const mapRead = request.method() === "POST" && url.hostname === "maps.googleapis.com" &&
-      /^\/\$rpc\/google\.internal\.maps\.mapsjs\.v1\.MapsJsInternalService\/(GetViewportInfo|InitMapsJwt)$/.test(url.pathname);
+      /^\/\$rpc\/google\.internal\.maps\.mapsjs\.v1\.MapsJsInternalService\/(GetViewportInfo|InitMapsJwt|GetPlaceWidgetMetadata)$/.test(url.pathname);
     if (mapRead) {
       report.mapReadRequests.push({ origin: url.origin, path: url.pathname });
       void request.continue();
@@ -362,10 +362,19 @@ try {
     assert.ok(new URL(source.src).searchParams.get("q")?.includes(site.street), "Map uses the published street address.");
     const frame = await iframe.contentFrame();
     assert.ok(frame, "Address map must create a real frame.");
-    await frame.waitForFunction(() => document.readyState === "complete" && /2240 Speed Shop|2009 91/.test(document.body?.innerText || ""),
+    // Google renders the place card outside body.innerText. Verify its resolved
+    // place payload (including the phone, which is not in our query) and loaded
+    // map imagery, then preserve a screenshot for visual confirmation.
+    await frame.waitForFunction(() => {
+      const data = document.body?.textContent || "";
+      return document.readyState === "complete" && /2240\s*Speed\s*Shop/i.test(data)
+        && data.includes("2009 91 Ave") && data.includes("(780) 999-6450")
+        && [...document.images].filter(image => image.complete && image.naturalWidth > 0).length >= 8;
+    },
       { timeout: 25_000 });
+    await desktop.page.waitForNetworkIdle({ idleTime: 800, timeout: 15_000 });
     const contents = await frame.evaluate(() => ({ url: location.href, text: document.body.innerText.slice(0, 1600), images: document.images.length }));
-    assert.doesNotMatch(contents.text, /refused to connect|blocked by.*policy|ERR_BLOCKED/i);
+    assert.doesNotMatch(contents.text, /refused to connect|blocked by.*policy|ERR_BLOCKED|Place info couldn.t load/i);
     const screenshot = "contact-address-map.png";
     await iframe.screenshot({ path: path.join(OUTPUT, screenshot) });
     return { ...source, contents, screenshot };

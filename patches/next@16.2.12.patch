@@ -1,0 +1,12 @@
+diff --git a/dist/client/components/segment-cache/navigation.js b/dist/client/components/segment-cache/navigation.js
+--- a/dist/client/components/segment-cache/navigation.js
++++ b/dist/client/components/segment-cache/navigation.js
+@@ -156,1 +156,1 @@
+-    const canonicalUrl = route.canonicalUrl + url.hash;
++    const canonicalUrl = route.canonicalUrl.split('#', 1)[0] + url.hash;
+diff --git a/dist/esm/client/components/segment-cache/navigation.js b/dist/esm/client/components/segment-cache/navigation.js
+--- a/dist/esm/client/components/segment-cache/navigation.js
++++ b/dist/esm/client/components/segment-cache/navigation.js
+@@ -125,1 +125,1 @@
+-    const canonicalUrl = route.canonicalUrl + url.hash;
++    const canonicalUrl = route.canonicalUrl.split('#', 1)[0] + url.hash;
