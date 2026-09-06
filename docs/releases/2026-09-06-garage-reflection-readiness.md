@@ -1,9 +1,27 @@
 # Garage reflection readiness shared by every material consumer
 
-## Candidate and rollback
+## Published checkpoint and rollback
 
-Prepared candidate **a7fec4fb0a644f97b44a8ef794e0c861** is not yet published.
-The live baseline is **8f4ae7f5d545490e8ab580cb7ca5c7e3**, deployment
+Release **a7fec4fb0a644f97b44a8ef794e0c861** is published at
+https://2240speedshop.com/. Application source
+**03badbe41e6af70bbbc8952c3ce428185a7bbe28** is pushed to both existing source
+remotes. Deployment **c9a0bd0313e46bc731c59996135491e972df84c9** is pushed to
+kr8tiv-io/2240-daylight-preview main. Exact queryless live marker verification
+preceded the accepted Hostinger cache purge. All 69 live HTML pages and 45
+checked assets match prepared bytes. Trusted HTTPS, four permanent redirect
+paths, crawler/discovery files and the read-only quote endpoint pass (driver
+56279, exit 0). No real lead was submitted. Report:
+output/published-release-check.json. Final live driver 12407 also completed
+exit 0: the phone reaches all seven bays, retains all 71 original garage model
+hashes and receives three hero models, with zero browser errors. Complete
+reveal is 17.275 s in that single live observation, not an A/B comparison.
+Live Guides → quote → Back and desktop/phone KR8TIV/Contact-after-garage cases
+all pass with no browser errors or real leads, calls or emails. The credit
+opens https://kr8tiv.io/. Reports: reflection-readiness-live-mobile/results.json
+in the performance directory and
+output/playwright/reflection-readiness-live-actions/results.json.
+
+The previous live baseline is **8f4ae7f5d545490e8ab580cb7ca5c7e3**, deployment
 **f2a0265888db05f0d513c7fb995f6a668ba4aebf**, application source
 **48bdd7bdfaca371a35049b91741cfbca2ec6e354**, evidence **12b458a**.
 Exact rollback output/verified-hero-stage-8f4ae7f5.zip contains 1,285 committed
@@ -11,6 +29,11 @@ files, 68,724,046 bytes, SHA-256
 E71557DDC4572A67105214F348662E17F900E567ED196AFB9C893126840ED92F.
 It was rehashed, expanded and its hidden release marker verified before this
 pass. All previous backups and unrelated user artifacts are preserved.
+
+New exact committed backup output/verified-reflection-a7fec4fb.zip:
+68,754,961 bytes, 1,285 committed files (1,529 ZIP entries including folders),
+hidden marker verified. SHA-256
+4E2B5D23BB243EE2A1350D49E2993C8AD353BA769FF6B67B710C330EDA0A3C17.
 
 ## Root cause and bounded correction
 
@@ -94,7 +117,7 @@ related CPU contract scripts also pass, including light ownership, warm queue,
 hero ownership and interactive footer layers (driver 17167, exit 0).
 Prepared desktop engine/exit-bay and phone exit-bay screenshots were inspected.
 Fresh static verification was repeated after all timing runs and passes.
-No publication claim yet; production correspondence must still be checked.
+Published file correspondence subsequently passed as recorded above.
 
 ## Technical SEO and fidelity continuity
 
@@ -124,3 +147,16 @@ No SeaOcean score, ranking, physical Apple, field Core Web Vitals, inbox
 delivery, separate CDN activation or search-account ownership is claimed.
 DNS/SSL/Microsoft365 and the user's browser/support tabs remain untouched.
 The continuous optimization goal remains active.
+
+## Next bounded investigation
+
+No further application change is part of this verified release. The same
+private phone canary identifies a remaining original hero LuminanceMaterial
+query of 46.1 ms in context 1/program 19: first use at 3,519.8 ms precedes
+observed readiness at 3,608.7 ms. ScenePrimer's first composer render creates
+post-processing programs before waitForParallelPrograms; ordinary scene
+compileAsync cannot discover them. Investigate exact post-pass readiness and
+cancellation ownership using actual installed composer code and test-first
+changes. Do not remove bloom, shorten its chain, reduce precision or otherwise
+alter any original shader/effect. This is an investigation lead, not a proven
+new fix or a guaranteed total-load gain. Retain all adverse timing rows above.
