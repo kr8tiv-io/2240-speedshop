@@ -30,6 +30,12 @@ export const businessSchema = {
     postalCode: site.postalCode,
     addressCountry: site.country,
   },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: site.geo.lat,
+    longitude: site.geo.lng,
+  },
+  hasMap: site.mapsUrl,
   openingHoursSpecification: site.hours.map((h) => ({
     "@type": "OpeningHoursSpecification",
     dayOfWeek: h.days,
@@ -37,7 +43,7 @@ export const businessSchema = {
     closes: h.closes,
   })),
   areaServed: site.areas.map((a) => ({ "@type": "City", name: a })),
-  sameAs: site.social,
+  sameAs: [...site.social, site.mapsUrl],
   knowsAbout: [
     "Classic car restoration",
     "Restomod builds",

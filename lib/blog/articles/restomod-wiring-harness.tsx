@@ -13,7 +13,7 @@ export const meta: ArticleMeta = {
   title: "Why a New Restomod Wiring Harness Stops Fires — and What It Costs in CAD",
   accent: "Harness",
   metaTitle: "Restomod Wiring Harness Cost: Fires",
-  description: "Why cloth and cracked PVC start classic-car fires, what a restomod harness includes, and typical CAD ranges — this is not a stereo job.",
+  description: "Why cloth and cracked PVC start classic-car fires, what a restomod harness includes, and typical CAD ranges — this is not a stereo job at our Edmonton shop.",
   datePublished: "2026-08-30",
   dateModified: "2026-08-30",
   author: "2240 Speed Shop",

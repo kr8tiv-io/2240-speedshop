@@ -376,7 +376,7 @@ const details: Record<Slug, Detail> = {
   "classic-performance-tuning": {
     h1: "Carburetor rebuilds and performance tuning in Edmonton",
     metaTitle: "Edmonton Carb Rebuild & Ignition",
-    metaDesc: "Carburetor rebuild Edmonton — carbs stripped, jetted for Alberta air and road-tested, plus points-to-electronic ignition at 2240 Speed Shop.",
+    metaDesc: "Carburetor rebuild Edmonton — carbs stripped, jetted for Alberta air and road-tested, plus points-to-electronic ignition at 2240 Speed Shop in Edmonton.",
     opener:
       "A carburetor rebuild in Edmonton means more than a gasket kit. 2240 Speed Shop strips the carb, cleans every passage, sets floats and jetting for local air, then drives the car to confirm it. Ignition upgrades, timing curves and bolt-on performance work are handled the same way — tuned on the road, not on paper.",
     second:
@@ -611,8 +611,8 @@ const details: Record<Slug, Detail> = {
 
   "classic-interiors-service": {
     h1: "Classic car interior restoration in Edmonton",
-    metaTitle: "Classic Interior Restoration Edmonton",
-    metaDesc: "Classic car interior restoration in Edmonton — period-correct leather, wool, wood and headliners, plus classic mechanical service at 2240 Speed Shop.",
+    metaTitle: "Classic Interior Service Edmonton",
+    metaDesc: "Classic car interior restoration in Edmonton — period-correct leather, wool, wood and headliners, plus classic mechanical service at 2240 Speed Shop Edmonton.",
     opener:
       "Classic car interior restoration in Edmonton covers seats, panels, headliners, carpet, wood and gauges — rebuilt with period-correct materials so the cabin reads original. 2240 Speed Shop hides the modern parts you actually want, and handles classic mechanical service — brakes, ignition, fluids — on the same cars.",
     second:

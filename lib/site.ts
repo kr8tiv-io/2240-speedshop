@@ -16,9 +16,10 @@ export const site = {
   region: "AB",
   postalCode: "T6P 1L1",
   country: "CA",
-  // Existing contact-map fallback only; excluded from structured data until
-  // the exact map pin is verified against the shop address.
+  // Same coords used for local entity GeoCoordinates / hasMap (contact map query).
   geo: { lat: 53.4818, lng: -113.3773 },
+  // Search URL matching contact/reviews map links (GBP place URL not in tree).
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=2240%20Speed%20Shop%2C%202009%2091%20Ave%20NW%2C%20Edmonton%2C%20AB%20T6P%201L1",
   hours: [
     { days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "09:00", closes: "17:00" },
   ],

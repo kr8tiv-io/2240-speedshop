@@ -13,8 +13,7 @@ import type { Article, ArticleMeta } from "./types";
 const BUSINESS_ID = `${site.url}/#shop`;
 const BLOG_ID = `${canonicalPageUrl("/blog")}#blog`;
 
-/** The shop as author/publisher. The byline reads "2240 Speed Shop" — the
- *  organization, not an invented staff writer. */
+/** Publisher stays the shop entity; BlogPosting author points at Terry Harmider's Person @id. */
 const shopRef = { "@id": BUSINESS_ID };
 
 export function blogSchema(articles: Article[]) {
@@ -52,9 +51,9 @@ export function blogPostingSchema(meta: ArticleMeta) {
     datePublished: meta.datePublished,
     dateModified: meta.dateModified,
     author: {
-      "@type": "Organization",
-      "@id": BUSINESS_ID,
-      name: meta.author,
+      "@type": "Person",
+      "@id": `${canonicalPageUrl("/about")}#terry-harmider`,
+      name: site.owner,
     },
     publisher: shopRef,
     articleSection: meta.category,

@@ -185,7 +185,7 @@ export const builds: Build[] = [
     lede:
       "Deep red 1950s stepside pickup, hood up under the Texaco neon in the shop bay. Nothing under that hood left the factory looking like that. A 1950s pickup restoration in Edmonton lives or dies on cab corners, running boards, and whether the engine bay was wired by somebody who cared.",
     card:
-      "Gloss red stepside under the Texaco neon, hood up on an engine bay that is nothing like stock.",
+      "Gloss red stepside under the Texaco neon, hood up on an engine bay that is nothing like stock — Edmonton bay work.",
     workQuestion: "What goes into a 1950s pickup like this one?",
     work: [
       "Gloss this deep is a bodywork result, not a paint result. Colour is the last thing that happens, not the fix.",
@@ -233,7 +233,7 @@ export const builds: Build[] = [
     lede:
       "Metallic blue shortbox pickup, laid low over polished billet wheels, body smoothed and the stance doing all the talking. A lowered classic pickup only reads right when ride height, wheel fitment, and panel gaps get solved as one problem instead of three separate afterthoughts.",
     card:
-      "Metallic blue shortbox, smoothed body, polished billet, and a stance that took more planning than paint.",
+      "Metallic blue shortbox, smoothed body, polished billet, and a stance that took more planning than paint in Edmonton.",
     workQuestion: "How does a pickup get this low and still drive?",
     work: [
       "Stance is geometry, not just shorter springs. Drop it wrong and the arms bind, the tires rub, and it rides like a shopping cart.",
@@ -281,7 +281,7 @@ export const builds: Build[] = [
     lede:
       "A blue project shell on the shop floor with the front clip off, the nose open to the subframe, and the suspension sitting in daylight. This is what a stalled project car looks like when it arrives in Edmonton — boxed parts, good intentions, and no written plan.",
     card:
-      "Front clip off, nose open to the subframe. Where a stalled project starts telling the truth.",
+      "Front clip off, nose open to the subframe. Where a stalled project starts telling the truth in our Edmonton bay.",
     workQuestion: "Where does a stalled project actually start?",
     work: [
       "First job is an inventory. Every box, every bag, every part that arrived with the car gets laid out and written down.",
