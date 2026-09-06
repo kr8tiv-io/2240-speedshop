@@ -27,32 +27,59 @@ const officeFiles = ["car-d100-truck.jpg", "car-green-coupe.jpg", "car-black-mus
 const officeUrl = url => officeFiles.includes(new URL(url).pathname.split("/").at(-1));
 const officeDelay = Number(process.env.QA_PHOTO_DELAY_MS || 0);
 result.officePhotoDelayMs = officeDelay;
-const network = process.env.QA_NETWORK === "fast-4g" ? PredefinedNetworkConditions["Fast 4G"] : null;
+const networkNames = { "fast-4g": "Fast 4G", "slow-4g": "Slow 4G", "slow-3g": "Slow 3G" };
+assert.ok(!process.env.QA_NETWORK || networkNames[process.env.QA_NETWORK], "Use a known network profile");
+const network = process.env.QA_NETWORK ? PredefinedNetworkConditions[networkNames[process.env.QA_NETWORK]] : null;
+const longStartup = process.env.QA_LONG_STARTUP === "1";
 result.networkConditions = network;
+result.longStartupDiagnostic = longStartup;
 const browser = await puppeteer.launch({
   executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe",
   headless: false,
-  protocolTimeout: 180_000,
+  // The slow-link diagnostic can outlast CDP's normal 180 s command limit.
+  // Only its observation budget changes; production timers are untouched.
+  protocolTimeout: longStartup ? 480_000 : 180_000,
   args: ["--window-position=-2400,0", "--window-size=1600,1100", "--disable-features=CalculateNativeWinOcclusion", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", "--disable-background-timer-throttling", "--mute-audio", "--no-first-run"],
 });
 const context = await browser.createBrowserContext();
 const page = await context.newPage();
 await page.setViewport(profile);
 await page.setCacheEnabled(false);
+if (process.env.QA_NETWORK_HINTS === "missing") await page.evaluateOnNewDocument(() => {
+  Object.defineProperty(navigator, "connection", { configurable: true, value: undefined });
+});
+assert.ok(!process.env.QA_NETWORK_HINTS || process.env.QA_NETWORK_HINTS === "missing");
 // The application's streamed FileLoader bodies are not reliably retained by
 // DevTools. Tee exact fetch responses in this private test only, identically
 // for old/new runs; defer hashing and Node transfer until timing has ended.
 await page.evaluateOnNewDocument(() => {
   const original = window.fetch;
   window.__modelByteCapture = [];
+  window.__modelFetchBounds = [];
   window.fetch = async function (...args) {
-    const response = await original.apply(this, args);
-    if (/\.(?:glb(?:\.br)?|bin\.br)$/.test(new URL(response.url).pathname)) {
+    const input = args[0];
+    const url = new URL(input instanceof Request ? input.url : input, location.href).href;
+    if (!/\.(?:glb(?:\.br)?|bin\.br)$/.test(new URL(url).pathname)) return original.apply(this, args);
+    const signal = args[1]?.signal || (input instanceof Request ? input.signal : null);
+    const bound = { name: url, start: performance.now(), end: null, aborted: false };
+    const abort = () => { bound.end ??= performance.now(); bound.aborted = true; };
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
+    window.__modelFetchBounds.push(bound);
+    try {
+      const response = await original.apply(this, args);
       const bytes = response.clone().arrayBuffer();
-      void bytes.catch(() => {});
-      window.__modelByteCapture.push({ url: response.url, status: response.status, bytes });
+      const capture = { url: response.url, status: response.status, bytes };
+      void bytes.catch(error => { capture.error = { name: error.name, message: error.message }; });
+      const settled = () => { bound.end ??= performance.now(); signal?.removeEventListener("abort", abort); };
+      void bytes.then(settled, settled);
+      window.__modelByteCapture.push(capture);
+      return response;
+    } catch (error) {
+      bound.end ??= performance.now();
+      signal?.removeEventListener("abort", abort);
+      throw error;
     }
-    return response;
   };
 });
 if (network) await page.emulateNetworkConditions(network);
@@ -182,6 +209,35 @@ const scrollToProgress = async (progress, duration, phase) => page.evaluate(({ p
 }), { progress, duration, phase });
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+if (process.env.QA_WAIT_PROFILE === "1") await page.evaluateOnNewDocument(() => {
+  const nativeSet = window.setTimeout;
+  const nativeClear = window.clearTimeout;
+  const pending = new Map();
+  const waits = window.__startupWaits = [];
+  // Private diagnostic only: preserve each callback, argument, requested
+  // delay and cancellation. Stack capture adds overhead, so these runs are
+  // NOT eligible for a before/after speed claim.
+  window.setTimeout = function (callback, delay, ...args) {
+    if (typeof callback !== "function" || ![0, 16, 25, 50, 60, 70, 80].includes(Number(delay)) || waits.length >= 5000)
+      return nativeSet.call(window, callback, delay, ...args);
+    const row = { delay: Number(delay), scheduled: performance.now(), stack: new Error().stack };
+    const id = nativeSet.call(window, function (...values) {
+      pending.delete(id);
+      row.fired = performance.now();
+      try { return callback.apply(this, values); }
+      finally { row.callbackEnd = performance.now(); }
+    }, delay, ...args);
+    pending.set(id, row);
+    waits.push(row);
+    return id;
+  };
+  window.clearTimeout = function (id) {
+    const row = pending.get(id);
+    if (row) { row.cancelled = performance.now(); pending.delete(id); }
+    return nativeClear.call(window, id);
+  };
+});
+
 if (process.env.QA_GL_PROFILE === "1") await page.evaluateOnNewDocument(() => {
   const programs = new WeakMap(), shaders = new WeakMap(), contexts = new WeakMap();
   const events = window.__glStartup = [];
@@ -266,23 +322,59 @@ try {
     await startupProfiler.send("Profiler.start");
   }
   await page.goto(`${base}/?perf=1`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  if (network) {
+    // Chrome resets navigator's network override on cross-document navigation
+    // while continuing to throttle requests. Reapply the native hint override
+    // before the hero releases model prefetch, and assert the selected window.
+    const networkCDP = await page.createCDPSession();
+    await networkCDP.send("Network.overrideNetworkState", {
+      offline: false, latency: network.latency,
+      downloadThroughput: network.download, uploadThroughput: network.upload,
+    });
+  }
   result.release = await page.$eval('meta[name="2240-release"]', (node) => node.content);
+  result.networkHints = await page.evaluate(() => navigator.connection ? {
+    effectiveType: navigator.connection.effectiveType, downlink: navigator.connection.downlink,
+    rtt: navigator.connection.rtt, saveData: navigator.connection.saveData,
+  } : null);
   await page.waitForFunction(() => {
     const loader = document.querySelector("[data-preloader]");
     return !loader || getComputedStyle(loader).visibility === "hidden" || getComputedStyle(loader).opacity === "0";
-  }, { timeout: 12_000 });
-  await page.waitForFunction(() => document.querySelectorAll("[data-hero-runtime] canvas").length === 1, { timeout: 20_000 });
+  }, { timeout: longStartup ? 120_000 : 12_000 });
+  await page.waitForFunction(() => document.querySelectorAll("[data-hero-runtime] canvas").length === 1, { timeout: longStartup ? 120_000 : 20_000 });
   result.heroReadyAt = await page.evaluate(() => performance.now());
   await page.screenshot({ path: path.join(out, `${deviceLabel}-hero.png`), captureBeyondViewport: false });
   result.arrival = await scrollToProgress(0.04, 6000, "entry-scroll");
   console.log(`${label}: arrival ${JSON.stringify(result.arrival)}`);
   await page.evaluate(() => { window.__garageQA.phase = "waiting-world"; });
-  await page.waitForFunction(() => document.querySelector("[data-shop-stage]")?.getAttribute("data-shop-stage") === "world", { timeout: 90_000 });
+  await page.waitForFunction(() => document.querySelector("[data-shop-stage]")?.getAttribute("data-shop-stage") === "world", { timeout: longStartup ? 420_000 : 90_000 });
   await page.waitForFunction(() => {
     const world = document.querySelector("[data-shop-world]");
     return !!window.__shop?.scene && world && Number.parseFloat(getComputedStyle(world).opacity) > 0.98;
   }, { timeout: 20_000 });
   result.worldVisibleAt = await page.evaluate(() => performance.now());
+  if (process.env.QA_EXPECT_TRANSPORT_SLOTS) {
+    const resources = await page.evaluate(() => performance.getEntriesByType("resource")
+      .filter(r => /\/(?:models-(?:opt|mobile)-[^/]+\/.*\.glb(?:\.br)?|model-packets\/.*\.bin\.br)$/.test(new URL(r.name).pathname))
+      .map(r => ({ name: r.name, start: r.startTime, end: r.responseEnd, protocol: r.nextHopProtocol })));
+    const fetchBounds = await page.evaluate(() => window.__modelFetchBounds
+      .filter(r => /\/(?:models-(?:opt|mobile)-[^/]+\/.*\.glb(?:\.br)?|model-packets\/.*\.bin\.br)$/.test(new URL(r.name).pathname)));
+    assert.ok(fetchBounds.length > 0 && fetchBounds.every(r => r.end !== null), "All admitted original model transports settled");
+    // Resource Timing may close a cancelled entry after its replacement has
+    // started. The request's actual AbortSignal owns slot release, not that
+    // later bookkeeping timestamp; retain both measurements in the report.
+    const events = fetchBounds.flatMap(r => [{ at: r.start, delta: 1 }, { at: r.end, delta: -1 }])
+      .sort((a, b) => a.at - b.at || a.delta - b.delta);
+    let active = 0, peak = 0;
+    for (const event of events) { active += event.delta; peak = Math.max(peak, active); }
+    result.transportSlots = { peak, expected: Number(process.env.QA_EXPECT_TRANSPORT_SLOTS), resources, fetchBounds };
+    assert.equal(peak, result.transportSlots.expected, "Exact-byte transport must fill, but never exceed, its bounded download slots");
+  }
+  if (process.env.QA_WAIT_PROFILE === "1") {
+    result.waitProfile = await page.evaluate(() => window.__startupWaits);
+    assert.ok(result.waitProfile.some(row => row.delay === 70 && row.fired), "Observe the actual subtree-settle timers");
+    result.diagnosticOnly = "Timer stack capture adds overhead; not a controlled speed comparison";
+  }
   if (process.env.QA_EXPECT_CURTAIN_MOUNT === "1") {
     const gates = await page.evaluate(() => ({ hero: window.__garageQA.heroStages, curtain: window.__garageQA.curtainStages, intersections: window.__garageQA.runwayIntersections }));
     const hero = gates.hero.find(entry => entry.stage === "true");
@@ -426,8 +518,17 @@ try {
   const shelf = profile.isMobile ? "models-mobile" : "models-opt";
   const hash = bytes => createHash("sha256").update(bytes).digest("hex");
   result.verifiedModels = [];
-  const captures = await page.evaluate(() => window.__modelByteCapture.map(({ url, status }) => ({ url, status })));
+  const captures = await page.evaluate(() => window.__modelByteCapture.map(({ url, status, error }) => ({ url, status, error })));
+  result.abortedModelCaptures = [];
   for (const [index, capture] of captures.entries()) {
+    if (capture.error) {
+      // A timed-out attempt has no complete body to hash. Record only explicit
+      // aborts here; the successful retry must still supply every exact model
+      // below. Arbitrary stream/decoder errors must not become silent passes.
+      assert.equal(capture.error.name, "AbortError", `Unexpected capture failure: ${JSON.stringify(capture)}`);
+      result.abortedModelCaptures.push(capture);
+      continue;
+    }
     const response = { url: () => capture.url, status: () => capture.status, buffer: async () => {
       const encoded = await page.evaluate(async index => {
         const bytes = new Uint8Array(await window.__modelByteCapture[index].bytes);
@@ -467,7 +568,7 @@ try {
   await page.screenshot({ path: path.join(out, "failure.png"), captureBeyondViewport: false }).catch(() => {});
   console.error(result.failure);
 } finally {
-  result.metrics = await page.evaluate(() => ({ ...window.__garageQA, fcp: performance.getEntriesByName("first-contentful-paint")[0]?.startTime, resources: performance.getEntriesByType("resource").map((r) => ({ name: r.name, initiatorType: r.initiatorType, startTime: r.startTime, responseStart: r.responseStart, responseEnd: r.responseEnd, duration: r.duration, transferSize: r.transferSize, encodedBodySize: r.encodedBodySize, decodedBodySize: r.decodedBodySize })) })).catch(() => null);
+  result.metrics = await page.evaluate(() => ({ ...window.__garageQA, fcp: performance.getEntriesByName("first-contentful-paint")[0]?.startTime, resources: performance.getEntriesByType("resource").map((r) => ({ name: r.name, initiatorType: r.initiatorType, startTime: r.startTime, requestStart: r.requestStart, responseStart: r.responseStart, responseEnd: r.responseEnd, nextHopProtocol: r.nextHopProtocol, duration: r.duration, transferSize: r.transferSize, encodedBodySize: r.encodedBodySize, decodedBodySize: r.decodedBodySize })) })).catch(() => null);
   if (result.metrics) {
     if (result.measurementFinishedAt) {
       result.metrics.frames = result.metrics.frames.filter(frame => frame.at <= result.measurementFinishedAt);

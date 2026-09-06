@@ -15,7 +15,7 @@ baseline archive `output/baseline-c6d.zip` (68,792,612 bytes) remains available.
 Rejected export: `output/held-curtain-measure-f753.zip` (68,887,311 bytes).
 Its original preparation metadata and exact candidate source are preserved in
 `output/held-curtain-measure-release-prepared.json` and
-`output/held-curtain-measure-ShopWorld.tsx`. These are investigation artifacts,
+`output/held-curtain-measure-ShopWorld.tsx.bak`. These are investigation artifacts,
 not a release to publish. The restore scripts in `output` validate exact markers,
 deployment HEAD and target boundaries before touching generated files.
 
