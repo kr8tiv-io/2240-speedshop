@@ -1,6 +1,9 @@
 # Exact reflection-shader prewarm — 2026-09-06
 
-Candidate release: `f89f11d92629434280962e1468514fcd`.
+Published release: `f89f11d92629434280962e1468514fcd`.
+Application source: `47d477b9ca61b528c586af25072560cfff5d1668`, pushed to both
+kr8tiv-io and kr8tiv-ai. Deployment: `8479a2663ebe3b8d5f390d9085558ee805b2d808`
+on kr8tiv-io/2240-daylight-preview main.
 Previous live release: `a326bae4fc4f426b9561fdb9765a0cee`.
 Exact rollback archive: `output/baseline-a326.zip`, created from deployment
 `4926faa595a84fde470702087d4da413f59b6055` before preparing the new build.
@@ -125,4 +128,33 @@ does not claim improved steady FPS, universal device performance, a SeaOcean
 Apple testing or real inbox delivery. No purchase, DNS/mail/SSL change, client
 test lead, call or email was made.
 
-Publication and final live verification will be recorded below when completed.
+## Publication and final live evidence
+
+Hostinger published the exact release marker and accepted the subsequent cache
+purge. All 69 queryless canonical HTML pages and 24 critical/crawl/social assets
+matched the prepared bytes. Trusted HTTPS, apex/www and legacy blog redirects
+passed. The quote endpoint rejects GET (405); no real lead was submitted.
+Report: `output/published-release-check.json`.
+
+The live mobile-emulated tour passed all seven stations with 131 textures,
+74 model responses, no browser errors or overflow. Three live interaction
+checks passed (desktop/mobile KR8TIV + Contact after the loaded garage, and
+quote fragment → Guides → quote → Back), with no unexpected mutation requests.
+Reports: `reflection-live-mobile/results.json` in the performance directory and
+`output/playwright/site-actions-reflection-live/results.json`.
+
+That first live cold tour revealed at **27.936 s**, much slower than the local
+comparison, despite the shell warming in 1.709 s and final full-composer proof
+taking 23 ms. Its waterfall identifies six late office-photo/sign requests at
+14.743 s, taking 7.6–11.1 s; they finish before the late gallery warm and final
+world-ready at 26.570 s. Model requests were much shorter. Do not describe the
+entire live cold-load problem as solved. Later live footer tests reached and
+left a loaded garage in 14.1/14.3 s, demonstrating substantial run variance.
+
+Next investigation: `WALL_PHOTO` / `OfficeGallery` in `ShopWorld.tsx` deliberately
+defer ~3 MB of full-resolution photos until station 5, yet the final reveal
+waits for that gallery. Test an earlier, deduplicated preload after the opening
+model/hero network work (not unconditional page-boot preloading). Preserve every
+original image and texture; verify cache reuse, network priority, cancellation,
+and no duplicate transfers before any next release. Separately profile desktop
+steady rendering without reducing effects.
