@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import ts from "typescript";
+import { waitForEnvironmentWarmup } from "../lib/environment-warmup.ts";
 
 // Exercise the production scheduler without mounting a second GPU renderer.
 const source = await readFile(new URL("../components/shop/Loaders.tsx", import.meta.url), "utf8");
@@ -81,6 +82,7 @@ function fixture(options = {}) {
     performance: { now: () => clock },
     DEBUG: false,
     PROGRAM_COMPILE_PATIENCE_MS: 160,
+    waitForEnvironmentWarmup,
     COMPOSER_TARGETS: new WeakMap([[gl, hdrTarget]]),
     UPLOADED_TEXTURES: new WeakMap(),
     THREE: { HalfFloatType: "half float", WebGLRenderTarget: class {

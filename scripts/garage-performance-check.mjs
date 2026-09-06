@@ -333,6 +333,11 @@ if (process.env.QA_GL_PROFILE === "1") await page.evaluateOnNewDocument(() => {
     if (name !== "getProgramParameter" || args[1] === this.ACTIVE_UNIFORMS) {
       const entry = programs.get(args[0]);
       if (entry) {
+        if (entry.firstQueryAt === undefined && entry.sources.some(source => source?.includes("PMREMGGXConvolution"))) {
+          const previousLimit = Error.stackTraceLimit;
+          try { Error.stackTraceLimit = 40; entry.firstQueryStack = new Error("Reflection first use").stack; }
+          finally { Error.stackTraceLimit = previousLimit; }
+        }
         entry.firstQueryAt ??= start; entry.queriesMs += elapsed;
         if (elapsed > 50 && window.__shop?.gl?.getContext() === this) {
           entry.objects = [];

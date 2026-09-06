@@ -2,16 +2,18 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 
 const root = "output/playwright/garage-performance-2026-09-06";
-const oldRelease = "f33a4109f9ed40f4a730339010d3a6b1";
+const oldRelease = process.env.QA_BASELINE_RELEASE || "f33a4109f9ed40f4a730339010d3a6b1";
 const newRelease = process.env.QA_CANDIDATE_RELEASE;
 const prefix = process.env.QA_COMPARISON_PREFIX || "hero-shared-stage";
 assert.match(newRelease || "", /^[a-f0-9]{32}$/);
+assert.match(oldRelease, /^[a-f0-9]{32}$/);
 assert.match(prefix, /^[a-z0-9-]+$/);
 const mean = values => values.reduce((a, b) => a + b, 0) / values.length;
 const sceneReady = run => { const ready = run.metrics.heroStages.find(s => s.stage === "true"); assert.ok(ready); return ready.at; };
 const all = [];
 const report = { checkedAt: new Date().toISOString(), status: "HOLD", profiles: {},
-  scope: "Sequential cold desktop and phone Fast 4G ABBA. Preserve average actual hero-scene readiness and complete garage reveal within 3%, entry p95 within 0.5 ms. Exact lamp first-use proof is a separate diagnostic gate. No field or physical Apple claim." };
+  baselineRelease: oldRelease, candidateRelease: newRelease,
+  scope: "Sequential cold desktop and phone Fast 4G ABBA. Preserve average actual hero-scene readiness and complete garage reveal within 3%, entry p95 within 0.5 ms. Exact shader first-use proof is a separate diagnostic gate. No field or physical Apple claim." };
 for (const group of ["desktop", "4g"]) {
   const runs = [];
   for (const suffix of ["old-1", "new-1", "new-2", "old-2"]) {

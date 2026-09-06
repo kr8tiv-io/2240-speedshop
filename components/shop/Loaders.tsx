@@ -2306,6 +2306,12 @@ async function warmUp(
   isStale: () => boolean,
 ): Promise<void> {
   if (isStale()) return;
+  // Three lazily filters scene.environment inside material compilation. Bays
+  // can reach this entry while WarmScene is already awaiting that filter's
+  // shader; every consumer must share readiness before triggering its first
+  // use. Keep the early cubemap capture and unrelated post-pass overlap intact.
+  await waitForEnvironmentWarmup(gl);
+  if (isStale()) return;
   // The shipped composer renders the scene into a half-float HDR target. A
   // program prepared for the default canvas framebuffer is a different ANGLE
   // variant and does not pay that bill; the old warm-up compiled the wrong
