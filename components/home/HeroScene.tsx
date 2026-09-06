@@ -13,6 +13,7 @@ import {
 } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { STABLE_CANVAS_RESIZE } from "@/lib/stable-canvas";
 import {
   useGLTF,
   Environment,
@@ -1889,8 +1890,12 @@ function Rig({ mobile }: { mobile: boolean }) {
     desiredLook.lerpVectors(keys[seg][1], keys[seg + 1][1], local);
 
     // Small pointer parallax so the frame never sits dead.
-    desired.x += pointer.x * 0.18;
-    desired.y += pointer.y * 0.1;
+    // Soft/touch: the R3F pointer jumps around during native scroll and
+    // reads as the car shaking. Desktop fine pointers keep the drift.
+    if (!mobile) {
+      desired.x += pointer.x * 0.18;
+      desired.y += pointer.y * 0.1;
+    }
 
     /* THE FRAMING GUARANTEE — ratchet-free form, ported from the two-version
        line where the failure was measured. The original applied the fit ONLY
@@ -2074,6 +2079,7 @@ export function HeroScene({
 
   return (
     <Canvas
+      resize={STABLE_CANVAS_RESIZE}
       /* FIXED dpr, chosen once. It used to come from the quality tier, and a
          dpr change reallocates the drawing buffer: the canvas is destroyed at
          one resolution and rebuilt at another, which the eye reads as a flash

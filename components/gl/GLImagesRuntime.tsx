@@ -10,6 +10,7 @@ import {
 } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { STABLE_CANVAS_RESIZE } from "@/lib/stable-canvas";
 import gsap from "gsap";
 import {
   getImageEntries,
@@ -421,9 +422,10 @@ export function GLImagesRuntime({
   onContextLost: () => void;
 }) {
   return (
-    <div className="pointer-events-none fixed inset-0 z-30" aria-hidden="true">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-30 h-[100svh] w-full" aria-hidden="true">
       <Canvas
         style={{ pointerEvents: "none" }}
+        resize={STABLE_CANVAS_RESIZE}
         dpr={[1, 1.5]}
         frameloop={active ? "demand" : "never"}
         gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}

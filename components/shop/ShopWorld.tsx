@@ -96,7 +96,8 @@ import {
   CAM_START,
   type InstanceSpec,
 } from "./world";
-import { RUNWAY_ID, measureRunway, runwayMetrics, runwayProgress } from "./runway";
+import { RUNWAY_ID, lockRunwayViewport, measureRunway, runwayMetrics, runwayProgress } from "./runway";
+import { STABLE_CANVAS_RESIZE } from "@/lib/stable-canvas";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    THE SHOP — one continuous building, fixed behind the whole document.
@@ -1932,6 +1933,7 @@ function CameraRig({ tier = "full" }: { tier?: WorldTier }) {
     const settle = window.setTimeout(() => {
       measure(true);
       if (soft.current) spanLocked = true;
+      lockRunwayViewport();
     }, 480);
 
     // Capture phase on document: catches the scroll event whichever element
@@ -2659,6 +2661,7 @@ export function ShopWorld({
     >
       <Canvas
         style={{ pointerEvents: "none" }}
+        resize={STABLE_CANVAS_RESIZE}
         /* FIXED RESOLUTION FOR THE LIFE OF THE CONTEXT.
            Changing DPR rebuilds the composer's render targets and can force
            ANGLE to translate the post chain again. The hidden warm therefore

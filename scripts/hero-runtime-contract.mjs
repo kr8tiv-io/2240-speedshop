@@ -32,6 +32,14 @@ const contracts = [
     "the full composer stays parked behind the preloader until priming commits",
     /frameloop=\{active && primed \? "always" : "never"\}/,
   ],
+  [
+    "hero canvas ignores scroll remesure so iOS chrome cannot resize the buffer",
+    /resize=\{STABLE_CANVAS_RESIZE\}/,
+  ],
+  [
+    "hero rig does not apply pointer parallax on phones",
+    /if \(!mobile\) \{\s*desired\.x \+= pointer\.x \* 0\.18;/,
+  ],
 ];
 
 for (const [label, pattern] of contracts) {

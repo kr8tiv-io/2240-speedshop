@@ -12,9 +12,11 @@ import { useUIOverlay } from "@/components/ui-overlay";
 import { beginWorldBoot, markWorldSkipped, noteMotion, subscribeBoot } from "./boot";
 import {
   RUNWAY_ID,
+  lockRunwayViewport,
   measureRunway,
   runwayMetrics,
   runwayScrollY,
+  runwayViewHeight,
 } from "./runway";
 
 /**
@@ -350,7 +352,7 @@ export function WalkthroughWorld() {
       const m = runwayMetrics();
       if (!m.measured) return;
       const y = runwayScrollY();
-      const vh = Math.max(window.innerHeight, 1);
+      const vh = runwayViewHeight();
       const edge = vh * 1.5;
       const fadeIn = clamp01((y - (m.top - edge)) / edge);
       const fadeOut = clamp01((m.top + m.height - vh + edge - y) / edge);
@@ -378,21 +380,28 @@ export function WalkthroughWorld() {
     fade();
     document.addEventListener("scroll", fade, { passive: true, capture: true });
     window.addEventListener("resize", refreshViewportLeads);
-    window.visualViewport?.addEventListener("resize", refreshViewportLeads);
+    // Deliberately NOT listening to visualViewport.resize — that is the iOS
+    // chrome show/hide vector. measureRunway already freezes view height on
+    // coarse/iOS after lockRunwayViewport; chrome-only height flips must not
+    // rebuild IntersectionObservers either.
     const observer = new ResizeObserver(measure);
     observer.observe(document.documentElement);
     observer.observe(runway);
+    const settle = window.setTimeout(() => {
+      measure();
+      lockRunwayViewport();
+    }, 480);
 
     return () => {
       cancelled = true;
       unsubscribeHero();
       warm?.disconnect();
       window.clearTimeout(warmTimer);
+      window.clearTimeout(settle);
       draw?.disconnect();
       window.cancelAnimationFrame(viewportResizeFrame);
       document.removeEventListener("scroll", fade, { capture: true });
       window.removeEventListener("resize", refreshViewportLeads);
-      window.visualViewport?.removeEventListener("resize", refreshViewportLeads);
       observer.disconnect();
     };
   }, [run, verdict]);
@@ -404,7 +413,7 @@ export function WalkthroughWorld() {
       data-shop-stage={worldReady ? "world" : worldWarm ? "shell" : "poster"}
       aria-hidden="true"
       role="presentation"
-      className="pointer-events-none fixed inset-0 z-[5]"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[5] h-[100svh] w-full"
       style={{ opacity: 0 }}
     >
       {/* The building. Mounted early (warm gate), drawn late (draw gate). */}

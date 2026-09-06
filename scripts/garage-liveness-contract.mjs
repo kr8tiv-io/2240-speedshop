@@ -853,8 +853,9 @@ contract(
   /const warmLeadPx = Math\.ceil\(Math\.max\(window\.innerHeight, 1\) \* 7\)/.test(walkthrough) &&
     /rootMargin: `\$\{warmLeadPx\}px 0px \$\{warmLeadPx\}px 0px`/.test(walkthrough) &&
     /window\.addEventListener\("resize", refreshViewportLeads\)/.test(walkthrough) &&
-    /visualViewport\?\.addEventListener\("resize", refreshViewportLeads\)/.test(walkthrough),
-  "garage mount lead stays seven viewport heights through iPhone orientation changes",
+    !/visualViewport\?\.addEventListener\("resize", refreshViewportLeads\)/.test(walkthrough) &&
+    /lockRunwayViewport\(\)/.test(walkthrough),
+  "garage mount lead stays seven viewport heights through orientation, without iOS chrome remesure",
 );
 contract(
   /const drawLeadPx = Math\.ceil\(Math\.max\(window\.innerHeight, 1\) \* 1\.7\)/.test(walkthrough) &&
@@ -867,6 +868,11 @@ contract(
     /if \(verdictRef\.current !== "idle"\) return/.test(walkthrough) &&
     /verdictRef\.current = next/.test(walkthrough),
   "garage performance tier is latched once so orientation cannot invalidate a live Canvas",
+);
+contract(
+  /resize=\{STABLE_CANVAS_RESIZE\}/.test(shopWorld) &&
+    /lockRunwayViewport\(\)/.test(shopWorld),
+  "shop canvas ignores scroll remesure and freezes runway span after settle",
 );
 contract(
   /<ShopWorld[\s\S]{0,220}revealed=\{worldReady\}/.test(walkthrough) &&

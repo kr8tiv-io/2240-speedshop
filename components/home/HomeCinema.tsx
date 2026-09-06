@@ -426,7 +426,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
       {/* THE STAGE — one fixed canvas behind both film runways. It starts
           visible under runway A; the timelines drop the curtain for the
           walk-through and raise it again for the finale. */}
-      <div data-film-canvas className="fixed inset-0 z-0">
+      <div data-film-canvas className="fixed inset-x-0 top-0 z-0 h-[100svh] w-full">
         <div data-hero-still className="absolute inset-0">
           <StaticBackdrop />
         </div>

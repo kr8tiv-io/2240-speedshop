@@ -30,7 +30,40 @@ export type RunwayMetrics = {
 
 const metrics: RunwayMetrics = { top: 0, span: 1, height: 1, measured: false };
 
+/** Viewport height used to derive `span`. On coarse/iOS this is frozen after
+ *  the first settle so Safari chrome show/hide cannot shrink/grow the rail
+ *  and jump every camera keyed off `runwayProgress`. Width flips (orientation)
+ *  still take a fresh height. */
+let viewH = 0;
+let viewW = 0;
+let viewLocked = false;
+
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+function isSoftPointer() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(pointer: coarse)").matches ||
+    /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+/** Freeze the viewport height used for span. Call once after late layout
+ *  (fonts/images) on the walk-through host. No-op on fine pointers. */
+export function lockRunwayViewport() {
+  if (!isSoftPointer()) return;
+  if (!viewH) viewH = Math.max(window.innerHeight, 1);
+  if (!viewW) viewW = window.innerWidth;
+  viewLocked = true;
+}
+
+/** Height the rail treats as the viewport. Locked on soft devices. */
+export function runwayViewHeight() {
+  if (viewH) return viewH;
+  if (typeof window === "undefined") return 1;
+  return Math.max(window.innerHeight, 1);
+}
 
 /**
  * The iOS fix, kept verbatim from the original camera rig: on iOS Safari an
@@ -55,9 +88,16 @@ export function measureRunway(): RunwayMetrics {
   const node = document.getElementById(RUNWAY_ID);
   if (!node) return metrics;
   const rect = node.getBoundingClientRect();
+  const liveW = window.innerWidth;
+  const liveH = Math.max(window.innerHeight, 1);
+  const widthChanged = Math.abs(liveW - viewW) > 2;
+  if (!viewH || !viewLocked || widthChanged) {
+    viewH = liveH;
+    viewW = liveW;
+  }
   metrics.top = rect.top + runwayScrollY();
   metrics.height = Math.max(rect.height, 1);
-  metrics.span = Math.max(metrics.height - window.innerHeight, 1);
+  metrics.span = Math.max(metrics.height - viewH, 1);
   metrics.measured = true;
   return metrics;
 }
