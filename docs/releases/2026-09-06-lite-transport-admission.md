@@ -137,13 +137,18 @@ encoding and one-year immutable caching. Quote endpoint GET correctly returns
 405; no actual lead was sent. Evidence: `output/published-release-check.json`.
 
 The final live cold phone-emulated tour passed all seven bays, all 71 garage
-and three hero model hashes, four actual transfers and original full-resolution
+response hashes, arrival of three hero resources, four actual transfers and original full-resolution
 office texture settings, with no browser errors. Observed full reveal was
 16.946 seconds; this single live run is not a controlled before/after gain.
 Three final LIVE quote/footer cases passed with zero errors: Guides → quote
 form → Back and desktop/phone KR8TIV plus Contact after the loaded garage.
 Reports: `transport-lite-live-mobile/results.json` in the performance directory
 and `output/playwright/transport-lite-live-actions/results.json`.
+
+Evidence clarification from the subsequent gallery review: the browser harness
+hashes each garage resource but counts the hero resource URLs. Unchanged hero
+bytes are verified separately in the static 410-original-media comparison;
+the browser result alone is not a three-hero-hash proof.
 
 The exact committed new release is backed up in
 `output/verified-lite-cf744f5.zip`: 68,772,667 bytes, 1,286 committed files,

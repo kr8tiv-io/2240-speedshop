@@ -2553,6 +2553,10 @@ let warmQueue: Promise<void> = Promise.resolve();
    catching bays at exactly "one mesh shown, N hidden"). The node object
    survives the re-suspension, so identity is the honest key. */
 const PACED = new WeakMap<THREE.Object3D, number>();
+/** A private draw borrows only the slots belonging to its visible bay. */
+type WarmStationLights = { key: string; count: number; isStale: () => boolean };
+const WARM_STATION_LIGHTS = new WeakMap<THREE.Object3D, WarmStationLights>();
+const PACING = new WeakMap<THREE.Object3D, { generation: number; lights?: WarmStationLights; promise: Promise<void> }>();
 
 /* Which objects a paced warm currently owns while temporarily hidden.
    NOT on userData: drei's <Clone> spreads `userData` BY REFERENCE, so every
@@ -2579,8 +2583,26 @@ const PACED_HIDDEN = new WeakMap<THREE.Object3D, number>();
 function warmThroughComposer(node: THREE.Object3D, label = "", root?: RootState) {
   const generation = loaderGeneration;
   if (PACED.get(node) === generation) return Promise.resolve();
-  PACED.set(node, generation);
-  const next = warmQueue.then(() => pacedWarm(node, label, root, generation));
+  const lights = WARM_STATION_LIGHTS.get(node);
+  const pending = PACING.get(node);
+  if (pending?.generation === generation && pending.lights === lights) return pending.promise;
+  const entry = { generation, lights, promise: Promise.resolve() };
+  const work = warmQueue.then(() => {
+    if (generation !== loaderGeneration || lights?.isStale()) return;
+    return pacedWarm(node, label, root, generation);
+  });
+  const next = work.then(() => {
+    if (PACING.get(node) !== entry) return;
+    // Enqueued or cancelled work is not proof of first use. A replacement
+    // effect on the same Three group must await its own live preparation.
+    if (generation === loaderGeneration && !lights?.isStale()) PACED.set(node, generation);
+    PACING.delete(node);
+  }, (error) => {
+    if (PACING.get(node) === entry) PACING.delete(node);
+    throw error;
+  });
+  entry.promise = next;
+  PACING.set(node, entry);
   warmQueue = next.catch(() => undefined);
   return next;
 }
@@ -2639,8 +2661,14 @@ async function pacedWarm(
   root?: RootState,
   generation = loaderGeneration,
 ) {
-  const stale = () => generation !== loaderGeneration;
+  const stationLights = WARM_STATION_LIGHTS.get(node);
+  const stale = () => generation !== loaderGeneration || stationLights?.isStale() === true;
   if (stale()) return;
+  const reconcileStationLights = () => {
+    if (!stale() && stationLights) {
+      setStationLights(stationLights.key, node.visible ? stationLights.count : 0);
+    }
+  };
   const drawables: THREE.Object3D[] = [];
   const mirrors: THREE.Object3D[] = [];
   node.traverse((child) => {
@@ -2691,6 +2719,10 @@ async function pacedWarm(
      composer itself never changes size or quality. */
   const composerTarget = root ? COMPOSER_TARGETS.get(root.gl) : undefined;
   if (parkedNow() && root && composerTarget) {
+    // Pay the film one bounded courtesy before borrowing any scene visibility
+    // or light-pad slots. A live frame or effect cleanup may run while waiting.
+    await waitForReaderQuiet();
+    if (stale()) return;
     const was = drawables.map((object) => object.visible);
     const wasCulled = drawables.map((object) => object.frustumCulled);
     const wasGroup = node.visible;
@@ -2712,10 +2744,12 @@ async function pacedWarm(
         drawables[i].frustumCulled = wasCulled[i];
       }
       node.visible = wasGroup;
+      reconcileStationLights();
     };
     const isolateOvenScene = () => {
       for (const object of sceneVisibility.keys()) object.visible = false;
       node.visible = true;
+      reconcileStationLights();
       for (const drawable of drawables) {
         drawable.visible = false;
         drawable.frustumCulled = false;
@@ -2757,12 +2791,6 @@ async function pacedWarm(
       let size = OVEN_START_BATCH;
       let index = 0;
       while (index < representatives.length) {
-        if (stale()) return;
-        // Pay the visible film one bounded courtesy for this bay, not one for
-        // every postage-stamp slice. The old per-slice wait multiplied 900 ms
-        // by dozens of geometry/program pairs and kept a complete garage behind
-        // its doorway long after every byte had arrived.
-        if (index === 0) await waitForReaderQuiet();
         if (stale()) return;
         const end = Math.min(index + size, representatives.length);
         for (let i = index; i < end; i++) representatives[i].visible = true;
@@ -2843,6 +2871,7 @@ async function pacedWarm(
       PACED_HIDDEN.delete(drawables[k]);
     }
     node.visible = wasGroup;
+    reconcileStationLights();
   };
 
   try {
@@ -2853,6 +2882,7 @@ async function pacedWarm(
       PACED_HIDDEN.set(object, performance.now());
     }
     node.visible = true;
+    reconcileStationLights();
 
   const step = () => {
     try {
@@ -3279,12 +3309,10 @@ function WarmStation({
     const firstUse = async () => {
       const node = group.current;
       if (!node) return;
-      /* Compile against the SAME total light count the live frame will use.
-         Without this, making the hidden bay visible for its oven pass added
-         its real drop lights on top of the full pad, creating a brand-new
-         6–7-light PBR variant that cost 2–4 seconds and was discarded the
-         moment the live compensation reduced the total back to five. */
-      setStationLights(String(station), lights.current);
+      // pacedWarm reconciles this bay's pad slots with its real visibility
+      // around each private draw and restores them before yielding. Claiming
+      // slots here, before awaiting the queue, compiled a later gallery with
+      // one fewer light and forced a new shader on that gallery's first draw.
       // Pay the bay's shaders through the composer now, in slices, while the
       // camera is still two stations away — rather than in one lump on the
       // frame the reader scrolls into it.
@@ -3320,6 +3348,8 @@ function WarmStation({
       // were compiled against never moves. See `shop/lights.ts`.
       lights.current = countLights(node);
     }
+
+    WARM_STATION_LIGHTS.set(node, { key: String(station), count: lights.current, isStale: stale });
 
 
     const started = performance.now();
@@ -3404,12 +3434,12 @@ function WarmStation({
     // decision is still true, so reconcile the real object before the cheap
     // early return or a fully warm bay can remain invisible forever.
     if (node.visible !== show) node.visible = show;
+    // A private warm may have borrowed slots since the previous visible
+    // frame, even when this frame's cached show decision has not changed.
+    // Reconcile on this same stack before the renderer consumes the lights.
+    setStationLights(String(station), show ? lights.current : 0);
     if (show === drawn.current) return;
     drawn.current = show;
-    // Same frame, same call stack: the pad compensates before anything is
-    // drawn, so the renderer never sees a different number of lights than the
-    // one it compiled against.
-    setStationLights(String(station), show ? lights.current : 0);
   });
 
   return (

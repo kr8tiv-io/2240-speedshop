@@ -887,8 +887,8 @@ const parkedOvenSource = loaders.slice(
 );
 contract(
   (parkedOvenSource.match(/waitForReaderQuiet\(\)/g) ?? []).length === 1 &&
-    /if \(index === 0\) await waitForReaderQuiet\(\)/.test(parkedOvenSource),
-  "parked oven pays one bounded motion courtesy per bay rather than one per slice",
+    /await waitForReaderQuiet\(\);\s*if \(stale\(\)\) return;\s*const was = drawables\.map/.test(parkedOvenSource),
+  "parked oven pays one bounded courtesy before scene ownership, never per slice",
 );
 const warmStationSource = loaders.slice(
   loaders.indexOf("function WarmStation"),

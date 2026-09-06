@@ -16,6 +16,9 @@ const profile = process.env.QA_PROFILE === "phone-390"
   : { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false };
 const deviceLabel = profile.isMobile ? "phone-390" : "desktop";
 const result = { label, startedAt: new Date().toISOString(), base, profile, status: "RUNNING", stations: [], errors: [], warnings: [], consoleLog: [], modelResponses: [] };
+if (["QA_GL_PROFILE", "QA_CPU_PROFILE", "QA_LIGHT_PROFILE"].some(key => process.env[key] === "1")) {
+  result.diagnosticOnly = "Private CPU/GL/light tracing adds overhead; not a controlled speed comparison";
+}
 const packetManifest = JSON.parse(await fs.readFile("components/shop/modelPackets.generated.json", "utf8"));
 const packetFailure = process.env.QA_PACKET_FAILURE || "";
 assert.ok(["", "404", "corrupt"].includes(packetFailure));
@@ -238,6 +241,45 @@ if (process.env.QA_WAIT_PROFILE === "1") await page.evaluateOnNewDocument(() => 
   };
 });
 
+if (process.env.QA_LIGHT_PROFILE === "1") await page.evaluateOnNewDocument(() => {
+  let runtime;
+  const wrapped = new WeakSet();
+  const events = window.__lightStartup = [];
+  const snapshot = (scene, camera) => {
+    const lights = [], bays = [];
+    scene.traverseVisible(object => {
+      if (!object.isPointLight || !object.layers.test(camera.layers)) return;
+      lights.push({ id: object.uuid, name: object.name, pad: !!object.userData.pad, parent: object.parent?.name, intensity: object.intensity });
+    });
+    scene.traverse(object => { if (object.name?.startsWith("bay-")) bays.push({ id: object.uuid, name: object.name, visible: object.visible }); });
+    return { pointCount: lights.length, padVisible: lights.filter(light => light.pad).length, lights, bays };
+  };
+  Object.defineProperty(window, "__shop", { configurable: true,
+    get: () => runtime,
+    set: next => {
+      runtime = next;
+      if (!next?.gl || wrapped.has(next.gl)) return;
+      wrapped.add(next.gl);
+      const gl = next.gl, compile = gl.compile, render = gl.render;
+      gl.compile = function (node, camera, target) {
+        const materials = new Set();
+        node.traverse(object => { for (const material of [object.material].flat().filter(Boolean)) materials.add(material); });
+        events.push({ kind: "compile", at: performance.now(), materialCount: materials.size,
+          emissiveMaps: [...materials].filter(material => material.emissiveMap).length,
+          ...snapshot(target || node, camera) });
+        return compile.apply(this, arguments);
+      };
+      gl.render = function (scene, camera) {
+        const privateDraw = gl.getRenderTarget()?.width === 24;
+        const entry = privateDraw ? { kind: "oven", at: performance.now(), ...snapshot(scene, camera) } : null;
+        const started = performance.now();
+        try { return render.apply(this, arguments); }
+        finally { if (entry) { entry.elapsed = performance.now() - started; events.push(entry); } }
+      };
+    },
+  });
+});
+
 if (process.env.QA_GL_PROFILE === "1") await page.evaluateOnNewDocument(() => {
   const programs = new WeakMap(), shaders = new WeakMap(), contexts = new WeakMap();
   const events = window.__glStartup = [];
@@ -434,6 +476,12 @@ try {
     const programs = await page.evaluate(() => window.__glStartup);
     await fs.writeFile(path.join(out, "startup-programs.json"), JSON.stringify(programs, null, 2));
     console.log(JSON.stringify(programs.filter(p => p.queriesMs > 10).map(({ sources, ...p }) => ({ ...p, defines: sources.map(s => s?.match(/^#define .*/gm)?.slice(0, 35)) })), null, 2));
+  }
+  if (process.env.QA_LIGHT_PROFILE === "1") {
+    const lights = await page.evaluate(() => window.__lightStartup);
+    assert.ok(lights.some(entry => entry.kind === "compile" && entry.emissiveMaps > 0), "Capture the actual emissive-map preparation");
+    assert.ok(lights.some(entry => entry.kind === "oven"), "Capture actual private first-use draws");
+    await fs.writeFile(path.join(out, "startup-lights.json"), JSON.stringify(lights, null, 2));
   }
   if (startupProfiler) {
     const { profile: cpuProfile } = await startupProfiler.send("Profiler.stop");
