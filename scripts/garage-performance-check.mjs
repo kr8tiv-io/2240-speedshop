@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import assert from "node:assert/strict";
-import puppeteer from "puppeteer-core";
+import puppeteer, { PredefinedNetworkConditions } from "puppeteer-core";
 
 const base = process.env.BASE_URL || "http://127.0.0.1:3197";
 const label = process.env.QA_LABEL || "baseline";
@@ -12,6 +12,12 @@ const profile = process.env.QA_PROFILE === "phone-390"
   : { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false };
 const deviceLabel = profile.isMobile ? "phone-390" : "desktop";
 const result = { label, startedAt: new Date().toISOString(), base, profile, status: "RUNNING", stations: [], errors: [], warnings: [], consoleLog: [], modelResponses: [] };
+const officeFiles = ["car-d100-truck.jpg", "car-green-coupe.jpg", "car-black-muscle.jpg", "car-blue-pickup.jpg", "car-red-pickup.jpg", "car-black-classic.jpg", "badge-2240-sign.png"];
+const officeUrl = url => officeFiles.includes(new URL(url).pathname.split("/").at(-1));
+const officeDelay = Number(process.env.QA_PHOTO_DELAY_MS || 0);
+result.officePhotoDelayMs = officeDelay;
+const network = process.env.QA_NETWORK === "fast-4g" ? PredefinedNetworkConditions["Fast 4G"] : null;
+result.networkConditions = network;
 const browser = await puppeteer.launch({
   executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe",
   headless: false,
@@ -22,6 +28,19 @@ const context = await browser.createBrowserContext();
 const page = await context.newPage();
 await page.setViewport(profile);
 await page.setCacheEnabled(false);
+if (network) await page.emulateNetworkConditions(network);
+if (officeDelay > 0) {
+  // Optional, identical added latency for every office photo in both builds.
+  // The actual unmodified image bytes still come from the normal local host.
+  await page.setRequestInterception(true);
+  page.on("request", request => {
+    const proceed = () => {
+      if (!request.isInterceptResolutionHandled()) void request.continue().catch(() => {});
+    };
+    if (officeUrl(request.url())) setTimeout(proceed, officeDelay);
+    else proceed();
+  });
+}
 page.on("pageerror", (error) => result.errors.push(`page: ${error.message}`));
 page.on("console", (message) => {
   if (message.type() === "error") result.errors.push(message.text());
@@ -165,6 +184,30 @@ try {
     return !!window.__shop?.scene && world && Number.parseFloat(getComputedStyle(world).opacity) > 0.98;
   }, { timeout: 20_000 });
   result.worldVisibleAt = await page.evaluate(() => performance.now());
+  result.officeTextures = await page.evaluate(files => {
+    const textures = new Map();
+    window.__shop.scene.traverse(object => {
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        const texture = material?.map;
+        const image = texture?.image;
+        if (!image?.src || !files.includes(new URL(image.src).pathname.split("/").at(-1))) continue;
+        textures.set(texture.uuid, { path: new URL(image.src).pathname, width: image.naturalWidth, height: image.naturalHeight, anisotropy: texture.anisotropy, colorSpace: texture.colorSpace, minFilter: texture.minFilter, magFilter: texture.magFilter, generateMipmaps: texture.generateMipmaps });
+      }
+    });
+    return [...textures.values()].sort((a, b) => a.path.localeCompare(b.path));
+  }, officeFiles);
+  result.officeResources = (await page.evaluate(() => performance.getEntriesByType("resource").map(r => ({ name: r.name, startTime: r.startTime, responseStart: r.responseStart, responseEnd: r.responseEnd, duration: r.duration, encodedBodySize: r.encodedBodySize })))).filter(r => officeUrl(r.name));
+  assert.equal(result.officeTextures.length, 7, "All seven original office photos/sign textures must be present");
+  for (const file of officeFiles) {
+    assert.equal(result.officeResources.filter(r => new URL(r.name).pathname.endsWith(`/${file}`)).length, 1, `No duplicate office image request: ${file}`);
+  }
+  if (process.env.QA_PHOTO_EXPECT_EARLY === "1") {
+    const created = result.consoleLog.map(log => log.text).find(line => /renderer created/.test(line));
+    const rendererAt = Number(created?.match(/@(\d+)/)?.[1]);
+    assert.ok(Number.isFinite(rendererAt), "Read the actual renderer creation time");
+    assert.ok(result.officeResources.every(r => r.startTime <= rendererAt + 250), "Office requests must start with this renderer, not late at station five");
+  }
   if (process.env.QA_GL_PROFILE === "1") {
     const programs = await page.evaluate(() => window.__glStartup);
     await fs.writeFile(path.join(out, "startup-programs.json"), JSON.stringify(programs, null, 2));

@@ -195,9 +195,10 @@ const ASPECT: Record<PhotoKey, number> = {
   badge: 1060 / 860,
 };
 
-/* No module-scope preload: these are ~3 MB of photographs on the office wall at
-   station 5, and pulling them at boot means they race the two bays the reader
-   is actually looking at. They stream with their own station now. */
+/* No module-scope preload: these are ~3 MB of full-resolution office photos.
+   The actual renderer's creation starts their shared texture-cache requests,
+   after the hero gate, so they can arrive during the earlier bays' warm-up.
+   Waiting until station 5 added a late network waterfall before world-ready. */
 
 /* ── Shell ──────────────────────────────────────────────────────────────── */
 
@@ -1175,8 +1176,9 @@ function WallFrame({
 }
 
 /**
- * The gallery, behind one Suspense boundary and one texture hook. Nothing here
- * blocks the first frame: the shop paints, the prints arrive.
+ * One Suspense boundary and one texture hook, sharing the ordered cache key
+ * already requested when this renderer was created. GPU upload still belongs
+ * to the gallery's existing station warm-up; the original images are untouched.
  */
 function OfficeGallery() {
   const maps = useTexture(WALL_PHOTO);
@@ -2599,6 +2601,10 @@ export function ShopWorld({
         camera={{ fov: 40, near: 0.1, far: 130, position: CAM_START.toArray() }}
         onCreated={({ gl, scene, camera }) => {
           renderer.current = gl;
+          // Transfer only: useTexture.preload shares this exact ordered key
+          // with OfficeGallery, so it creates no second request or GPU upload.
+          // This gate has already waited for the hero and garage proximity.
+          useTexture.preload(Object.values(WALL_PHOTO));
           // ACES rolls the highlights off, and every true emissive in the shop
           // (bulbs, neon, headlights) is `toneMapped={false}`, so exposure lifts
           // the ROOM without touching the light sources — the mood survives.
