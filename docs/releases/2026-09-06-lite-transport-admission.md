@@ -1,4 +1,4 @@
-# Lite-world transport admission — release qualification
+# Lite-world transport admission — published 2026-09-06
 
 Baseline: live c6d / deployment 8f982d65, source checkpoint b09deca. The
 previous network-only four-slot candidate b326 is archived, not deployed.
@@ -111,10 +111,55 @@ links after the loaded garage. The KR8TIV link opened its actual requested tab.
 An additional healthy-lite four-slot corrupted-packet browser run passed exact
 71+3 model recovery without browser errors. Evidence is
 `transport-lite-corrupt-recovery/results.json` in the performance directory.
-Publication and final live checks are still pending.
+Publication and final live checks subsequently passed, as recorded below.
 
 The SEO and Core Web Vitals checklists were used as release checks, not grounds
 for rewriting approved copy or claiming rankings. SeaOcean 95+, field Core Web
 Vitals, search-console ownership, separate CDN activation, actual inbox delivery
 and physical Safari/iPhone performance remain unverified. No DNS/mail/SSL change,
 purchase, real client lead, call or email was made. Continuous goal stays active.
+
+## Publication and rollback checkpoint
+
+Application source `10d66193b3cd7ccbe2a82a5190d3aac5325aa919` is pushed to
+both kr8tiv-io/2240-speedshop and kr8tiv-ai/2240-speedshop on the existing
+`codex/3d-elevation-2026-08-24` branch. Deployment commit
+`e92b1ec7a52779519d429d7d630b40a9e66cc99a` is pushed to
+kr8tiv-io/2240-daylight-preview main. The first deployment whitespace check
+stopped on Windows CRLF manifest endings; a command-scoped `cr-at-eol` check
+passed without rewriting any bytes or changing Git configuration.
+
+The exact new production marker was observed before the authorized Hostinger
+cache purge, which was accepted. Then all 69 queryless public HTML pages and
+45 key assets matched the prepared release byte-for-byte. Trusted HTTPS,
+HTTP/apex/www and legacy blog redirects passed; model packets retain Brotli
+encoding and one-year immutable caching. Quote endpoint GET correctly returns
+405; no actual lead was sent. Evidence: `output/published-release-check.json`.
+
+The final live cold phone-emulated tour passed all seven bays, all 71 garage
+and three hero model hashes, four actual transfers and original full-resolution
+office texture settings, with no browser errors. Observed full reveal was
+16.946 seconds; this single live run is not a controlled before/after gain.
+Three final LIVE quote/footer cases passed with zero errors: Guides → quote
+form → Back and desktop/phone KR8TIV plus Contact after the loaded garage.
+Reports: `transport-lite-live-mobile/results.json` in the performance directory
+and `output/playwright/transport-lite-live-actions/results.json`.
+
+The exact committed new release is backed up in
+`output/verified-lite-cf744f5.zip`: 68,772,667 bytes, 1,286 committed files,
+including the verified hidden release marker. SHA-256:
+`3B869A7122CF88B83E12E0A064F86EF1E83FBA4E8A94A59EC0309511E548B63B`.
+The prior c6d rollback archive remains `output/baseline-c6d.zip` (68,792,612
+bytes); all held experiment archives remain intact. No rollback was required.
+
+## Next measured bottleneck — not yet changed
+
+The current desktop candidate's seven-bay run still records a station-five
+gallery first-use slice of **494 ms** (525 ms total for 18 geometry/program
+pairs), while most other first-use slices are 4–13 ms. The shell's settle and
+compile was 1,929 ms and station-zero warming 2,200 ms; these overlap and must
+not simply be added together. Inspect the actual late texture/program first-use
+cost before changing GPU preparation. Earlier generic photo-prefetch, earlier
+Canvas mounts and global four-slot changes were already tested; do not repeat
+them unchanged. Preserve all-seven-bay readiness and every original visual.
+This checkpoint is progress on the continuous goal, not a completion claim.
