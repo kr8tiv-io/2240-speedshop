@@ -118,8 +118,25 @@ export function WalkthroughWorld() {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const wide = window.matchMedia("(min-width: 1024px)");
 
+    let deferId = 0;
+    let deferKind: "idle" | "raf" | null = null;
+    const cancelDefer = () => {
+      if (!deferId) return;
+      if (deferKind === "idle") {
+        const cic = (
+          window as Window & { cancelIdleCallback?: (id: number) => void }
+        ).cancelIdleCallback;
+        if (typeof cic === "function") cic(deferId);
+      } else if (deferKind === "raf") {
+        window.cancelAnimationFrame(deferId);
+      }
+      deferId = 0;
+      deferKind = null;
+    };
+
     const decide = () => {
       if (verdictRef.current !== "idle") return;
+      cancelDefer();
       const nav = navigator as CapableNavigator;
       const cores = nav.hardwareConcurrency ?? 4;
       // `deviceMemory` is Chromium-only; absence is not evidence of a weak
@@ -141,11 +158,41 @@ export function WalkthroughWorld() {
         console.log(`[shop] verdict ${next} @${Math.round(performance.now())} ms`);
       }
       verdictRef.current = next;
-      if (next === "skip") markWorldSkipped();
+      // Tell the plate at the door there is nothing coming, so it lifts at once
+      // rather than sitting through its grace timer on a machine that opted out.
+      if (next === "skip") {
+        markWorldSkipped();
+        setVerdict(next);
+        return;
+      }
+      // Still-first defer on lite (phones): let the hero LCP plate paint one
+      // idle/frame before we pull three.js. Full desktop stays immediate.
+      if (next === "run-lite") {
+        const go = () => setVerdict(next);
+        const ric = (
+          window as Window & {
+            requestIdleCallback?: (
+              cb: () => void,
+              opts?: { timeout: number },
+            ) => number;
+          }
+        ).requestIdleCallback;
+        if (typeof ric === "function") {
+          deferId = ric(go, { timeout: 140 });
+          deferKind = "idle";
+        } else {
+          deferId = window.requestAnimationFrame(go);
+          deferKind = "raf";
+        }
+        return;
+      }
       setVerdict(next);
     };
 
     decide();
+    return () => {
+      cancelDefer();
+    };
   }, []);
 
   const run = verdict === "run-full" || verdict === "run-lite";
