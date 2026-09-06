@@ -48,13 +48,24 @@ try {
   });
   await parallel([...new Set([...release.criticalAssets, "robots.txt", "sitemap.xml", "llms.txt", "f.rss", "f.atom", "f.json", "social/2240-speed-shop-edmonton-cinematic-v1.png", "quote/index.txt"])], file => checkFile(file, report.assets));
   for (const url of ["http://2240speedshop.com/", "http://www.2240speedshop.com/", "https://www.2240speedshop.com/", "https://2240speedshop.com/f/cutting-edge-automotive-solutions/"]) {
-    const { response } = await get(url, { redirect: "manual" });
-    assert.equal(response.status, 301, url);
-    const destination = new URL(response.headers.get("location"), url).href;
+    let destination = url;
+    const hops = [];
+    // Hostinger's forced HTTPS layer precedes .htaccess. HTTP www therefore
+    // legitimately takes two permanent hops; HTTPS www takes only one.
+    for (let hop = 0; hop < 3; hop++) {
+      const { response } = await get(destination, { redirect: "manual" });
+      if (response.status === 200) break;
+      assert.equal(response.status, 301, destination);
+      const next = new URL(response.headers.get("location"), destination).href;
+      assert.ok(["2240speedshop.com", "www.2240speedshop.com"].includes(new URL(next).hostname));
+      assert.equal(new URL(next).protocol, "https:");
+      hops.push({ from: destination, status: response.status, to: next });
+      destination = next;
+    }
+    assert.ok(hops.length > 0 && hops.length <= 2, "No redirect loop or excessive chain");
     assert.ok(destination.startsWith(base + "/"), url);
-    const arrival = await get(destination);
-    assert.equal(arrival.response.status, 200, destination);
-    report.redirects.push({ from: url, status: response.status, to: destination, arrivalStatus: 200 });
+    assert.equal((await get(destination, { redirect: "manual" })).response.status, 200, destination);
+    report.redirects.push({ from: url, hops, to: destination, arrivalStatus: 200 });
   }
   const quote = await get(base + "/quote.php");
   assert.equal(quote.response.status, 405, "Quote endpoint exists and rejects GET; do not send a test lead");

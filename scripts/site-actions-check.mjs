@@ -9,6 +9,7 @@ const OUTPUT = path.resolve(process.env.ACTION_OUTPUT || "output/playwright/site
 const CHROME = process.env.CHROME_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const REPRESENTATIVE = process.argv.includes("--representative");
 const ONLY = process.env.ACTION_ROUTES?.split(",").filter(Boolean);
+const CASE_FILTER = process.env.ACTION_CASE_FILTER ? new RegExp(process.env.ACTION_CASE_FILTER) : null;
 const PHOTO = path.resolve("public/shop/hero-video-poster.jpg");
 const sitemap = await readFile("out/sitemap.xml", "utf8");
 const allRoutes = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => new URL(match[1]).pathname);
@@ -19,6 +20,7 @@ const routes = ONLY || (REPRESENTATIVE ? representativeRoutes : allRoutes);
 const report = {
   base: BASE, startedAt: new Date().toISOString(), mode: REPRESENTATIVE ? "representative" : "all-pages",
   sitemapRoutes: allRoutes.length, cases: [], browserErrors: [], blockedMutations: [], mockedPosts: [], mapReadRequests: [],
+  caseFilter: process.env.ACTION_CASE_FILTER || null,
   limitations: ["Chromium device emulation, not physical Safari/iPhone validation.",
     "Final POST responses are intercepted; no real email was sent and inbox delivery is unverified.",
     "Telephone/email destinations are inspected; external handlers are never launched."],
@@ -46,8 +48,11 @@ async function newPage(profile) {
     // These public Maps RPCs read map tiles/place details and initialize an
     // anonymous viewing session. Blocking every POST made the real map show
     // "Place info couldn't load"; retain the strict guard on lead submissions.
-    const mapRead = request.method() === "POST" && url.hostname === "maps.googleapis.com" &&
-      /^\/\$rpc\/google\.internal\.maps\.mapsjs\.v1\.MapsJsInternalService\/(GetViewportInfo|InitMapsJwt|GetPlaceWidgetMetadata)$/.test(url.pathname);
+    const mapRead = request.method() === "POST" && (
+      (url.hostname === "maps.googleapis.com" &&
+        /^\/\$rpc\/google\.internal\.maps\.mapsjs\.v1\.MapsJsInternalService\/(GetViewportInfo|InitMapsJwt|GetPlaceWidgetMetadata)$/.test(url.pathname)) ||
+      (url.hostname === "places.googleapis.com" && url.pathname === "/$rpc/google.maps.places.v1.Places/GetPlace")
+    );
     if (mapRead) {
       report.mapReadRequests.push({ origin: url.origin, path: url.pathname });
       void request.continue();
@@ -93,7 +98,9 @@ async function visit(page, route) {
   // explicitly below without another visit in between.
   await page.goto("about:blank");
   const response = await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
-  assert.equal(response?.status(), 200, `Document ${route} must load successfully.`);
+  // Production correctly revalidates cached HTML with 304; Chromium supplies
+  // the cached document. The fresh local no-store server always returns 200.
+  assert.ok([200, 304].includes(response?.status()), `Document ${route} must load or revalidate successfully (${response?.status()}).`);
   await page.waitForSelector("main", { timeout: 15_000 });
   await settled(page);
 }
@@ -184,6 +191,7 @@ async function pageCta(page, mobile = false) {
 }
 
 async function runCase(page, profile, name, action) {
+  if (CASE_FILTER && !CASE_FILTER.test(name)) return;
   const started = Date.now();
   const beforeErrors = report.browserErrors.length;
   try {
@@ -372,7 +380,6 @@ try {
         && [...document.images].filter(image => image.complete && image.naturalWidth > 0).length >= 8;
     },
       { timeout: 25_000 });
-    await desktop.page.waitForNetworkIdle({ idleTime: 800, timeout: 15_000 });
     const contents = await frame.evaluate(() => ({ url: location.href, text: document.body.innerText.slice(0, 1600), images: document.images.length }));
     assert.doesNotMatch(contents.text, /refused to connect|blocked by.*policy|ERR_BLOCKED|Place info couldn.t load/i);
     const screenshot = "contact-address-map.png";
