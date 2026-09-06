@@ -1,14 +1,40 @@
 # Original hero-stage shader preparation
 
-## Candidate checkpoint
+## Published checkpoint
 
-Prepared release **8f4ae7f5d545490e8ab580cb7ca5c7e3**. Not yet published.
-Live baseline remains f33a4109f9ed40f4a730339010d3a6b1, deployment
+Release **8f4ae7f5d545490e8ab580cb7ca5c7e3** is published at
+https://2240speedshop.com/. Application source
+**48bdd7bdfaca371a35049b91741cfbca2ec6e354** is pushed to both existing source
+remotes; deployment **f2a0265888db05f0d513c7fb995f6a668ba4aebf** is pushed to
+kr8tiv-io/2240-daylight-preview main. Exact queryless marker verification
+preceded the accepted Hostinger cache purge. All 69 live HTML pages and 45
+checked assets match prepared bytes. Trusted TLS, four HTTP/www/legacy redirect
+paths, crawler/discovery files and read-only quote endpoint check pass. No real
+lead was submitted. Report: output/published-release-check.json.
+
+Previous baseline is f33a4109f9ed40f4a730339010d3a6b1, deployment
 0059bf04820ecf7be0af6e65255eb45b347410fd, source evidence d5d2cec.
 Exact baseline archive output/verified-gallery-f33a4109.zip is preserved and
 expanded as output/baseline-f33a4109 on local port 3201. SHA-256
 A1A98D04A294A10A0597C0E4E17DB1FFF8D73DB7D653A7769602F81699F7D156;
 68,803,153 bytes and 1,289 files, including the verified hidden marker.
+
+New committed release backup: output/verified-hero-stage-8f4ae7f5.zip,
+68,724,046 bytes and 1,285 committed files (1,529 ZIP entries including folders).
+Hidden release marker verified. SHA-256
+E71557DDC4572A67105214F348662E17F900E567ED196AFB9C893126840ED92F.
+All prior backups and unrelated untracked files remain intact. Fresh LIVE phone
+walkthrough passes all seven bays, hashes all 71 original garage resources and
+receives three hero models, with no browser errors. Full reveal is17.691 s, one
+live observation rather than an A/B improvement. The separate LIVE Guides →
+quote form → Back and desktop/phone KR8TIV/Contact activation cases all pass,
+with zero browser errors and no real leads, calls or emails. The KR8TIV link
+opens https://kr8tiv.io/. Reports: hero-shared-stage-live-mobile/results.json in
+the performance directory and output/playwright/hero-shared-stage-live-actions/results.json.
+Prepared phone hero and garage exit-bay images were visually inspected. All
+current build/qualification/publishing checks are terminal, including77828,
+76676,67153,63960 and50223. Source out/3197 and deployment metadata identify the
+published8f4ae generation. Previous f33 baseline server77123 remains on3201.
 
 ## Root cause and narrow correction
 
@@ -115,3 +141,14 @@ this pass; no SeaOcean score is claimed. No new keyword/copy rewrite was made.
 Do not claim physical iPhone/Safari, field CWV, separate CDN activation, search
 account ownership or inbox delivery. Preserve DNS/SSL/Microsoft365 and the user's
 browser/support tabs. The continuous optimization goal remains active.
+
+## Next bounded investigation
+
+Do not change this verified application without a new test-first candidate.
+The new phone diagnostic still shows original garage PMREMGGXConvolution
+program29 waiting108.8 ms at first query9919.5, while asynchronous readiness is
+only observed at10053.9. Loaders.warmShell currently calls primeEnvironment
+before awaiting waitForEnvironmentWarmup. Test readiness ownership/order and
+cancellation with actual production code before proposing a reorder; verify
+exact original 256-sample shader and unchanged environment resolution. This is
+not a fix yet. Preserve all current 3D effects and all-seven-bay readiness.
