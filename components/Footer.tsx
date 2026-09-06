@@ -147,8 +147,8 @@ export function Footer() {
           <p className="corner-note">
             53.4818°N 113.3773°W · EST. EDMONTON · © {new Date().getFullYear()} {site.name}
           </p>
-          <p className="font-mono text-[11px] text-steel/70">
-            built with{" "}
+          <p className="font-mono text-[11px] text-steel">
+            Made with{" "}
             <span aria-label="love" role="img" className="text-tungsten">
               ♥
             </span>{" "}
@@ -159,7 +159,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="underline decoration-tungsten/40 underline-offset-2 transition-colors hover:text-bone"
             >
-              kr8tiv
+              KR8TIV
             </a>
           </p>
         </div>
