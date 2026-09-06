@@ -22,6 +22,7 @@ import {
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { Effect, EffectAttribute, ToneMappingMode } from "postprocessing";
 import { WebGLContextGuard } from "@/components/gl/WebGLContextGuard";
+import { startEnvironmentWarmup, waitForEnvironmentWarmup, releaseEnvironmentWarmup } from "@/lib/environment-warmup";
 import {
   addDissolve,
   chainCompile,
@@ -1739,6 +1740,8 @@ function ScenePrimer({
 
       const actRoots = heroActRoots(scene);
       const warmTarget = composer.current?.inputBuffer ?? null;
+      await waitForEnvironmentWarmup(gl);
+      if (cancelled) return;
 
       for (const actRoot of actRoots) {
         if (cancelled) return;
@@ -1816,6 +1819,7 @@ function ScenePrimer({
           await yieldForHeroWarmup();
         }
       }
+      releaseEnvironmentWarmup(gl);
       if (!cancelled) onReady?.();
     };
 
@@ -2027,6 +2031,11 @@ export function HeroScene({
   ).current;
   const [primed, setPrimed] = useState(false);
   const composer = useRef<ComponentRef<typeof EffectComposer> | null>(null);
+  const renderer = useRef<THREE.WebGLRenderer | null>(null);
+  useEffect(() => () => {
+    const gl = renderer.current;
+    if (gl) releaseEnvironmentWarmup(gl);
+  }, []);
   const readyNotified = useRef(false);
   const finishPrime = useCallback(() => setPrimed(true), []);
   useEffect(() => {
@@ -2061,6 +2070,8 @@ export function HeroScene({
            and catches nothing a build can recover from. Keep an explicit URL
            opt-in for diagnostics without taxing every visitor. */
         gl.debug.checkShaderErrors = window.location.search.includes("shaderdebug");
+        renderer.current = gl;
+        startEnvironmentWarmup(gl, mobile ? 128 : 256);
       }}
       className="!absolute !inset-0"
       aria-hidden="true"

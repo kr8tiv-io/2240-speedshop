@@ -31,6 +31,7 @@ import {
   Vignette,
 } from "@react-three/postprocessing";
 import { WebGLContextGuard } from "@/components/gl/WebGLContextGuard";
+import { startEnvironmentWarmup } from "@/lib/environment-warmup";
 
 import {
   DoorShaft,
@@ -2621,6 +2622,7 @@ export function ShopWorld({
              to arrive. `?shaderdebug` opts back in when a broken shader
              needs to say so out loud. */
           gl.debug.checkShaderErrors = window.location.search.includes("shaderdebug");
+          startEnvironmentWarmup(gl, tier === "lite" ? 64 : 256);
           // `?perf` hands the renderer to the console so a profiling run can
           // read draw calls, triangles and program count without a dev build.
           if (window.location.search.includes("perf")) {

@@ -40,6 +40,7 @@ import {
 } from "./parseScheduler";
 import { createStationRelease } from "./stationLiveness";
 import { stationAt } from "./world";
+import { waitForEnvironmentWarmup, releaseEnvironmentWarmup } from "@/lib/environment-warmup";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    THE MODEL LIBRARY
@@ -2304,6 +2305,7 @@ function restoreComposerOvens() {
 
 /** Release the only strong renderer-owned cache when its Canvas goes away. */
 export function releaseLoaderRenderer(gl: THREE.WebGLRenderer) {
+  releaseEnvironmentWarmup(gl);
   const oven = COMPOSER_OVENS.get(gl);
   if (oven) {
     oven.dispose();
@@ -3471,6 +3473,7 @@ export function WarmScene({
       if (stale()) return;
       t = mark("async post compile", t);
       await primeEnvironment(get(), stale);
+      await waitForEnvironmentWarmup(gl);
       if (stale()) return;
       t = mark("environment prime", t);
       // Ambience lives beside the shell and bays. Its cylinder/cone fixture
@@ -3506,6 +3509,7 @@ export function WarmScene({
          loop, so a fix to one can never again miss the other. */
       await warmThroughComposer(target.current ?? scene, "shell", get());
       if (stale()) return;
+      releaseEnvironmentWarmup(gl);
       mark("composer warm", t);
     };
     const started = performance.now();

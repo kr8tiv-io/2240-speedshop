@@ -28,6 +28,8 @@ for (const hasLighting of [true, false]) {
     stale: () => false, get: () => ({ gl, camera, scene }),
     warmComposerPrograms: async () => { calls.push("post"); },
     primeEnvironment: async () => { calls.push("environment"); },
+    waitForEnvironmentWarmup: async () => { calls.push("reflection-ready"); },
+    releaseEnvironmentWarmup: () => { calls.push("reflection-release"); },
     warmUp: async (renderer, node, eye, world) => {
       assert.equal(renderer, gl); assert.equal(node, fixtures);
       assert.equal(eye, camera); assert.equal(world, scene);

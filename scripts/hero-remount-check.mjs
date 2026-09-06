@@ -9,7 +9,7 @@ const browser = await puppeteer.launch({
   headless: false,
   protocolTimeout: 180_000,
   args: [
-    "--window-position=40,40",
+    "--window-position=-2400,0",
     "--window-size=500,950",
     "--disable-backgrounding-occluded-windows",
     "--disable-features=CalculateNativeWinOcclusion",

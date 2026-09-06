@@ -8,8 +8,11 @@ const BASE = (process.env.BASE_URL || "http://127.0.0.1:3117").replace(/\/+$/, "
 
 const browser = await puppeteer.launch({
   executablePath: CHROME,
-  headless: true,
-  args: ["--no-sandbox", "--disable-dev-shm-usage"],
+  headless: false,
+  protocolTimeout: 180_000,
+  args: ["--window-position=-2400,0", "--disable-features=CalculateNativeWinOcclusion",
+    "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding",
+    "--disable-background-timer-throttling", "--mute-audio", "--no-first-run"],
 });
 
 try {
