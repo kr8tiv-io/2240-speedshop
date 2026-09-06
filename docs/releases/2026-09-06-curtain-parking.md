@@ -2,9 +2,15 @@
 
 ## Candidate and rollback
 
-Candidate export: `c6d06296f0614628a3f609a8e8cabb59`. Publication is pending.
-Production remains `b51232a823e2442bb76e7c6e6c85bd84`, deployment `d02c8e73`.
-Its exact rollback is `output/baseline-b512.zip` (68,765,717 bytes).
+Live export: `c6d06296f0614628a3f609a8e8cabb59`, application source `5bb0044`,
+pushed to both source remotes. Deployment `8f982d65` is published and verified.
+Its exact prior-release rollback is `output/baseline-b512.zip`
+(68,765,717 bytes), release `b51232a823e2442bb76e7c6e6c85bd84` / `d02c8e73`.
+The new export is archived as `output/verified-curtain-c6d.zip` (68,887,460 B).
+The exact committed deployment, including its immutable overlap manifests,
+is `output/baseline-c6d.zip` (68,792,612 B), expanded as `output/baseline-c6d`.
+All 1,289 files were SHA-256 checked against deployment `8f982d65`. Use this
+as the next optimization baseline; retain the prior b512 rollback as well.
 
 The only application change is in `HomeCinema.tsx`: a separate curtain state
 parks the existing hero renderer **after** the original 450 ms outgoing fade
@@ -92,8 +98,63 @@ Both complete seven-station tours pass. All seven desktop rail buttons reach
 their original stations. The mobile camera passes the engine and reaches
 every later bay, with no missing scene or sideways overflow.
 
-SPA remount/rotation and action checks are pending. Do not publish or describe
-this candidate as live until those finish.
+Fresh SPA remounts passed for both hero and garage. The remounted hero retains
+117 owned materials and frames Act III at edge 0.924. Garage rotation keeps
+one populated scene with a correctly resized real drawing buffer and camera
+aspect at 390 × 844 → 844 × 390 → 390 × 844, with no overflow.
+
+The enhanced curtain test also records live renderer submissions throughout
+the original outgoing fades, before parking; all 14 cases pass.
+
+Full prepared-site action audit: **127 passed, zero failed, zero browser errors
+or unexpected mutations**. Covers all 69 route CTAs, shared desktop/mobile
+footer destinations, menu, service selection, fragments/back navigation,
+and KR8TIV/Contact after the garage loads. Four intercepted form responses
+exercise failure/retry/success/reset without sending real client leads.
+Report: `output/playwright/curtain-site-actions/results.json`.
+
+The exact Hostinger release marker appeared before the cache purge; the
+authorized purge was accepted. Queryless post-purge verification passed all
+69 live pages and 45 assets with exact local hashes, production canonicals,
+crawlable metadata and footer credit. All 21 packets retain correct MIME,
+Brotli encoding, exact decoded bytes and immutable year-long cache headers.
+Trusted HTTPS and apex/www/legacy-path permanent redirects pass. The quote
+endpoint returns the intended GET 405; no real lead was sent. Evidence:
+`output/published-release-check.json`.
+
+The live full mobile tour passes all seven bays, all 71 original model hashes,
+three hero resources and unchanged packet counts. Its single-run reveal was
+17.025 s; this is not a controlled before/after production speed claim.
+All 14 live curtain cases pass, including original outgoing animations, zero
+fully hidden render submissions, unchanged context/buffer and interrupted
+return transitions. Three focused live actions also pass: cold quote fragment
+→ Guides → quote/back, plus KR8TIV and Contact after the populated garage on
+both desktop and mobile. No browser errors, unexpected mutations or real leads.
+Reports: `curtain-live-phone390`, `curtain-live-parking` and
+`curtain-live-footer-actions` under the corresponding Playwright output roots.
+
+All browser verification processes finished and closed their owned contexts.
+The continuous optimization goal remains active. Mobile cold-start scheduling
+is still a priority, not solved
+by this limited invisible-rendering fix. Do not repeat rejected photo/early-GPU
+trials unchanged, or remove visual quality to chase a timing number.
+
+## Next bounded investigation
+
+Use the now-proven curtain-completion boundary to investigate the previously
+measured initial Canvas sizing starvation. A possible policy is to retain the
+current scroll courtesy while the hero is visibly animating, but allow the
+fixed garage to obtain its first size immediately once the outgoing film is
+fully hidden. This is a hypothesis, not implemented or verified here. It could
+recover part of the remaining scroll-stop delay without restarting the rejected
+unrestricted two-renderer overlap. Keep existing idle-reader prewarming,
+hero-failure/deep-link behavior, lifecycle ownership and orientation handling.
+
+First record the actual curtain-completion, initial measurement and warm-work
+timestamps on the current release. Test one scheduling policy against this
+checkpoint; retain adverse mobile/desktop/tail-frame results. Do not introduce
+another quality tier, re-encode textures, alter the camera, or assume an earlier
+request/renderer necessarily gives a sooner complete seven-bay reveal.
 
 SeaOcean 95+, rankings, separate CDN activation, Search Console/Bing ownership,
 physical Apple validation and actual inbox delivery remain unverified.
