@@ -3377,11 +3377,14 @@ function WarmStation({
    pool grows (and warns under `?perf`) if a future bay adds another. */
 export function WarmScene({
   target,
+  lighting,
   padLights = 5,
   composer,
 }: {
   /** The building itself — everything that is NOT a streaming bay. */
   target: React.RefObject<THREE.Object3D | null>;
+  /** Original ambient fixture materials, outside the shell's neutral-map unification. */
+  lighting?: React.RefObject<THREE.Object3D | null>;
   padLights?: number;
   composer?: React.RefObject<ComposerHandle | null>;
 }) {
@@ -3470,7 +3473,17 @@ export function WarmScene({
       await primeEnvironment(get(), stale);
       if (stale()) return;
       t = mark("environment prime", t);
+      // Ambience lives beside the shell and bays. Its cylinder/cone fixture
+      // materials otherwise first link in the final full-size frame (~680 ms
+      // on the measured ANGLE run). Submit the exact original shaders now;
+      // warmUp restores framebuffer state before yielding, so the driver's
+      // compile can overlap the shell's settle/texture pass safely. Do not
+      // unify these materials or change their maps, lights, or appearance.
+      const lightingWarm = lighting?.current
+        ? warmUp(gl, lighting.current, camera, scene, stale)
+        : Promise.resolve();
       await warmSubtree(gl, target.current ?? scene, camera, scene, stale);
+      await lightingWarm;
       if (stale()) return;
       t = mark("settle+compile", t);
       // Cheap first: the whole building drawn to a postage stamp, which pays
@@ -3521,7 +3534,7 @@ export function WarmScene({
       }
       window.clearTimeout(start);
     };
-  }, [gl, camera, scene, get, composer, target]);
+  }, [gl, camera, scene, get, composer, target, lighting]);
 
   return null;
 }
