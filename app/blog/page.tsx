@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import { articles } from "@/lib/blog/registry";
 import { blogSchema } from "@/lib/blog/schema";
 import { JsonLd, breadcrumbSchema } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "The Shop Journal — Articles From the Floor of an Edmonton Speed Shop",
-  description:
-    "Long-form articles written on the shop floor at 2240 Speed Shop, Edmonton — restomods, barn find revivals, restoration money, and how this work actually gets done.",
+export const metadata: Metadata = withPageMetadata("/blog", {
+  title: "Shop Journal — Edmonton Classics",
+  description: "Long-form articles written on the shop floor at 2240 Speed Shop, Edmonton — restomods, barn-find revivals, restoration money, and how this work gets done.",
   alternates: { canonical: "/blog" },
   openGraph: {
     type: "website",
-    title: "The Shop Journal — 2240 Speed Shop, Edmonton",
-    description:
-      "Restomods, revivals, and restoration money — written on the shop floor, not in a content mill.",
+    title: "Shop Journal — Edmonton Classics",
+    description: "Long-form articles written on the shop floor at 2240 Speed Shop, Edmonton — restomods, barn-find revivals, restoration money, and how this work gets done.",
     url: "/blog",
   },
-};
+});
 
 const dateFmt = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",

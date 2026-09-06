@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   slug: "buying-your-first-classic-car",
   title: "Buying Your First Classic Car in Alberta: A Shop Foreman's Checklist",
   accent: "Checklist",
-  metaTitle: "Buying Your First Classic Car in Alberta: The Checklist",
-  description:
-    "Where rust actually matters, how to run an Alberta lien search, what AMVIC covers, and the checks that keep a first classic from becoming a $30,000 lesson.",
+  metaTitle: "Buying a First Classic in Alberta",
+  description: "Where rust actually matters, how to run an Alberta lien search, what AMVIC covers, and the checks that keep a first classic from becoming a $30,000 lesson.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

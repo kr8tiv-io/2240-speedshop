@@ -6,36 +6,36 @@ The shop sits on the Sherwood Park boundary in east Edmonton. Work is quoted on 
 
 ## Services
 
-- [Classic Car Restoration](https://2240speedshop.com/services/classic-car-restoration): frame-off and rolling restorations of classic cars and trucks, stripped to bare metal and rebuilt to one standard
-- [Restomods & Hot Rods](https://2240speedshop.com/services/restomods-custom-builds): period looks with modern running gear — disc brake conversions, modern suspension and drivetrain under original sheet metal
-- [Engine Swaps & Builds](https://2240speedshop.com/services/engine-swaps-builds): LS and diesel conversions, engine builds, mounts, wiring, cooling and driveline, specified to start and run in Alberta cold
-- [Performance & Tuning](https://2240speedshop.com/services/classic-performance-tuning): carburetor rebuilds and tuning, points-to-electronic ignition upgrades, exhaust and bolt-on performance for classics and muscle
-- [Body, Paint & Metalwork](https://2240speedshop.com/services/body-paint-metalwork): rust repair, patch panels, floor pans, fabrication and paint on Alberta cars
-- [Interiors & Classic Service](https://2240speedshop.com/services/classic-interiors-service): period-correct leather, wood trim and vintage fabrics, plus brakes, ignition and classic mechanical service
+- [Classic Car Restoration](https://2240speedshop.com/services/classic-car-restoration/): frame-off and rolling restorations of classic cars and trucks, stripped to bare metal and rebuilt to one standard
+- [Restomods & Hot Rods](https://2240speedshop.com/services/restomods-custom-builds/): period looks with modern running gear — disc brake conversions, modern suspension and drivetrain under original sheet metal
+- [Engine Swaps & Builds](https://2240speedshop.com/services/engine-swaps-builds/): LS and diesel conversions, engine builds, mounts, wiring, cooling and driveline, specified to start and run in Alberta cold
+- [Performance & Tuning](https://2240speedshop.com/services/classic-performance-tuning/): carburetor rebuilds and tuning, points-to-electronic ignition upgrades, exhaust and bolt-on performance for classics and muscle
+- [Body, Paint & Metalwork](https://2240speedshop.com/services/body-paint-metalwork/): rust repair, patch panels, floor pans, fabrication and paint on Alberta cars
+- [Interiors & Classic Service](https://2240speedshop.com/services/classic-interiors-service/): period-correct leather, wood trim and vintage fabrics, plus brakes, ignition and classic mechanical service
 
 ## Guides — the facts worth quoting
 
-- [Restoration Costs in Canada](https://2240speedshop.com/guides/costs): CAD planning ranges by scope — roughly $4,000–$15,000 for a mechanical refresh, $15,000–$60,000 for a rolling restoration, $60,000–$120,000 for a driver-quality frame-off, $120,000–$250,000+ for show quality, and $80,000+ for a restomod. A full frame-off is commonly a 1,000-plus hour job, so labour sets the number, not parts.
-- [Modified Vehicle Laws in Alberta](https://2240speedshop.com/guides/alberta-laws): the general framework on exhaust noise, window tint, lift height, out-of-province inspections, salvage-to-rebuilt status, antique plates, and declaring modifications to an insurer in Alberta's private insurance market. Written non-authoritatively — readers are directed to Alberta Transportation, a registry agent, or their insurer to confirm.
-- [Winter Storage & Cold-Weather Survival](https://2240speedshop.com/guides/winter): storage prep, fuel stabiliser and ethanol, battery tenders, rodent-proofing, moisture control, block and pan heaters, cold-start behaviour on carburetted engines, and the spring wake-up checklist for an Alberta winter.
-- [All Guides](https://2240speedshop.com/guides): the guide library and the publishing queue under each pillar
+- [Restoration Costs in Canada](https://2240speedshop.com/guides/costs/): CAD planning ranges by scope — roughly $4,000–$15,000 for a mechanical refresh, $15,000–$60,000 for a rolling restoration, $60,000–$120,000 for a driver-quality frame-off, $120,000–$250,000+ for show quality, and $80,000+ for a restomod. A full frame-off is commonly a 1,000-plus hour job, so labour sets the number, not parts.
+- [Modified Vehicle Laws in Alberta](https://2240speedshop.com/guides/alberta-laws/): the general framework on exhaust noise, window tint, lift height, out-of-province inspections, salvage-to-rebuilt status, antique plates, and declaring modifications to an insurer in Alberta's private insurance market. Written non-authoritatively — readers are directed to Alberta Transportation, a registry agent, or their insurer to confirm.
+- [Winter Storage & Cold-Weather Survival](https://2240speedshop.com/guides/winter/): storage prep, fuel stabiliser and ethanol, battery tenders, rodent-proofing, moisture control, block and pan heaters, cold-start behaviour on carburetted engines, and the spring wake-up checklist for an Alberta winter.
+- [All Guides](https://2240speedshop.com/guides/): the guide library, with links to published articles and upcoming topics marked as planned
 
 ## The shop
 
-- [About 2240 Speed Shop](https://2240speedshop.com/about): who Terry Harmider is, where the shop is, and how it works
-- [Builds](https://2240speedshop.com/builds): completed and in-progress build case studies with photos and specs
-- [Reviews](https://2240speedshop.com/reviews): what customers say about the work
-- [FAQ](https://2240speedshop.com/faq): cost, timeline, scope, storage, and process questions answered
-- [Request a Quote](https://2240speedshop.com/quote): send photos and scope, get an honest range back
-- [Contact](https://2240speedshop.com/contact): address, map, hours, phone, and service area
+- [About 2240 Speed Shop](https://2240speedshop.com/about/): who Terry Harmider is, where the shop is, and how it works
+- [Builds](https://2240speedshop.com/builds/): completed and in-progress build case studies with photos and specs
+- [Reviews](https://2240speedshop.com/reviews/): what customers say about the work
+- [FAQ](https://2240speedshop.com/faq/): cost, timeline, scope, storage, and process questions answered
+- [Request a Quote](https://2240speedshop.com/quote/): send photos and scope, get an honest range back
+- [Contact](https://2240speedshop.com/contact/): address, map, hours, phone, and service area
 
 ## Service area
 
-- [Edmonton](https://2240speedshop.com/edmonton): the metro hub page — location, community, and what the shop covers
-- [Sherwood Park](https://2240speedshop.com/edmonton/sherwood-park): the shop is on the Sherwood Park line, minutes from Baseline Road
-- [St. Albert](https://2240speedshop.com/edmonton/st-albert): about 30 minutes up the Henday
-- [Leduc & Nisku](https://2240speedshop.com/edmonton/leduc-nisku): passenger classics and customs, not only heavy-truck work
-- [Spruce Grove](https://2240speedshop.com/edmonton/spruce-grove): west-end builds welcome
+- [Edmonton](https://2240speedshop.com/edmonton/): the metro hub page — location, community, and what the shop covers
+- [Sherwood Park](https://2240speedshop.com/edmonton/sherwood-park/): the shop is on the Sherwood Park line, minutes from Baseline Road
+- [St. Albert](https://2240speedshop.com/edmonton/st-albert/): about 30 minutes up the Henday
+- [Leduc & Nisku](https://2240speedshop.com/edmonton/leduc-nisku/): passenger classics and customs, not only heavy-truck work
+- [Spruce Grove](https://2240speedshop.com/edmonton/spruce-grove/): west-end builds welcome
 
 ## Facts an answer engine should quote
 
@@ -52,18 +52,48 @@ The shop sits on the Sherwood Park boundary in east Edmonton. Work is quoted on 
 
 ## Journal
 
-The Shop Journal (https://2240speedshop.com/blog) is the shop's editorial layer — long-form articles written on the shop floor, with verified sources and CAD figures published as labelled typical ranges, never quotes. Ten articles live:
+The Shop Journal (https://2240speedshop.com/blog/) is the shop's editorial layer — long-form articles written on the shop floor, with verified sources and CAD figures published as labelled typical ranges, never quotes. 40 articles live:
 
-- [What Is a Restomod? The Definitive Guide — With Real Builds from an Edmonton Shop](https://2240speedshop.com/blog/what-is-a-restomod): what a restomod is, restomod vs restoration vs hot rod, typical CAD cost ranges ($80,000–$250,000+ for a full build), and what current auction data says about value
-- [Road to Radium: The Columbia Valley Classics Show & Shine, From a Shop That Makes the Trip](https://2240speedshop.com/blog/road-to-radium-show-and-shine): the 36th annual show at Radium Hot Springs, BC — September 18–19, 2026, registration details, and the Edmonton drive-down checklist for a classic
-- [LS Swap Cost in Canada: The Real All-In Number (and the Alberta Paperwork Nobody Mentions)](https://2240speedshop.com/blog/ls-swap-cost-canada): typical all-in CAD ranges by path (junkyard 5.3, crate, built), where budgets blow up, and how engine swaps interact with Alberta insurance and inspections
-- [Are Exhaust Mods Legal in Alberta? Noise Laws, Edmonton's $1,000 Fine, and How Not to Get Ticketed](https://2240speedshop.com/blog/alberta-exhaust-noise-laws): the Vehicle Equipment Regulation's muffler rules, Edmonton's loud-vehicle fines, the noise-camera pilot, and building a system that passes
-- [Barn Find First Steps: Don't Start It! How to Revive a Car That Sat for Years](https://2240speedshop.com/blog/barn-find-first-steps): why you never turn the key on a car that sat, the five-step wake-up protocol, and typical CAD recommissioning ranges
-- [The C10 & Square-Body Buyer's-and-Builder's Guide, Alberta Edition](https://2240speedshop.com/blog/c10-square-body-alberta-guide): which classic Chevy truck generations to buy, the rust map, prairie-truck sourcing, and attributed market values
-- [How Long Does a Classic Car Restoration Take? Stage-by-Stage, From the Shop Floor](https://2240speedshop.com/blog/classic-car-restoration-timeline): honest hour and calendar ranges by build target, the five stages, and why restorations go over schedule
-- [Engine Rebuild & Performance Build Costs in Canada (2026)](https://2240speedshop.com/blog/engine-rebuild-cost-canada): typical CAD ranges from stock refresh to full performance build, what machining costs, and the crate-vs-rebuild decision
-- [8 Signs Your Classic's Carburetor Needs a Rebuild, Not Just an Adjustment](https://2240speedshop.com/blog/carburetor-rebuild-signs): the tune-vs-rebuild rule, eight symptoms, what ethanol does to old carburetors, and rebuild vs EFI
-- [Out-of-Province Vehicle Inspection in Edmonton: 2026 Cost, What's Checked, and the Modified-Car Trap](https://2240speedshop.com/blog/out-of-province-inspection-edmonton): what an OOP inspection costs in Edmonton, the 10-day repair window, and why lifted or lowered vehicles lose the New West Partnership exemption
+- [What Is a Restomod? The Definitive Guide — With Real Builds from an Edmonton Shop](https://2240speedshop.com/blog/what-is-a-restomod/): What a restomod actually is, how it differs from a restoration, what one typically costs in CAD, and what the market says about value — explained from the floor of an Edmonton customs shop.
+- [What a Classic Car Restoration Costs in Canada, Stage by Stage](https://2240speedshop.com/blog/classic-car-restoration-cost-canada/): Hedged Canadian-dollar ranges for every stage of a classic restoration — teardown, metal, paint, drivetrain, assembly — plus the Alberta rules that protect your budget.
+- [Rust Repair on a Classic: Patch Panels, Full Panels, and Honest CAD Numbers](https://2240speedshop.com/blog/rust-repair-cost-canada/): What rust repair really costs on a classic in Canada — patch panels, full panels, and hand fabrication — and why honest estimates move once the paint comes off.
+- [What a Proper Paint Job Costs in Canada — and Why the Range Is So Wide](https://2240speedshop.com/blog/classic-car-paint-job-cost-canada/): Why paint quotes run from $3,000 to past $30,000 CAD — prep depth, single-stage versus base/clear, jambs, and how to tell which paint job you are actually being quoted.
+- [Frame-Off or Rolling Restoration: Which One Your Car Actually Needs](https://2240speedshop.com/blog/frame-off-vs-rolling-restoration/): The structure decides — what a frame-off actually buys, when a rolling restoration is the smarter spend, and the rot and end-use markers that make the call.
+- [How to Put a Classic Car Away for an Alberta Winter](https://2240speedshop.com/blog/classic-car-winter-storage-alberta/): The October put-away procedure — fuel, oil, battery, tires, and mice — that gets a classic through five months of Alberta winter and starts clean in April.
+- [Collector Car Insurance in Alberta: What It Covers, What It Costs, Who Qualifies](https://2240speedshop.com/blog/collector-car-insurance-alberta/): How agreed-value collector policies differ from regular Alberta auto insurance — who qualifies, what storage and use rules apply, and what coverage typically costs.
+- [Buying Your First Classic Car in Alberta: A Shop Foreman's Checklist](https://2240speedshop.com/blog/buying-your-first-classic-car/): Where rust actually matters, how to run an Alberta lien search, what AMVIC covers, and the checks that keep a first classic from becoming a $30,000 lesson.
+- [Can You Daily-Drive a Classic in Alberta? An Honest Answer](https://2240speedshop.com/blog/daily-driving-a-classic-in-alberta/): The honest answer on daily driving a classic in Alberta: what road chloride does, what collector policies allow, and which upgrades make shoulder seasons sane.
+- [Block Heaters, Battery Tenders, and Cold Starts: Running a Classic Through an Alberta Cold Snap](https://2240speedshop.com/blog/do-classics-need-block-heaters/): Whether a vintage engine needs a block heater, which type fits old iron, and how to cold-start a carbureted classic at minus twenty — from an Edmonton shop floor.
+- [Hail Season and the Classic Car: Protection, Repair, and Insurance in Alberta](https://2240speedshop.com/blog/hail-and-classic-cars-alberta/): Where Alberta's hail corridor runs, how to shelter a classic, whether paintless dent repair survives old paint, and how an agreed-value hail claim plays out.
+- [Waking a Classic After Winter: The Spring Start-Up Checklist](https://2240speedshop.com/blog/classic-car-spring-startup-checklist/): Every check before the first start after winter storage — nests, fluids, battery, tires, fuel, and brakes, in the order a working Edmonton shop does them.
+- [Patina: Keep It, Seal It, or Paint Over It?](https://2240speedshop.com/blog/patina-keep-it-or-paint-it/): When original paint adds value, how clear-over-patina really holds up, and the exact line where truck character ends and structural rust begins — from an Edmonton shop.
+- [When No One Makes the Panel: Custom Metal Fabrication for Classics](https://2240speedshop.com/blog/metal-fabrication-no-repro-panels/): No reproduction panels for your classic? How a shop hand-forms new steel over bucks, splices donor metal, and what that costs in CAD versus waiting for parts.
+- [Media Blasting, Chemical Stripping, or Sanding: Taking a Classic to Bare Metal](https://2240speedshop.com/blog/stripping-paint-classic-car/): Which stripping method is safe for which panel — where blasting heat warps skins, why soda residue peels primer, and when chemical stripper earns its mess.
+- [Alberta Antique Plates: The 25-Year Rule, the Restrictions, and Whether They Are Worth It](https://2240speedshop.com/blog/antique-plates-alberta/): What Alberta antique vehicle registration allows and forbids, the one-time fee, year-of-manufacture plates, and how the plate squares with collector insurance.
+- [Salvage, Rebuilt, Non-Repairable: What Alberta Vehicle Status Means for a Project Car](https://2240speedshop.com/blog/salvage-rebuilt-status-alberta/): What each Alberta status stamp means for a project car — which ones can legally drive again, what the rebuilt inspection takes, and how a brand hits value.
+- [Buying a Classic With No Registration: How Alberta Handles a Bill-of-Sale Car](https://2240speedshop.com/blog/registering-classic-no-title-alberta/): What an Alberta registry actually needs to plate a classic sold on a bill of sale alone — and the lien, VIN, and inspection problems that kill a farm-find deal.
+- [Importing a Classic From the US Into Alberta: Duty, GST, and the 15-Year Rule](https://2240speedshop.com/blog/importing-classic-car-from-us/): The full border math on a US classic — the 15-year RIV exemption, the 25-year duty-free line, GST at the booth, Form 1, and the Alberta inspection that gets you plates.
+- [What a Classic Car Pre-Purchase Inspection Actually Covers](https://2240speedshop.com/blog/classic-car-pre-purchase-inspection/): What a shop checks in a pre-purchase inspection that a driveway walk-around cannot — frame rot, filler over rust, matching numbers — and what it costs in Alberta.
+- [When Your Classic Needs an Appraisal — and What One Costs in Alberta](https://2240speedshop.com/blog/classic-car-appraisal-alberta/): The four moments a classic actually needs a written appraisal in Alberta — agreed-value insurance, sale, estate — what the appraiser checks, and honest CAD fee ranges.
+- [Selling a Classic in Canada: Pricing It, Proving It, and Picking the Venue](https://2240speedshop.com/blog/selling-a-classic-car-canada/): How to put a defensible price on a classic, which paperwork actually adds money, and whether auction, consignment, or a private sale nets more in Alberta.
+- [The Alberta Show Circuit: A Season Planner From May Long to September](https://2240speedshop.com/blog/alberta-show-and-shine-season/): Which Alberta shows are worth the fuel, how to plan the calendar around three anchor weekends, and how to finish September without burning out car or family.
+- [LS Swap Cost in Canada: The Real All-In Number (and the Alberta Paperwork Nobody Mentions)](https://2240speedshop.com/blog/ls-swap-cost-canada/): What an LS swap really costs in Canada — junkyard 5.3 versus crate paths in CAD, the harness and cooling money nobody budgets, and the Alberta insurance paperwork.
+- [Are Exhaust Mods Legal in Alberta? Noise Laws, Edmonton's $1,000 Fine, and How Not to Get Ticketed](https://2240speedshop.com/blog/alberta-exhaust-noise-laws/): Exhaust mods are legal in Alberta with a working muffler, inside the noise rules. The equipment law, Edmonton's $1,000 fine, the noise-camera pilot, and how to pass.
+- [Barn Find First Steps: Don't Start It! How to Revive a Car That Sat for Years](https://2240speedshop.com/blog/barn-find-first-steps/): Why you never turn the key on a car that sat for years, and the five-step protocol that wakes one up safely — free the engine, replace the fluids, sort the fuel, then first start. From an Edmonton shop.
+- [The C10 & Square-Body Buyer's-and-Builder's Guide, Alberta Edition](https://2240speedshop.com/blog/c10-square-body-alberta-guide/): Which C10 generation to buy, where square-body Chevys rust first, what prairie trucks are actually worth, and how to source one in Alberta — from an Edmonton shop.
+- [How Long Does a Classic Car Restoration Take? Stage-by-Stage, From the Shop Floor](https://2240speedshop.com/blog/classic-car-restoration-timeline/): How long a classic car restoration really takes — honest hour and calendar ranges by stage, why schedules slip, and why sorting cannot be skipped. From an Edmonton shop.
+- [Engine Rebuild & Performance Build Costs in Canada (2026): From Stock Refresh to Full Build](https://2240speedshop.com/blog/engine-rebuild-cost-canada/): What a stock rebuild, a performance build, and a crate engine typically cost in CAD, what Alberta machine shops charge, and where budgets actually blow up.
+- [8 Signs Your Classic's Carburetor Needs a Rebuild, Not Just an Adjustment](https://2240speedshop.com/blog/carburetor-rebuild-signs/): The one-line rule that separates a carb that needs tuning from one that needs a rebuild, plus the eight symptoms that prove it — from the floor of an Edmonton shop.
+- [Out-of-Province Vehicle Inspection in Edmonton: 2026 Cost, What's Checked, and the Modified-Car Trap](https://2240speedshop.com/blog/out-of-province-inspection-edmonton/): What an Alberta out-of-province inspection covers, typical 2026 Edmonton costs, the 10-day repair window, and why lifted or modified vehicles never skip it.
+- [Road to Radium: The Columbia Valley Classics Show & Shine, From a Shop That Makes the Trip](https://2240speedshop.com/blog/road-to-radium-show-and-shine/): The Columbia Valley Classics Show & Shine returns to Radium Hot Springs September 18–19, 2026 — over 1,000 classics, one mountain village, and a drive we make most years.
+- [Can You Stop a Classic with Drums in 2026 Traffic? Disc Conversion Costs in Canada](https://2240speedshop.com/blog/disc-brake-conversion-cost-canada/): CAD ranges for converting a classic from drums to discs — front versus four-wheel, why the master cylinder matters, and what 2026 traffic actually demands.
+- [Overdrive in a Period Car: Highway RPM on the Yellowhead, and What the Swap Costs](https://2240speedshop.com/blog/overdrive-transmission-swap-classic/): Why a three-speed screams at 110 km/h on the Yellowhead, what an overdrive auto or five-speed actually costs in CAD, and how the swap fits a period car.
+- [Points vs Electronic Ignition in Minus-Thirty Alberta: Why Wet Mornings Kill Starts](https://2240speedshop.com/blog/electronic-ignition-conversion-classics/): Why points drown on a wet Alberta morning, what an electronic conversion actually changes at minus thirty, and typical CAD ranges for the upgrade.
+- [What E10 Ethanol Does to Classic Carbs, Fuel Lines, and Winter Storage](https://2240speedshop.com/blog/ethanol-fuel-classic-cars-canada/): How E10 absorbs water, attacks period rubber, and gums a carb over an Alberta winter — and the storage and fuel-system habits that actually hold.
+- [Why a New Restomod Wiring Harness Stops Fires — and What It Costs in CAD](https://2240speedshop.com/blog/restomod-wiring-harness/): Why cloth and cracked PVC start classic-car fires, what a restomod harness actually includes, and typical CAD ranges — this is not a stereo job.
+- [Classic Interior Restoration Cost in Canada: Seats, Headliner, Carpets](https://2240speedshop.com/blog/classic-interior-restoration-cost-canada/): Typical CAD ranges for seats, headliner, and carpets on a classic in Alberta — what a driver interior costs, what show work costs, and where the hours hide.
+- [Restore, Restomod, or Sell? Decide Before Rust Eats the Equity](https://2240speedshop.com/blog/restore-or-sell-classic-car/): An honest fork for a rusting classic: when restoration math works, when a restomod is the driveable path, and when selling now protects the equity.
+- [Alberta Road Salt, Calcium Chloride, and What Actually Stops Rust](https://2240speedshop.com/blog/alberta-road-salt-rust-prevention/): What calcium chloride does to a classic underbody in Alberta, why a heated garage can make it worse, and the oil-film habits that actually work here.
 
 ## Optional
 

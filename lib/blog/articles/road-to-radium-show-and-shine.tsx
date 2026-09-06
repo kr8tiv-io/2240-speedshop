@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   title:
     "Road to Radium: The Columbia Valley Classics Show & Shine, From a Shop That Makes the Trip",
   accent: "Radium",
-  metaTitle: "Road to Radium — Columbia Valley Classics Show & Shine 2026",
-  description:
-    "The Columbia Valley Classics Show & Shine returns to Radium Hot Springs September 18–19, 2026 — over 1,000 classics, one mountain village, and a drive we make most years.",
+  metaTitle: "Road to Radium: Show & Shine 2026",
+  description: "The Columbia Valley Classics Show & Shine returns to Radium Hot Springs September 18–19, 2026 — over 1,000 classics, one mountain village, and a drive we make.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

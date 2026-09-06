@@ -5,18 +5,25 @@ import { site } from "@/lib/site";
 export const dynamic = "force-static";
 
 /**
- * Crawler policy: allow everything, deliberately.
+ * Crawler policy: allow everything on production, deliberately.
  *
- * Per the AI-SEO playbook, a local shop that wants to be *recommended* has no
- * reason to block AI crawlers. Retrieval agents (OAI-SearchBot, PerplexityBot,
- * Claude-SearchBot) are how the shop shows up in cited answers today; training
- * crawlers (GPTBot, ClaudeBot, Google-Extended, CCBot) are how the entity
- * exists inside tomorrow's models. Blocking either only removes the shop from
- * the answer.
+ * Retrieval and training permissions are independent. OAI-SearchBot controls
+ * automatic discovery for ChatGPT search; GPTBot controls training access.
+ * Both remain allowed here as the existing policy, but training access is
+ * not a requirement for search visibility or a guarantee of recommendations.
+ * Google AI search features use the same Googlebot and indexing requirements
+ * as ordinary Search; they do not require special AI files or schema.
+ *
+ * Hostinger preview is the exception. `HOSTINGER_PREVIEW=1` must be set on
+ * the steelblue-gaur Hostinger build ONLY. That emits Googlebot Disallow: /
+ * for the preview URL. Leave the env unset for any 2240speedshop.com build
+ * so this block can never ship to production.
  *
  * The bots are enumerated rather than left to the wildcard so the intent is
  * explicit and auditable, and so a future disallow can be applied per-agent.
  */
+
+const isHostingerPreview = process.env.HOSTINGER_PREVIEW === "1";
 
 const searchEngines = ["Googlebot", "Googlebot-Image", "Bingbot", "Slurp", "DuckDuckBot", "Applebot"];
 
@@ -43,12 +50,25 @@ const aiTraining = [
 ];
 
 export default function robots(): MetadataRoute.Robots {
+  // Quote photo drops and the PHP handler must never be indexed.
+  // Applies to every bot, including the preview wildcard.
+  const privatePaths = ["/quote-uploads/", "/quote.php"];
+
+  if (isHostingerPreview) {
+    return {
+      rules: [
+        { userAgent: "Googlebot", disallow: "/" },
+        { userAgent: "*", allow: "/", disallow: privatePaths },
+      ],
+    };
+  }
+
   return {
     rules: [
-      { userAgent: searchEngines, allow: "/" },
-      { userAgent: aiRetrieval, allow: "/" },
-      { userAgent: aiTraining, allow: "/" },
-      { userAgent: "*", allow: "/" },
+      { userAgent: searchEngines, allow: "/", disallow: privatePaths },
+      { userAgent: aiRetrieval, allow: "/", disallow: privatePaths },
+      { userAgent: aiTraining, allow: "/", disallow: privatePaths },
+      { userAgent: "*", allow: "/", disallow: privatePaths },
     ],
     sitemap: `${site.url}/sitemap.xml`,
     host: site.url,

@@ -133,7 +133,13 @@ const EMPTY: FormState = {
   town: "",
 };
 
-type PhotoRef = { name: string; size: number };
+type PhotoRef = { name: string; size: number; file: File };
+
+const QUOTE_ENDPOINT = "/quote.php";
+const MAX_PHOTOS = 12;
+const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
+const MAX_PHOTO_TOTAL_BYTES = 18 * 1024 * 1024;
+const PHOTO_ACCEPT = ".jpg,.jpeg,.png,.webp,.gif,.heic,.heif,image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -141,6 +147,21 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function photoValidation(photos: PhotoRef[]): string | null {
+  if (photos.length > MAX_PHOTOS) return "Choose up to 12 photos.";
+  for (const photo of photos) {
+    if (!/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(photo.name)) {
+      return `${photo.name}: use JPEG, PNG, WebP, GIF, or HEIC/HEIF.`;
+    }
+    if (photo.size === 0) return `${photo.name} is empty. Please choose another photo.`;
+    if (photo.size > MAX_PHOTO_BYTES) return `${photo.name} is over the 6 MB per-photo limit.`;
+  }
+  if (photos.reduce((total, photo) => total + photo.size, 0) > MAX_PHOTO_TOTAL_BYTES) {
+    return "Keep the photos under 18 MB combined.";
+  }
+  return null;
 }
 
 function serviceTitle(slug: string): string {
@@ -314,18 +335,18 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
   const params = useSearchParams();
   const preselected =
     initialService ?? resolveService(params.get("service") ?? params.get("lane"));
-  const [form, setForm] = useState<FormState>({ ...EMPTY, service: preselected });
-
-  // Client-side navigation between lanes updates the param after mount; adopt
-  // it as long as the reader has not picked a lane by hand.
-  useEffect(() => {
-    if (preselected) setForm((f) => (f.service ? f : { ...f, service: preselected }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preselected]);
+  const [form, setForm] = useState<FormState>({ ...EMPTY, service: initialService ?? "" });
+  // Keep the query-string lane reactive without synchronously mirroring it
+  // into state from an effect. An explicit radio choice always wins.
+  const selectedService = form.service || preselected;
   const [photos, setPhotos] = useState<PhotoRef[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photosFiled, setPhotosFiled] = useState<number | null>(null);
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Errors>({});
   const [sent, setSent] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const refs = useRef<Partial<Record<FieldName, HTMLElement | null>>>({});
   const headingRef = useRef<HTMLHeadingElement | null>(null);
@@ -360,7 +381,7 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
     const next: Errors = {};
     const id = STEPS[index].id;
 
-    if (id === "work" && !form.service) {
+    if (id === "work" && !selectedService) {
       next.service = "Pick the closest lane — you can change it later.";
     }
 
@@ -405,9 +426,10 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
     pendingFocus.current = true;
     setStep(index);
     setErrors({});
+    setSubmitError(null);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const errs = validate(step);
     if (Object.keys(errs).length > 0) {
@@ -419,31 +441,100 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
       goTo(step + 1);
       return;
     }
-    pendingFocus.current = true;
-    setSent(makeReference());
+    if (submitting) return;
+    const invalidPhotos = photoValidation(photos);
+    if (invalidPhotos) {
+      setSubmitError(invalidPhotos);
+      return;
+    }
+
+    const reference = makeReference();
+    const data = new FormData();
+    data.append("reference", reference);
+    data.append("service", selectedService);
+    data.append("serviceTitle", serviceTitle(selectedService));
+    data.append("year", form.year);
+    data.append("make", form.make);
+    data.append("model", form.model);
+    data.append("condition", form.condition);
+    data.append("scope", form.scope);
+    data.append("budget", form.budget);
+    data.append("timeline", form.timeline);
+    data.append("notes", form.notes);
+    data.append("name", form.name);
+    data.append("phone", form.phone);
+    data.append("email", form.email);
+    data.append("method", form.method);
+    data.append("town", form.town);
+    data.append("photoCount", String(photos.length));
+    const trap = event.currentTarget.elements.namedItem("website");
+    data.append("website", trap instanceof HTMLInputElement ? trap.value : "");
+    for (const photo of photos) {
+      data.append("photos[]", photo.file, photo.name);
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch(QUOTE_ENDPOINT, { method: "POST", body: data });
+      const payload = (await res.json().catch(() => null)) as
+        | { ok?: boolean; reference?: string; error?: string; photosReceived?: number; photosStored?: number }
+        | null;
+      if (!res.ok || !payload?.ok) {
+        throw new Error(
+          payload?.error ||
+            `The shop did not receive this sheet. Call ${site.phoneDisplay} or try again.`,
+        );
+      }
+      setPhotosFiled(
+        payload.photosReceived === photos.length && payload.photosStored === photos.length
+          ? photos.length
+          : null,
+      );
+      pendingFocus.current = true;
+      setSent(payload.reference || reference);
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error && err.message
+          ? err.message
+          : `The shop did not receive this sheet. Call ${site.phoneDisplay} or try again.`,
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function addFiles(list: FileList | null) {
     if (!list) return;
-    const incoming = Array.from(list).map((f) => ({ name: f.name, size: f.size }));
-    setPhotos((prev) => {
-      const seen = new Set(prev.map((p) => `${p.name}:${p.size}`));
-      return prev.concat(incoming.filter((f) => !seen.has(`${f.name}:${f.size}`)));
-    });
+    const incoming = Array.from(list).map((f) => ({ name: f.name, size: f.size, file: f }));
+    const seen = new Set(photos.map((p) => `${p.name}:${p.size}`));
+    const next = photos.concat(incoming.filter((photo) => {
+      const key = `${photo.name}:${photo.size}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }));
+    const invalid = photoValidation(next);
+    setPhotoError(invalid ? `${invalid} No new photos were added.` : null);
+    if (!invalid) setPhotos(next);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function reset() {
-    setForm({ ...EMPTY, service: preselected });
+    setForm({ ...EMPTY, service: initialService ?? "" });
     setPhotos([]);
+    setPhotoError(null);
+    setPhotosFiled(null);
     setErrors({});
     setSent(null);
+    setSubmitError(null);
+    setSubmitting(false);
     setStep(0);
   }
 
   const summaryLines = [
     `Reference: ${sent ?? ""}`,
-    `Work: ${serviceTitle(form.service)}`,
+    `Work: ${serviceTitle(selectedService)}`,
     `Vehicle: ${form.year} ${form.make} ${form.model}`.trim(),
     `Where it sits: ${form.condition}`,
     `Scope: ${form.scope}`,
@@ -489,7 +580,7 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
         <dl className="grid gap-x-8 gap-y-4 font-body text-sm sm:grid-cols-2">
           <div>
             <dt className={labelClass}>The work</dt>
-            <dd className="mt-1 text-bone">{serviceTitle(form.service)}</dd>
+            <dd className="mt-1 text-bone">{serviceTitle(selectedService)}</dd>
           </div>
           <div>
             <dt className={labelClass}>The vehicle</dt>
@@ -506,9 +597,13 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
             <dd className="mt-1 text-bone">{form.budget}</dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className={labelClass}>Photos listed</dt>
+            <dt className={labelClass}>Photos filed</dt>
             <dd className="mt-1 font-mono text-xs text-steel">
-              {photos.length ? photos.map((p) => p.name).join(" · ") : "None attached yet"}
+              {photos.length
+                ? photosFiled === photos.length
+                  ? photos.map((p) => p.name).join(" · ")
+                  : `Your sheet was sent, but we could not confirm all ${photos.length} photos. Please text them to ${site.phoneDisplay} with reference ${sent}.`
+                : "None attached yet"}
             </dd>
           </div>
         </dl>
@@ -588,6 +683,10 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-8">
+        <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+          <label htmlFor="website">Website</label>
+          <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+        </div>
         <h2
           ref={headingRef}
           tabIndex={-1}
@@ -608,7 +707,7 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
                     key={s.slug}
                     name="service"
                     value={s.slug}
-                    checked={form.service === s.slug}
+                    checked={selectedService === s.slug}
                     title={s.title}
                     note={s.blurb}
                     onChange={(v) => set("service", v)}
@@ -618,7 +717,7 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
                 <RadioCard
                   name="service"
                   value="not-sure"
-                  checked={form.service === "not-sure"}
+                  checked={selectedService === "not-sure"}
                   title="Not sure yet"
                   note="Describe it and let Terry put it in the right lane."
                   onChange={(v) => set("service", v)}
@@ -760,20 +859,28 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
                   name="photos"
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={PHOTO_ACCEPT}
                   multiple
                   onChange={(e) => addFiles(e.target.files)}
-                  aria-describedby="photos-hint"
+                  aria-invalid={photoError ? true : undefined}
+                  aria-describedby={photoError ? "photos-hint photos-error" : "photos-hint"}
                   className="mt-2 w-full cursor-pointer border border-dashed border-rust/50 bg-bay-black px-3 py-4 font-body text-sm text-steel file:mr-4 file:border file:border-tungsten/60 file:bg-transparent file:px-4 file:py-2 file:font-sub file:text-[11px] file:uppercase file:tracking-[0.2em] file:text-bone hover:border-rust"
                 />
                 <p id="photos-hint" className="mt-2 font-body text-xs leading-relaxed text-steel/70">
-                  Optional, but it is the difference between a guess and a quote. Files stay on your
-                  device — the list below travels with your request. Anything large, text straight to{" "}
+                  Optional, but it is the difference between a guess and a quote. Photos go to the shop
+                  with this sheet — JPEG, PNG, WebP, GIF, or HEIC/HEIF. Up to 12 photos, 6 MB each,
+                  18 MB combined. Anything large, text straight
+                  to{" "}
                   <a className="text-tungsten hover:text-bone" href={`tel:${site.phone}`}>
                     {site.phoneDisplay}
                   </a>
                   .
                 </p>
+                {photoError ? (
+                  <p id="photos-error" role="alert" className="mt-2 font-mono text-xs text-neon-bloom">
+                    {photoError}
+                  </p>
+                ) : null}
               </div>
 
               {photos.length > 0 ? (
@@ -901,11 +1008,17 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
 
         <div className="weld my-8" />
 
+        {submitError ? (
+          <p role="alert" className="mb-6 font-mono text-xs text-neon-bloom">
+            {submitError}
+          </p>
+        ) : null}
+
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={() => goTo(Math.max(0, step - 1))}
-            disabled={step === 0}
+            disabled={step === 0 || submitting}
             className="font-sub text-[11px] uppercase tracking-[0.24em] text-steel transition-colors hover:text-bone disabled:cursor-not-allowed disabled:opacity-30 sm:w-40 sm:text-left"
           >
             ← Back
@@ -913,9 +1026,14 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
 
           <button
             type="submit"
-            className="flicker border border-tungsten/70 px-8 py-4 font-sub text-xs uppercase tracking-[0.24em] text-bone transition-all hover:border-neon-bloom hover:shadow-[0_0_24px_rgba(255,176,102,0.15)]"
+            disabled={submitting}
+            className="flicker border border-tungsten/70 px-8 py-4 font-sub text-xs uppercase tracking-[0.24em] text-bone transition-all hover:border-neon-bloom hover:shadow-[0_0_24px_rgba(255,176,102,0.15)] disabled:cursor-wait disabled:opacity-70"
           >
-            {step === STEPS.length - 1 ? "Send it to the shop" : "Next"}
+            {step === STEPS.length - 1
+              ? submitting
+                ? "Sending…"
+                : "Send it to the shop"
+              : "Next"}
           </button>
         </div>
       </form>

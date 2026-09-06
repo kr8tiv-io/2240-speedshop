@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { services, site } from "@/lib/site";
 import { breadcrumbSchema, JsonLd } from "@/lib/schema";
 import { Kinetic } from "@/components/fx/Kinetic";
 import { GLImage } from "@/components/gl/GLImage";
 
-export const metadata: Metadata = {
-  title: "Classic Car Shop Edmonton — Metal, Motor, Colour, Trim",
-  description:
-    "2240 Speed Shop is a classic car shop in Edmonton, Alberta: restoration, restomods and hot rods, LS and diesel engine swaps, carb and ignition tuning, rust repair and paint, and period-correct interiors.",
+export const metadata: Metadata = withPageMetadata("/services", {
+  title: "Classic Car Shop Edmonton, Alberta",
+  description: "2240 Speed Shop is a classic car shop in Edmonton, Alberta: restoration, restomods, LS and diesel swaps, carb tuning, rust repair, paint and interiors.",
   alternates: { canonical: "/services" },
   keywords: [
     "classic car shop Edmonton",
@@ -20,11 +20,10 @@ export const metadata: Metadata = {
     locale: "en_CA",
     siteName: site.name,
     url: `${site.url}/services`,
-    title: "Classic Car Shop Edmonton — Metal, Motor, Colour, Trim",
-    description:
-      "Restoration, restomods, engine swaps, tuning, body and paint, interiors. One shop on the Sherwood Park line.",
+    title: "Classic Car Shop Edmonton, Alberta",
+    description: "2240 Speed Shop is a classic car shop in Edmonton, Alberta: restoration, restomods, LS and diesel swaps, carb tuning, rust repair, paint and interiors.",
   },
-};
+});
 
 /** 80-word teasers — the hub says enough to be liftable on its own. */
 const teasers: Record<(typeof services)[number]["slug"], string> = {

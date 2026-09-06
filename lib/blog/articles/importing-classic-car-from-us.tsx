@@ -16,9 +16,8 @@ export const meta: ArticleMeta = {
   title:
     "Importing a Classic From the US Into Alberta: Duty, GST, and the 15-Year Rule",
   accent: "15-Year",
-  metaTitle: "Importing a US Classic Into Alberta — Duty, GST & the 15-Year Rule",
-  description:
-    "The full border math on a US classic — the 15-year RIV exemption, the 25-year duty-free line, GST at the booth, Form 1, and the Alberta inspection that gets you plates.",
+  metaTitle: "Importing a US Classic Into Alberta",
+  description: "The full border math on a US classic — the 15-year RIV exemption, the 25-year duty-free line, GST at the booth, Form 1, and the Alberta inspection that gets you",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

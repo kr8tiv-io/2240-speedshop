@@ -13,9 +13,8 @@ export const meta: ArticleMeta = {
   slug: "classic-car-spring-startup-checklist",
   title: "Waking a Classic After Winter: The Spring Start-Up Checklist",
   accent: "Spring",
-  metaTitle: "Spring Start-Up Checklist for a Classic After Winter Storage",
-  description:
-    "Every check before the first start after winter storage — nests, fluids, battery, tires, fuel, and brakes, in the order a working Edmonton shop does them.",
+  metaTitle: "Spring Start-Up After Winter Store",
+  description: "Every check before the first start after winter storage — nests, fluids, battery, tires, fuel, and brakes, in the order a working Edmonton shop does them.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

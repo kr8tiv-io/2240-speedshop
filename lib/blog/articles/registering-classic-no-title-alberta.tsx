@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   title:
     "Buying a Classic With No Registration: How Alberta Handles a Bill-of-Sale Car",
   accent: "Bill-of-Sale",
-  metaTitle: "Register a Classic With Only a Bill of Sale in Alberta",
-  description:
-    "What an Alberta registry actually needs to plate a classic sold on a bill of sale alone — and the lien, VIN, and inspection problems that kill a farm-find deal.",
+  metaTitle: "Register a Classic on a Bill of Sale",
+  description: "What an Alberta registry actually needs to plate a classic sold on a bill of sale alone — and the lien, VIN, and inspection problems that kill a farm-find deal.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

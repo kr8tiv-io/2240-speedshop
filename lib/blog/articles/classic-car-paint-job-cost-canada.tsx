@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   slug: "classic-car-paint-job-cost-canada",
   title: "What a Proper Paint Job Costs in Canada — and Why the Range Is So Wide",
   accent: "Range",
-  metaTitle: "What a Classic Car Paint Job Costs in Canada",
-  description:
-    "Why paint quotes run from $3,000 to past $30,000 CAD — prep depth, single-stage versus base/clear, jambs, and how to tell which paint job you are actually being quoted.",
+  metaTitle: "Classic Car Paint Job Cost Canada",
+  description: "Why paint quotes run from $3,000 to past $30,000 CAD — prep depth, single-stage versus base/clear, jambs, and how to tell which paint job you are actually being",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

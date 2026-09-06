@@ -1,38 +1,35 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { builds } from "@/lib/builds";
-import { site, services } from "@/lib/site";
+import { canonicalPageUrl, site, services } from "@/lib/site";
 import { JsonLd, breadcrumbSchema } from "@/lib/schema";
 import { Kinetic } from "@/components/fx/Kinetic";
 import { Roll } from "@/components/fx/Roll";
 import { GLImage } from "@/components/gl/GLImage";
 
-export const metadata: Metadata = {
-  title: "Custom Car Builds Edmonton — Restorations, Restomods & Project Rescues",
-  description:
-    "Custom car builds in Edmonton from 2240 Speed Shop: a patina 1960s Dodge D100, a green hardtop coupe, a red 1950s stepside, a lowered shortbox pickup, and a stalled project down to bare steel.",
+export const metadata: Metadata = withPageMetadata("/builds", {
+  title: "Edmonton Restomod & Custom Builds",
+  description: "Custom car builds in Edmonton from 2240 Speed Shop: a patina 1960s Dodge D100, a green hardtop coupe, a red 1950s stepside, and a lowered shortbox pickup.",
   alternates: { canonical: "/builds" },
   openGraph: {
     type: "website",
-    title: "Custom Car Builds Edmonton — 2240 Speed Shop",
-    description:
-      "Real vehicles photographed in and around the shop on 91 Ave NW. What condition they were in, and the work a vehicle like that takes.",
-    images: ["/shop/ig-D100-slide1-fullres.jpg"],
+    title: "Edmonton Restomod & Custom Builds",
+    description: "Custom car builds in Edmonton from 2240 Speed Shop: a patina 1960s Dodge D100, a green hardtop coupe, a red 1950s stepside, and a lowered shortbox pickup.",
   },
-};
+});
 
 const itemListSchema = {
   "@context": "https://schema.org",
   "@type": "ItemList",
   name: "Custom car builds by 2240 Speed Shop, Edmonton",
-  description:
-    "Classic car and truck build case studies from 2240 Speed Shop in Edmonton, Alberta.",
+  description: "Classic car and truck build case studies from 2240 Speed Shop in Edmonton, Alberta ",
   numberOfItems: builds.length,
   itemListElement: builds.map((b, i) => ({
     "@type": "ListItem",
     position: i + 1,
     name: b.title,
-    url: `${site.url}/builds/${b.slug}`,
+    url: canonicalPageUrl(`/builds/${b.slug}`),
   })),
 };
 

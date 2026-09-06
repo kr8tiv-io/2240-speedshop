@@ -15,9 +15,8 @@ export const meta: ArticleMeta = {
   slug: "classic-car-appraisal-alberta",
   title: "When Your Classic Needs an Appraisal — and What One Costs in Alberta",
   accent: "Appraisal",
-  metaTitle: "Classic Car Appraisals in Alberta: When You Need One, What It Costs",
-  description:
-    "The four moments a classic actually needs a written appraisal in Alberta — agreed-value insurance, sale, estate — what the appraiser checks, and honest CAD fee ranges.",
+  metaTitle: "Classic Car Appraisals in Alberta",
+  description: "The four moments a classic actually needs a written appraisal in Alberta — agreed-value insurance, sale, estate — what the appraiser checks, and honest CAD fee.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

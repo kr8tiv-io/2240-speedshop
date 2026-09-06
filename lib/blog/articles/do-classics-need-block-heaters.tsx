@@ -15,9 +15,8 @@ export const meta: ArticleMeta = {
   title:
     "Block Heaters, Battery Tenders, and Cold Starts: Running a Classic Through an Alberta Cold Snap",
   accent: "Cold Snap",
-  metaTitle: "Do Classic Cars Need Block Heaters? An Alberta Cold-Start Guide",
-  description:
-    "Whether a vintage engine needs a block heater, which type fits old iron, and how to cold-start a carbureted classic at minus twenty — from an Edmonton shop floor.",
+  metaTitle: "Do Classic Cars Need Block Heaters?",
+  description: "Whether a vintage engine needs a block heater, which type fits old iron, and how to cold-start a carbureted classic at minus twenty — from an Edmonton shop.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

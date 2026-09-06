@@ -13,9 +13,8 @@ export const meta: ArticleMeta = {
   title:
     "8 Signs Your Classic's Carburetor Needs a Rebuild, Not Just an Adjustment",
   accent: "Rebuild",
-  metaTitle: "8 Signs Your Carburetor Needs a Rebuild, Not an Adjustment",
-  description:
-    "The one-line rule that separates a carb that needs tuning from one that needs a rebuild, plus the eight symptoms that prove it — from the floor of an Edmonton shop.",
+  metaTitle: "8 Signs Your Carb Needs a Rebuild",
+  description: "The one-line rule that separates a carb that needs tuning from one that needs a rebuild, plus the eight symptoms that prove it — from the floor of an Edmonton.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

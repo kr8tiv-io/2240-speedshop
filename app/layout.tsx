@@ -1,13 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Anton, Archivo, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { site } from "@/lib/site";
+import { socialImage } from "@/lib/metadata";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { Cursor } from "@/components/fx/Cursor";
 import { GLImagesLayer } from "@/components/gl/GLImagesLayer";
-import { businessSchema } from "@/lib/schema";
+import { businessSchema, websiteSchema } from "@/lib/schema";
+
+const gaId = process.env.NEXT_PUBLIC_GA_ID;
 
 const anton = Anton({
   variable: "--font-anton",
@@ -41,19 +45,32 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: "2240 Speed Shop — Classic Car Restoration & Custom Builds in Edmonton",
+    default: "2240 Speed Shop — Classic Restoration, Edmonton AB",
     template: "%s | 2240 Speed Shop",
   },
   description:
-    "Terry Harmider's customs-and-classics shop on the Sherwood Park line. Full restorations, restomods, hot rods, LS and diesel conversions, body, paint and classic interiors in Edmonton, Alberta.",
+    "Terry Harmider's customs-and-classics shop on the Sherwood Park line. Restorations, restomods, LS swaps, body, paint and interiors in Edmonton, Alberta.",
   alternates: { canonical: "/" },
+  icons: {
+    icon: [{ url: "/favicon.ico" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
   openGraph: {
     type: "website",
     locale: "en_CA",
     siteName: site.name,
-    title: "2240 Speed Shop — Customs and Classics, Built in Edmonton",
+    url: "/",
+    title: "2240 Speed Shop — Classic Restoration, Edmonton AB",
     description:
-      "Full restorations, restomods and engine swaps from a working shop on the Sherwood Park line.",
+      "Terry Harmider's customs-and-classics shop on the Sherwood Park line. Restorations, restomods, LS swaps, body, paint and interiors in Edmonton, Alberta.",
+    images: [socialImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "2240 Speed Shop — Classic Restoration, Edmonton AB",
+    description:
+      "Terry Harmider's customs-and-classics shop on the Sherwood Park line. Restorations, restomods, LS swaps, body, paint and interiors in Edmonton, Alberta.",
+    images: [socialImage],
   },
   robots: { index: true, follow: true },
 };
@@ -72,11 +89,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${anton.variable} ${archivo.variable} ${plexMono.variable} ${instrumentSerif.variable} h-full`}
     >
       <body className="min-h-full flex flex-col bg-bay-black text-bone">
-        {/* AI crawlers do not execute JS, so the entity graph ships in the
-            server-rendered HTML. */}
+        {/* Publish both entities in server-rendered HTML so crawlers can read
+            them without running the page scripts. */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(businessSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         <a
           href="#main"
@@ -106,6 +127,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             keeps the corners dark. Pure CSS, aria-hidden, zero layout. */}
         <div className="vignette" aria-hidden="true" />
         <div className="grain" aria-hidden="true" />
+        {gaId ? (
+          <>
+            <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="afterInteractive" />
+            <Script id="ga4" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${gaId}');`}
+            </Script>
+          </>
+        ) : null}
         <Cursor />
       </body>
     </html>

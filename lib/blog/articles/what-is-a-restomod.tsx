@@ -12,9 +12,8 @@ export const meta: ArticleMeta = {
   title:
     "What Is a Restomod? The Definitive Guide — With Real Builds from an Edmonton Shop",
   accent: "Restomod",
-  metaTitle: "What Is a Restomod? The Definitive Guide From an Edmonton Shop",
-  description:
-    "What a restomod actually is, how it differs from a restoration, what one typically costs in CAD, and what the market says about value — explained from the floor of an Edmonton customs shop.",
+  metaTitle: "What Is a Restomod? Edmonton Guide",
+  description: "What a restomod actually is, how it differs from a restoration, what one typically costs in CAD, and what the market says about value — explained from the floor",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

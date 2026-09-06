@@ -80,7 +80,7 @@ export const builds: Build[] = [
   {
     slug: "1960s-dodge-d100",
     title: "1960s Dodge D100 Restoration",
-    metaTitle: "1960s Dodge D100 Restoration — Patina Truck Build in Edmonton",
+    metaTitle: "1960s Dodge D100 Build, Edmonton",
     cardTitle: "1960s Dodge D100",
     keyword: "1960s Dodge D100 restoration",
     era: "1960s",
@@ -128,7 +128,7 @@ export const builds: Build[] = [
   {
     slug: "green-hardtop-coupe",
     title: "Green 1960s Hardtop Coupe",
-    metaTitle: "Green 1960s Hardtop Coupe — Muscle Car Restoration Edmonton",
+    metaTitle: "Muscle Car Restoration, Edmonton",
     cardTitle: "Green hardtop coupe",
     keyword: "muscle car restoration Edmonton",
     era: "1960s",
@@ -177,7 +177,7 @@ export const builds: Build[] = [
   {
     slug: "red-stepside-pickup",
     title: "Red 1950s Stepside Pickup",
-    metaTitle: "Red 1950s Stepside Pickup — 1950s Pickup Restoration Edmonton",
+    metaTitle: "Edmonton 1950s Pickup Restoration",
     cardTitle: "Red stepside pickup",
     keyword: "1950s pickup restoration Edmonton",
     era: "1950s",
@@ -225,7 +225,7 @@ export const builds: Build[] = [
   {
     slug: "blue-lowered-pickup",
     title: "Blue Lowered Shortbox Pickup",
-    metaTitle: "Blue Lowered Shortbox — Lowered Classic Pickup Edmonton",
+    metaTitle: "Lowered Classic Pickup, Edmonton",
     cardTitle: "Blue lowered shortbox",
     keyword: "lowered classic pickup Edmonton",
     era: "1960s–70s",
@@ -273,7 +273,7 @@ export const builds: Build[] = [
   {
     slug: "blue-project-shell",
     title: "Blue Project Shell — Down to Bare Steel",
-    metaTitle: "Blue Project Shell — Stalled Project Car Rebuild Edmonton",
+    metaTitle: "Stalled Project Rebuild Edmonton",
     cardTitle: "Blue project shell",
     keyword: "stalled project car rebuild Edmonton",
     era: "Project intake",

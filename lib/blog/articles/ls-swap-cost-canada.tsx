@@ -13,9 +13,8 @@ export const meta: ArticleMeta = {
   title:
     "LS Swap Cost in Canada: The Real All-In Number (and the Alberta Paperwork Nobody Mentions)",
   accent: "Paperwork",
-  metaTitle: "LS Swap Cost in Canada — The Real All-In Number",
-  description:
-    "What an LS swap really costs in Canada — junkyard 5.3 versus crate paths in CAD, the harness and cooling money nobody budgets, and the Alberta insurance paperwork.",
+  metaTitle: "LS Swap Cost in Canada, All-In CAD",
+  description: "What an LS swap really costs in Canada — junkyard 5.3 versus crate paths in CAD, the harness and cooling money nobody budgets, and the Alberta insurance.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

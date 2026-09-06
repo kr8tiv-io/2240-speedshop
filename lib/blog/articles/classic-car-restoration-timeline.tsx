@@ -11,11 +11,10 @@ import type { ArticleMeta } from "../types";
 export const meta: ArticleMeta = {
   slug: "classic-car-restoration-timeline",
   title:
-    "How Long Does a Classic Car Restoration Take? Stage-by-Stage, From the Shop Floor",
+    "How Long a Classic Restoration Takes, From the Shop Floor",
   accent: "Long",
-  metaTitle: "How Long Does a Classic Car Restoration Take? Stage-by-Stage",
-  description:
-    "How long a classic car restoration really takes — honest hour and calendar ranges by stage, why schedules slip, and why sorting cannot be skipped. From an Edmonton shop.",
+  metaTitle: "How Long a Classic Restoration Takes",
+  description: "How long a classic car restoration really takes — honest hour and calendar ranges by stage, why schedules slip, and why sorting cannot be skipped. From an.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

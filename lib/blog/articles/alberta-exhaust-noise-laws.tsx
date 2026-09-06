@@ -15,9 +15,8 @@ export const meta: ArticleMeta = {
   title:
     "Are Exhaust Mods Legal in Alberta? Noise Laws, Edmonton's $1,000 Fine, and How Not to Get Ticketed",
   accent: "$1,000 Fine",
-  metaTitle: "Are Exhaust Mods Legal in Alberta? Noise Laws & the $1,000 Fine",
-  description:
-    "Exhaust mods are legal in Alberta with a working muffler, inside the noise rules. The equipment law, Edmonton's $1,000 fine, the noise-camera pilot, and how to pass.",
+  metaTitle: "Alberta Exhaust Noise Laws Guide",
+  description: "Exhaust mods are legal in Alberta with a working muffler, inside the noise rules. The equipment law, Edmonton's $1,000 fine, the noise-camera pilot, and how to.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

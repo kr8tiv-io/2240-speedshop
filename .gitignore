@@ -41,3 +41,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Quote photo drops written by public/quote.php on the host
+/public/quote-uploads/**
+!/public/quote-uploads/.htaccess

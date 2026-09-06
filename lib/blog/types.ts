@@ -55,7 +55,7 @@ export type ArticleMeta = {
   accent?: string;
   /** <title> without brand suffix — layout appends "| 2240 Speed Shop". */
   metaTitle: string;
-  /** Meta description AND the on-page standfirst. 140–170 chars. */
+  /** Meta description AND the on-page standfirst. 150–160 chars. */
   description: string;
   /** ISO dates, e.g. "2026-08-12". */
   datePublished: string;

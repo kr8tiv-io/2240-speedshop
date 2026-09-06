@@ -1,22 +1,21 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Image from "next/image";
 import Link from "next/link";
 import { site } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, JsonLd } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "Modified Vehicle Laws in Alberta — Exhaust, Tint, Lift, Plates",
-  description:
-    "A plain-language guide to modified vehicle laws in Alberta: exhaust noise rules and Edmonton enforcement, window tint limits, lift height, out-of-province inspections, antique plates, and insuring a modified or collector car.",
+export const metadata: Metadata = withPageMetadata("/guides/alberta-laws", {
+  title: "Modified Vehicle Laws in Alberta",
+  description: "Modified vehicle laws in Alberta: exhaust noise and Edmonton fines, window tint, lift height, out-of-province inspections, antique plates, collector insurance.",
   alternates: { canonical: "/guides/alberta-laws" },
   openGraph: {
     type: "article",
-    title: "Modified Vehicle Laws in Alberta — The Plain-Language Guide",
-    description:
-      "Exhaust, tint, lift height, inspections, rebuilt status, antique plates, and insurance for modified and collector cars in Alberta.",
+    title: "Modified Vehicle Laws in Alberta",
+    description: "Modified vehicle laws in Alberta: exhaust noise and Edmonton fines, window tint, lift height, out-of-province inspections, antique plates, collector insurance.",
     url: "/guides/alberta-laws",
   },
-};
+});
 
 const faqs = [
   {

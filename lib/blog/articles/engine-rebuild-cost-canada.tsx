@@ -11,11 +11,10 @@ import type { ArticleMeta } from "../types";
 export const meta: ArticleMeta = {
   slug: "engine-rebuild-cost-canada",
   title:
-    "Engine Rebuild & Performance Build Costs in Canada (2026): From Stock Refresh to Full Build",
+    "Engine Rebuild Cost in Canada 2026: From Stock Refresh to Full Build",
   accent: "Costs",
-  metaTitle: "Engine Rebuild & Performance Build Costs in Canada (2026)",
-  description:
-    "What a stock rebuild, a performance build, and a crate engine typically cost in CAD, what Alberta machine shops charge, and where budgets actually blow up.",
+  metaTitle: "Engine Rebuild Cost in Canada 2026",
+  description: "What a stock rebuild, a performance build, and a crate engine typically cost in CAD, what Alberta machine shops charge, and where budgets actually blow up.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

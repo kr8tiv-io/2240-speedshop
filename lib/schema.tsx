@@ -1,4 +1,4 @@
-import { site, services } from "./site";
+import { canonicalPageUrl, site, services } from "./site";
 
 const ID = `${site.url}/#shop`;
 
@@ -7,12 +7,18 @@ const ID = `${site.url}/#shop`;
 // never earns stars and real review velocity is the actual lever.
 export const businessSchema = {
   "@context": "https://schema.org",
-  "@type": "AutoRepair",
+  "@type": ["AutoRepair", "AutomotiveBusiness"],
   "@id": ID,
   name: site.name,
-  description:
-    "Classic car restoration, restomods, hot rods and engine swaps in Edmonton, Alberta. Owner-operated by Terry Harmider.",
-  url: site.url,
+  description: "Classic car restoration, restomods, hot rods and engine swaps in Edmonton, Alberta. Owner-operated by Terry Harmider.",
+  image: `${site.url}/shop/IMG_1949-blue-pickup.png`,
+  logo: {
+    "@type": "ImageObject",
+    url: `${site.url}/apple-touch-icon.png`,
+    width: 180,
+    height: 180,
+  },
+  url: canonicalPageUrl(),
   telephone: site.phone,
   email: site.email,
   founder: { "@type": "Person", name: site.owner },
@@ -24,7 +30,6 @@ export const businessSchema = {
     postalCode: site.postalCode,
     addressCountry: site.country,
   },
-  geo: { "@type": "GeoCoordinates", latitude: site.geo.lat, longitude: site.geo.lng },
   openingHoursSpecification: site.hours.map((h) => ({
     "@type": "OpeningHoursSpecification",
     dayOfWeek: h.days,
@@ -49,11 +54,21 @@ export const businessSchema = {
       "@type": "Service",
       name: s.title,
       description: s.long,
-      url: `${site.url}/services/${s.slug}`,
+      url: canonicalPageUrl(`/services/${s.slug}`),
       areaServed: { "@type": "City", name: site.city },
       provider: { "@id": ID },
     },
   })),
+};
+
+export const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${canonicalPageUrl()}#website`,
+  name: site.name,
+  url: canonicalPageUrl(),
+  inLanguage: "en-CA",
+  publisher: { "@id": ID },
 };
 
 export function serviceSchema(s: (typeof services)[number]) {
@@ -62,7 +77,7 @@ export function serviceSchema(s: (typeof services)[number]) {
     "@type": "Service",
     name: s.title,
     description: s.long,
-    url: `${site.url}/services/${s.slug}`,
+    url: canonicalPageUrl(`/services/${s.slug}`),
     serviceType: s.keyword,
     provider: { "@id": ID },
     areaServed: site.areas.map((a) => ({ "@type": "City", name: a })),
@@ -89,7 +104,7 @@ export function breadcrumbSchema(crumbs: { name: string; path: string }[]) {
       "@type": "ListItem",
       position: i + 1,
       name: c.name,
-      item: `${site.url}${c.path}`,
+      item: canonicalPageUrl(c.path),
     })),
   };
 }

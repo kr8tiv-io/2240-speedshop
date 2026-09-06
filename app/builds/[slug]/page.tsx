@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { builds, getBuild, otherBuilds, servicesForBuild } from "@/lib/builds";
-import { site } from "@/lib/site";
+import { canonicalPageUrl, site } from "@/lib/site";
 import { JsonLd, breadcrumbSchema, faqSchema } from "@/lib/schema";
 import { GLImage } from "@/components/gl/GLImage";
 
@@ -26,10 +26,17 @@ export async function generateMetadata({
 
   return {
     title: build.metaTitle,
-    description: `${build.card} A ${build.keyword} case study from 2240 Speed Shop, ${site.street}, ${site.city}.`,
+    description: `${build.card} Case study from 2240 Speed Shop, Edmonton.`,
     alternates: { canonical: `/builds/${build.slug}` },
     openGraph: {
       type: "article",
+      title: `${build.title} — 2240 Speed Shop Edmonton`,
+      description: build.card,
+      url: `/builds/${build.slug}`,
+      images: [build.images[0].src],
+    },
+    twitter: {
+      card: "summary_large_image",
       title: `${build.title} — 2240 Speed Shop Edmonton`,
       description: build.card,
       images: [build.images[0].src],
@@ -53,7 +60,8 @@ export default async function BuildPage({ params }: { params: Promise<{ slug: st
   const buildSchema = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",
-    "@id": `${site.url}/builds/${build.slug}#build`,
+    "@id": `${canonicalPageUrl(`/builds/${build.slug}`)}#build`,
+    url: canonicalPageUrl(`/builds/${build.slug}`),
     name: build.title,
     description: build.lede,
     keywords: build.keyword,

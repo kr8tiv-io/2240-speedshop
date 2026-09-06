@@ -13,30 +13,31 @@ import { GLImage } from "@/components/gl/GLImage";
 import { InstagramGrid } from "@/components/InstagramGrid";
 import { builds } from "@/lib/builds";
 import { areas, services, site } from "@/lib/site";
+import { socialImage } from "@/lib/metadata";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Speed Shop Edmonton | Custom Car Shop & Classic Builds — 2240 Speed Shop",
+    absolute: "Speed Shop Edmonton | Classic Builds and Restomods",
   },
   description:
-    "2240 Speed Shop is Terry Harmider's custom car shop in Edmonton, Alberta — classic restorations, restomods, hot rods, LS and diesel swaps, body, paint, and interiors. On the Sherwood Park line.",
+    "2240 Speed Shop is Terry Harmider's Edmonton shop on the Sherwood Park line. Restorations, restomods, LS swaps, body and paint for Alberta classics and trucks.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "en_CA",
     url: "/",
     siteName: site.name,
-    title: "Speed Shop Edmonton — Customs and Classics, Built in Edmonton",
+    title: "Speed Shop Edmonton | Classic Builds and Restomods",
     description:
-      "Restorations, restomods, and engine swaps from a working shop on the Sherwood Park line.",
-    images: [
-      {
-        url: "/shop/IMG_1949-blue-pickup.png",
-        width: 2560,
-        height: 1177,
-        alt: "Custom blue vintage pickup truck built by 2240 Speed Shop in Edmonton",
-      },
-    ],
+      "2240 Speed Shop is Terry Harmider's Edmonton shop on the Sherwood Park line. Restorations, restomods, LS swaps, body and paint for Alberta classics and trucks.",
+    images: [socialImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Speed Shop Edmonton | Classic Builds and Restomods",
+    description:
+      "2240 Speed Shop is Terry Harmider's Edmonton shop on the Sherwood Park line. Restorations, restomods, LS swaps, body and paint for Alberta classics and trucks.",
+    images: [socialImage],
   },
 };
 

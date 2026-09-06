@@ -12,9 +12,8 @@ export const meta: ArticleMeta = {
   slug: "c10-square-body-alberta-guide",
   title: "The C10 & Square-Body Buyer's-and-Builder's Guide, Alberta Edition",
   accent: "Alberta",
-  metaTitle: "C10 & Square-Body Buyer's Guide — Alberta Edition",
-  description:
-    "Which C10 generation to buy, where square-body Chevys rust first, what prairie trucks are actually worth, and how to source one in Alberta — from an Edmonton shop.",
+  metaTitle: "Alberta C10 Square-Body Buy Guide",
+  description: "Which C10 generation to buy, where square-body Chevys rust first, what prairie trucks are actually worth, and how to source one in Alberta — from an Edmonton.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

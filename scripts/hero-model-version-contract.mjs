@@ -33,7 +33,9 @@ assert.match(
   "static export verifier does not emulate Hostinger's Brotli response",
 );
 assert.ok(
-  deployCommand.indexOf("node scripts/precompress.js") < deployCommand.indexOf("pnpm exec next build"),
+  deployCommand.indexOf("node scripts/precompress.js") >= 0 &&
+    deployCommand.indexOf("node scripts/precompress.js") <
+      deployCommand.indexOf("node --use-system-ca node_modules/next/dist/bin/next build --webpack"),
   "precompression must run before export copies public assets into out/",
 );
 

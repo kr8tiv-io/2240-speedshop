@@ -5,6 +5,7 @@ import { articles, getArticle, adjacentArticles } from "@/lib/blog/registry";
 import { blogPostingSchema } from "@/lib/blog/schema";
 import { JsonLd, breadcrumbSchema, faqSchema } from "@/lib/schema";
 import { site } from "@/lib/site";
+import { socialImage } from "@/lib/metadata";
 
 export const dynamicParams = false;
 
@@ -37,6 +38,13 @@ export async function generateMetadata({
       publishedTime: meta.datePublished,
       modifiedTime: meta.dateModified,
       authors: [meta.author],
+      images: [socialImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: meta.metaTitle,
+      description: meta.description,
+      images: [socialImage],
     },
   };
 }

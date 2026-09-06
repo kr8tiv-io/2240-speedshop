@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   title:
     "Out-of-Province Vehicle Inspection in Edmonton: 2026 Cost, What's Checked, and the Modified-Car Trap",
   accent: "Trap",
-  metaTitle: "Out-of-Province Inspection Edmonton — 2026 Cost & What's Checked",
-  description:
-    "What an Alberta out-of-province inspection covers, typical 2026 Edmonton costs, the 10-day repair window, and why lifted or modified vehicles never skip it.",
+  metaTitle: "Out-of-Province Inspection Edmonton",
+  description: "What an Alberta out-of-province inspection covers, typical 2026 Edmonton costs, the 10-day repair window, and why lifted or modified vehicles never skip it.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

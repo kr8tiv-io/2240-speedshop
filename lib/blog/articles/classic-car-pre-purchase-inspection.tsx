@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   slug: "classic-car-pre-purchase-inspection",
   title: "What a Classic Car Pre-Purchase Inspection Actually Covers",
   accent: "Actually",
-  metaTitle: "What a Classic Car Pre-Purchase Inspection Covers",
-  description:
-    "What a shop checks in a pre-purchase inspection that a driveway walk-around cannot — frame rot, filler over rust, matching numbers — and what it costs in Alberta.",
+  metaTitle: "Classic Pre-Purchase Inspection AB",
+  description: "What a shop checks in a pre-purchase inspection that a driveway walk-around cannot — frame rot, filler over rust, matching numbers — and what it costs in.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

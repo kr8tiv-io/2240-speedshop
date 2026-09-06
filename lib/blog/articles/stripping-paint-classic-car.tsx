@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   title:
     "Media Blasting, Chemical Stripping, or Sanding: Taking a Classic to Bare Metal",
   accent: "Bare Metal",
-  metaTitle: "Media Blasting vs Chemical Stripping vs Sanding a Classic",
-  description:
-    "Which stripping method is safe for which panel — where blasting heat warps skins, why soda residue peels primer, and when chemical stripper earns its mess.",
+  metaTitle: "Blasting vs Chemical Stripping Paint",
+  description: "Which stripping method is safe for which panel — where blasting heat warps skins, why soda residue peels primer, and when chemical stripper earns its mess.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

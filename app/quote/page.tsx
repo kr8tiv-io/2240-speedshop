@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -6,18 +7,16 @@ import { QuoteForm } from "@/components/QuoteForm";
 import { site, services } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, JsonLd } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "Car Restoration Quote in Edmonton — Start Your Build",
-  description:
-    "Get a car restoration quote in Edmonton. Pick the work, tell us the vehicle, send photos. Terry reads every request himself and answers with scope, sequence and a number band in two business days.",
+export const metadata: Metadata = withPageMetadata("/quote", {
+  title: "Get a Restoration Quote, Edmonton",
+  description: "Get a car restoration quote in Edmonton. Send photos. Terry reads every request and answers with scope, sequence and a number band in two business days.",
   alternates: { canonical: "/quote" },
   openGraph: {
-    title: "Car Restoration Quote in Edmonton — 2240 Speed Shop",
-    description:
-      "Photos in, honest scope out. A five-step quote request for restorations, restomods, engine swaps, rust repair and classic interiors.",
+    title: "Get a Restoration Quote, Edmonton",
+    description: "Get a car restoration quote in Edmonton. Send photos. Terry reads every request and answers with scope, sequence and a number band in two business days.",
     url: "/quote",
   },
-};
+});
 
 const quoteFaq = [
   {

@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import Image from "next/image";
 import { site, services, areas } from "@/lib/site";
 import { breadcrumbSchema, JsonLd } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "Contact 2240 Speed Shop — Address, Hours and Map in Edmonton",
-  description:
-    "Contact 2240 Speed Shop in Edmonton: 2009 91 Ave NW, 780-999-6450, Monday to Friday 9 to 5. Map, service area from Sherwood Park to Spruce Grove, and what to photograph before you call.",
+export const metadata: Metadata = withPageMetadata("/contact", {
+  title: "Contact 2240 Speed Shop, Edmonton",
+  description: "Contact 2240 Speed Shop in Edmonton: 2009 91 Ave NW, 780-999-6450, Monday to Friday 9 to 5. Map, Sherwood Park to Spruce Grove, and what to photograph.",
   alternates: { canonical: "/contact" },
   openGraph: {
-    title: "Contact 2240 Speed Shop — Edmonton",
-    description:
-      "2009 91 Ave NW, Edmonton. On the Sherwood Park line. Phone, hours, map and what to bring.",
+    title: "Contact 2240 Speed Shop, Edmonton",
+    description: "Contact 2240 Speed Shop in Edmonton: 2009 91 Ave NW, 780-999-6450, Monday to Friday 9 to 5. Map, Sherwood Park to Spruce Grove, and what to photograph.",
     url: "/contact",
   },
-};
+});
 
 const dayRows = [
   { day: "Monday", hours: "9:00 – 17:00" },

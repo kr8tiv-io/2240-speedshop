@@ -16,7 +16,8 @@ export const site = {
   region: "AB",
   postalCode: "T6P 1L1",
   country: "CA",
-  // Approximate — confirm with Terry before this goes to a live GBP.
+  // Existing contact-map fallback only; excluded from structured data until
+  // the exact map pin is verified against the shop address.
   geo: { lat: 53.4818, lng: -113.3773 },
   hours: [
     { days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "09:00", closes: "17:00" },
@@ -33,6 +34,12 @@ export const site = {
   instagram: "https://www.instagram.com/2240speedshop/",
   social: ["https://www.instagram.com/2240speedshop/", "https://www.threads.com/@2240speedshop"],
 } as const;
+
+/** HTML exports use directory indexes, so page references share one URL form. */
+export function canonicalPageUrl(path = "/"): string {
+  const pathname = path.startsWith("/") ? path : `/${path}`;
+  return `${site.url}${pathname.endsWith("/") ? pathname : `${pathname}/`}`;
+}
 
 export const services = [
   {

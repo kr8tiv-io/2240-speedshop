@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { site } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, JsonLd } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "How Much Does It Cost to Restore a Classic Car? Alberta FAQ",
-  description:
-    "How much does it cost to restore a classic car, how long it takes, frame-off versus rolling, Alberta rust, winter storage, out-of-province inspections and deposits — answered straight by 2240 Speed Shop in Edmonton.",
+export const metadata: Metadata = withPageMetadata("/faq", {
+  title: "Classic Restoration FAQ, Alberta",
+  description: "How much a classic restoration costs, how long it takes, frame-off versus rolling, Alberta rust and winter storage — answered by 2240 Speed Shop in Edmonton.",
   alternates: { canonical: "/faq" },
   openGraph: {
-    title: "Classic Car Restoration FAQ — Alberta Numbers, Straight Answers",
-    description:
-      "Eighteen honest answers on restoration cost, timelines, rust, storage, inspections and how a build actually gets billed.",
+    title: "Classic Restoration FAQ, Alberta",
+    description: "How much a classic restoration costs, how long it takes, frame-off versus rolling, Alberta rust and winter storage — answered by 2240 Speed Shop in Edmonton.",
     url: "/faq",
   },
-};
+});
 
 const groups = [
   {

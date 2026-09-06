@@ -12,11 +12,10 @@ import type { ArticleMeta } from "../types";
 
 export const meta: ArticleMeta = {
   slug: "daily-driving-a-classic-in-alberta",
-  title: "Can You Daily-Drive a Classic in Alberta? An Honest Answer",
+  title: "Daily-Driving a Classic in Alberta",
   accent: "Honest",
-  metaTitle: "Can You Daily-Drive a Classic in Alberta? An Honest Answer",
-  description:
-    "The honest answer on daily driving a classic in Alberta: what road chloride does, what collector policies allow, and which upgrades make shoulder seasons sane.",
+  metaTitle: "Daily-Driving a Classic in Alberta",
+  description: "The honest answer on daily driving a classic in Alberta: what road chloride does, what collector policies allow, and which upgrades make shoulder seasons sane.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

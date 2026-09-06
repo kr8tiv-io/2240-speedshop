@@ -12,9 +12,8 @@ export const meta: ArticleMeta = {
   slug: "metal-fabrication-no-repro-panels",
   title: "When No One Makes the Panel: Custom Metal Fabrication for Classics",
   accent: "Fabrication",
-  metaTitle: "Custom Metal Fabrication When No Repro Panels Exist",
-  description:
-    "No reproduction panels for your classic? How a shop hand-forms new steel over bucks, splices donor metal, and what that costs in CAD versus waiting for parts.",
+  metaTitle: "Custom Metal When No Repro Panels",
+  description: "No reproduction panels for your classic? How a shop hand-forms new steel over bucks, splices donor metal, and what that costs in CAD versus waiting for parts.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

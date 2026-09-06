@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import Image from "next/image";
-import { site, services } from "@/lib/site";
+import { canonicalPageUrl, site, services } from "@/lib/site";
 import { breadcrumbSchema, JsonLd } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "Terry Harmider — Owner of 2240 Speed Shop, Edmonton",
-  description:
-    "Terry Harmider owns and runs 2240 Speed Shop, the customs-and-classics garage at 2009 91 Ave NW in east Edmonton. The steel sign, the Dodge D100, the September run to Radium — the story behind the shop.",
+export const metadata: Metadata = withPageMetadata("/about", {
+  title: "Terry Harmider, Edmonton Shop Owner",
+  description: "Terry Harmider owns and runs 2240 Speed Shop, the customs-and-classics garage at 2009 91 Ave NW in east Edmonton. The steel sign, the D100, the Radium run.",
   alternates: { canonical: "/about" },
   openGraph: {
-    title: "Terry Harmider — Owner, 2240 Speed Shop Edmonton",
-    description:
-      "Owner-operator. Customs and classics. The man every review names, and the shop he built on the Sherwood Park line.",
+    title: "Terry Harmider, Edmonton Shop Owner",
+    description: "Terry Harmider owns and runs 2240 Speed Shop, the customs-and-classics garage at 2009 91 Ave NW in east Edmonton. The steel sign, the D100, the Radium run.",
     url: "/about",
   },
-};
+});
 
 // Same @id the AutoRepair node uses in lib/schema.tsx — one entity, many nodes.
 const BUSINESS_ID = `${site.url}/#shop`;
@@ -23,15 +22,14 @@ const BUSINESS_ID = `${site.url}/#shop`;
 const personSchema = {
   "@context": "https://schema.org",
   "@type": "Person",
-  "@id": `${site.url}/about#terry-harmider`,
+  "@id": `${canonicalPageUrl("/about")}#terry-harmider`,
   name: site.owner,
   givenName: "Terry",
   familyName: "Harmider",
   jobTitle: "Owner",
-  url: `${site.url}/about`,
+  url: canonicalPageUrl("/about"),
   image: `${site.url}/shop/IMG_0446-team-photo.jpeg`,
-  description:
-    "Terry Harmider is the owner of 2240 Speed Shop, a customs-and-classics restoration shop in east Edmonton, Alberta.",
+  description: "Terry Harmider is the owner of 2240 Speed Shop, a customs-and-classics restoration shop in east Edmonton, Alberta.",
   worksFor: { "@id": BUSINESS_ID },
   owns: { "@id": BUSINESS_ID },
   knowsAbout: [

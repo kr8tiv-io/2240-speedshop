@@ -15,9 +15,8 @@ export const meta: ArticleMeta = {
   title:
     "Selling a Classic in Canada: Pricing It, Proving It, and Picking the Venue",
   accent: "Proving It",
-  metaTitle: "How to Sell a Classic Car in Canada: Price, Proof, and Venue",
-  description:
-    "How to put a defensible price on a classic, which paperwork actually adds money, and whether auction, consignment, or a private sale nets more in Alberta.",
+  metaTitle: "How to Sell a Classic Car in Canada",
+  description: "How to put a defensible price on a classic, which paperwork actually adds money, and whether auction, consignment, or a private sale nets more in Alberta.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

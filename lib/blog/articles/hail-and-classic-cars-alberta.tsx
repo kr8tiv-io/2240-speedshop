@@ -15,9 +15,8 @@ export const meta: ArticleMeta = {
   title:
     "Hail Season and the Classic Car: Protection, Repair, and Insurance in Alberta",
   accent: "Hail Season",
-  metaTitle: "Hail Season and the Classic Car in Alberta",
-  description:
-    "Where Alberta's hail corridor runs, how to shelter a classic, whether paintless dent repair survives old paint, and how an agreed-value hail claim plays out.",
+  metaTitle: "Hail Season and Alberta Classics",
+  description: "Where Alberta's hail corridor runs, how to shelter a classic, whether paintless dent repair survives old paint, and how an agreed-value hail claim plays out.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

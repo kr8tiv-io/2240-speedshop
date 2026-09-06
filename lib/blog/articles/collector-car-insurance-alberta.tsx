@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   title:
     "Collector Car Insurance in Alberta: What It Covers, What It Costs, Who Qualifies",
   accent: "Insurance",
-  metaTitle: "Collector Car Insurance in Alberta: Coverage, Cost, Who Qualifies",
-  description:
-    "How agreed-value collector policies differ from regular Alberta auto insurance — who qualifies, what storage and use rules apply, and what coverage typically costs.",
+  metaTitle: "Collector Car Insurance in Alberta",
+  description: "How agreed-value collector policies differ from regular Alberta auto insurance — who qualifies, what storage and use rules apply, and what coverage typically.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

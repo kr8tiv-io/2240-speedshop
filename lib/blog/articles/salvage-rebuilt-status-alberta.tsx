@@ -15,9 +15,8 @@ export const meta: ArticleMeta = {
   title:
     "Salvage, Rebuilt, Non-Repairable: What Alberta Vehicle Status Means for a Project Car",
   accent: "Non-Repairable",
-  metaTitle: "Alberta Vehicle Status: Salvage, Rebuilt, Non-Repairable",
-  description:
-    "What each Alberta status stamp means for a project car — which ones can legally drive again, what the rebuilt inspection takes, and how a brand hits value.",
+  metaTitle: "Alberta Salvage vs Rebuilt Status",
+  description: "What each Alberta status stamp means for a project car — which ones can legally drive again, what the rebuilt inspection takes, and how a brand hits value.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

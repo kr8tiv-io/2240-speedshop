@@ -42,9 +42,8 @@ const NOT_A_QUOTE =
 const details: Record<Slug, Detail> = {
   "classic-car-restoration": {
     h1: "Classic car restoration in Edmonton",
-    metaTitle: "Classic Car Restoration Edmonton — Frame-Off & Rolling",
-    metaDesc:
-      "Classic car restoration in Edmonton — frame-off and rolling builds at 2240 Speed Shop, owned by Terry Harmider. Indicative cost ranges, honest scope, real hours.",
+    metaTitle: "Edmonton Classic Restoration Shop",
+    metaDesc: "Classic car restoration in Edmonton — frame-off and rolling builds at 2240 Speed Shop. Indicative CAD cost ranges, honest scope, real hours from Terry Harmider.",
     opener:
       "Classic car restoration in Edmonton runs two ways at 2240 Speed Shop: frame-off, where the body comes off the chassis and everything is rebuilt, or rolling, where the car is restored in stages you can drive between. Both start with a teardown, an honest scope, and a number before the work begins.",
     second:
@@ -155,9 +154,8 @@ const details: Record<Slug, Detail> = {
 
   "restomods-custom-builds": {
     h1: "Restomod builds in Edmonton",
-    metaTitle: "Restomod Edmonton — Modern Guts, Original Steel",
-    metaDesc:
-      "Restomod Edmonton — modern brakes, suspension and drivetrain under original steel at 2240 Speed Shop. Hot rods too. Indicative cost ranges and straight answers.",
+    metaTitle: "Edmonton Restomod & Hot Rod Shop",
+    metaDesc: "Restomod Edmonton — modern brakes, suspension and drivetrain under original steel at 2240 Speed Shop. Hot rods too. Indicative CAD ranges and straight answers.",
     opener:
       "A restomod keeps the body and character of a classic and replaces what is underneath. At 2240 Speed Shop in Edmonton that means disc brakes, modern suspension and a current drivetrain under original steel — a car that looks like 1968 and stops, steers and idles like this year.",
     second:
@@ -258,9 +256,8 @@ const details: Record<Slug, Detail> = {
 
   "engine-swaps-builds": {
     h1: "LS swaps and engine builds in Edmonton",
-    metaTitle: "LS Swap Edmonton — Engine Swaps & Diesel Conversions",
-    metaDesc:
-      "LS swap Edmonton — LS and diesel conversions, fabricated mounts, standalone wiring, cooling and cold-start tuning at 2240 Speed Shop. Indicative cost ranges inside.",
+    metaTitle: "Edmonton LS Swap & Engine Builds",
+    metaDesc: "LS swap Edmonton — LS and diesel conversions, fabricated mounts, standalone wiring, cooling and cold-start tuning at 2240 Speed Shop. Indicative CAD ranges.",
     opener:
       "An LS swap in Edmonton is more than dropping in an engine. Mounts and crossmember, driveline angles, a standalone harness, fuel system and a cooling package all have to be built around it. 2240 Speed Shop handles LS and diesel conversions as complete jobs, tuned to start cold and run through an Alberta summer.",
     second:
@@ -378,9 +375,8 @@ const details: Record<Slug, Detail> = {
 
   "classic-performance-tuning": {
     h1: "Carburetor rebuilds and performance tuning in Edmonton",
-    metaTitle: "Carburetor Rebuild Edmonton — Ignition & Tuning",
-    metaDesc:
-      "Carburetor rebuild Edmonton — carbs stripped, jetted for Alberta air and road-tested, points-to-electronic ignition conversions and bolt-on performance at 2240 Speed Shop.",
+    metaTitle: "Edmonton Carb Rebuild & Ignition",
+    metaDesc: "Carburetor rebuild Edmonton — carbs stripped, jetted for Alberta air and road-tested, plus points-to-electronic ignition at 2240 Speed Shop.",
     opener:
       "A carburetor rebuild in Edmonton means more than a gasket kit. 2240 Speed Shop strips the carb, cleans every passage, sets floats and jetting for local air, then drives the car to confirm it. Ignition upgrades, timing curves and bolt-on performance work are handled the same way — tuned on the road, not on paper.",
     second:
@@ -497,9 +493,8 @@ const details: Record<Slug, Detail> = {
 
   "body-paint-metalwork": {
     h1: "Classic car rust repair, body and paint in Alberta",
-    metaTitle: "Classic Car Rust Repair Alberta — Body, Paint, Metal",
-    metaDesc:
-      "Classic car rust repair in Alberta — patch panels, floor pans, fabrication and paint at 2240 Speed Shop in Edmonton. Where road salt eats first, and what the fix costs.",
+    metaTitle: "Classic Rust Repair Alberta Shop",
+    metaDesc: "Classic car rust repair in Alberta — patch panels, floor pans, fabrication and paint at 2240 Speed Shop in Edmonton. Where road salt eats, what the fix costs.",
     opener:
       "Classic car rust repair in Alberta follows a predictable map: rockers, cab corners, lower quarters, floor pans, trunk drops, and frame rails where road salt collects. 2240 Speed Shop cuts the rot out and welds steel back in — patch panels where they exist, fabricated sections where they do not — then blocks and paints.",
     second:
@@ -616,9 +611,8 @@ const details: Record<Slug, Detail> = {
 
   "classic-interiors-service": {
     h1: "Classic car interior restoration in Edmonton",
-    metaTitle: "Classic Car Interior Restoration Edmonton",
-    metaDesc:
-      "Classic car interior restoration in Edmonton — period-correct leather, wool, wood and headliners with discreet modern comfort, plus classic mechanical service at 2240 Speed Shop.",
+    metaTitle: "Classic Interior Restoration Edmonton",
+    metaDesc: "Classic car interior restoration in Edmonton — period-correct leather, wool, wood and headliners, plus classic mechanical service at 2240 Speed Shop.",
     opener:
       "Classic car interior restoration in Edmonton covers seats, panels, headliners, carpet, wood and gauges — rebuilt with period-correct materials so the cabin reads original. 2240 Speed Shop hides the modern parts you actually want, and handles classic mechanical service — brakes, ignition, fluids — on the same cars.",
     second:
@@ -758,6 +752,12 @@ export async function generateMetadata({
       title: `${d.metaTitle} | ${site.name}`,
       description: d.metaDesc,
       images: [{ url: s.image, alt: s.alt }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${d.metaTitle} | ${site.name}`,
+      description: d.metaDesc,
+      images: [s.image],
     },
   };
 }

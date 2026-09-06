@@ -24,10 +24,61 @@ import * as restorationTimeline from "./articles/classic-car-restoration-timelin
 import * as engineRebuildCost from "./articles/engine-rebuild-cost-canada";
 import * as carbRebuildSigns from "./articles/carburetor-rebuild-signs";
 import * as oopInspection from "./articles/out-of-province-inspection-edmonton";
+import * as restorationCost from "./articles/classic-car-restoration-cost-canada";
+import * as rustRepairCost from "./articles/rust-repair-cost-canada";
+import * as paintJobCost from "./articles/classic-car-paint-job-cost-canada";
+import * as frameOffVsRolling from "./articles/frame-off-vs-rolling-restoration";
+import * as patinaKeepOrPaint from "./articles/patina-keep-it-or-paint-it";
+import * as metalFabNoRepro from "./articles/metal-fabrication-no-repro-panels";
+import * as strippingPaint from "./articles/stripping-paint-classic-car";
+import * as winterStorage from "./articles/classic-car-winter-storage-alberta";
+import * as springStartup from "./articles/classic-car-spring-startup-checklist";
+import * as blockHeaters from "./articles/do-classics-need-block-heaters";
+import * as dailyDriveClassic from "./articles/daily-driving-a-classic-in-alberta";
+import * as hailClassics from "./articles/hail-and-classic-cars-alberta";
+import * as collectorInsurance from "./articles/collector-car-insurance-alberta";
+import * as antiquePlates from "./articles/antique-plates-alberta";
+import * as salvageRebuilt from "./articles/salvage-rebuilt-status-alberta";
+import * as registerNoTitle from "./articles/registering-classic-no-title-alberta";
+import * as importFromUs from "./articles/importing-classic-car-from-us";
+import * as buyingFirstClassic from "./articles/buying-your-first-classic-car";
+import * as prePurchaseInspection from "./articles/classic-car-pre-purchase-inspection";
+import * as appraisalAlberta from "./articles/classic-car-appraisal-alberta";
+import * as sellingClassic from "./articles/selling-a-classic-car-canada";
+import * as showAndShineSeason from "./articles/alberta-show-and-shine-season";
+import * as discBrakeConversion from "./articles/disc-brake-conversion-cost-canada";
+import * as overdriveSwap from "./articles/overdrive-transmission-swap-classic";
+import * as electronicIgnition from "./articles/electronic-ignition-conversion-classics";
+import * as ethanolFuel from "./articles/ethanol-fuel-classic-cars-canada";
+import * as restomodWiring from "./articles/restomod-wiring-harness";
+import * as interiorRestoration from "./articles/classic-interior-restoration-cost-canada";
+import * as restoreOrSell from "./articles/restore-or-sell-classic-car";
+import * as albertaRoadSalt from "./articles/alberta-road-salt-rust-prevention";
 
 const modules: ArticleModule[] = [
   whatIsARestomod,
-  roadToRadium,
+  restorationCost,
+  rustRepairCost,
+  paintJobCost,
+  frameOffVsRolling,
+  winterStorage,
+  collectorInsurance,
+  buyingFirstClassic,
+  dailyDriveClassic,
+  blockHeaters,
+  hailClassics,
+  springStartup,
+  patinaKeepOrPaint,
+  metalFabNoRepro,
+  strippingPaint,
+  antiquePlates,
+  salvageRebuilt,
+  registerNoTitle,
+  importFromUs,
+  prePurchaseInspection,
+  appraisalAlberta,
+  sellingClassic,
+  showAndShineSeason,
   lsSwapCost,
   exhaustNoiseLaws,
   barnFindFirstSteps,
@@ -36,6 +87,15 @@ const modules: ArticleModule[] = [
   engineRebuildCost,
   carbRebuildSigns,
   oopInspection,
+  roadToRadium,
+  discBrakeConversion,
+  overdriveSwap,
+  electronicIgnition,
+  ethanolFuel,
+  restomodWiring,
+  interiorRestoration,
+  restoreOrSell,
+  albertaRoadSalt,
 ];
 
 export const articles: Article[] = modules.map((m) => ({

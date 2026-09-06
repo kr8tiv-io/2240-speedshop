@@ -34,9 +34,9 @@ const content: Record<string, AreaContent> = {
   "sherwood-park": {
     keyword: "classic car restoration Sherwood Park",
     h1: "Classic car restoration in Sherwood Park",
-    metaTitle: "Classic Car Restoration Sherwood Park — Minutes From Baseline Road",
+    metaTitle: "Classic Restoration Sherwood Park",
     metaDescription:
-      "Classic car restoration for Sherwood Park and Strathcona County. 2240 Speed Shop sits on the county line at 2009 91 Ave NW — about ten minutes from Baseline Road. Restorations, rust repair, and classic service.",
+      "Classic car restoration for Sherwood Park and Strathcona County. 2240 Speed Shop sits on the county line at 2009 91 Ave NW, ten minutes from Baseline Road.",
     lede:
       "2240 Speed Shop sits on the Sherwood Park line at 2009 91 Ave NW. From Baseline Road it is roughly ten minutes west — closer than most Edmonton shops are to each other. For Strathcona County owners, classic car restoration stops being something you drive across a city for.",
     drive: "Baseline Road to the bay door — about 10 minutes",
@@ -101,9 +101,9 @@ const content: Record<string, AreaContent> = {
   "st-albert": {
     keyword: "classic car mechanic St. Albert",
     h1: "Classic car mechanic for St. Albert",
-    metaTitle: "Classic Car Mechanic St. Albert — Thirty Minutes Down the Henday",
+    metaTitle: "Classic Car Mechanic, St. Albert",
     metaDescription:
-      "A classic car mechanic for St. Albert owners: restoration, rust repair, paint, and classic service at 2240 Speed Shop in southeast Edmonton. About thirty minutes down the Anthony Henday. Book winter work for Rock'n August.",
+      "A classic car mechanic for St. Albert: restoration, rust repair, paint and service at 2240 Speed Shop in southeast Edmonton. Thirty minutes on the Henday.",
     lede:
       "St. Albert to 2240 Speed Shop is the Anthony Henday, top end to bottom — about thirty minutes on a clear road. A classic car mechanic is not a weekly errand, so the drive is rarely the deciding factor. What you book, and when you book it, is.",
     drive: "Anthony Henday north end to south end — about 30 minutes",
@@ -170,9 +170,9 @@ const content: Record<string, AreaContent> = {
   "leduc-nisku": {
     keyword: "classic car shop Leduc",
     h1: "Classic car shop for Leduc and Nisku",
-    metaTitle: "Classic Car Shop Leduc & Nisku — Passenger Classics, Not Fleet Iron",
+    metaTitle: "Classic Car Shop in Leduc, Nisku",
     metaDescription:
-      "A classic car shop for Leduc and Nisku owners. Nisku is built for heavy truck and fleet work — 2240 Speed Shop takes passenger classics, muscle cars, and custom pickups. About thirty minutes north on the QEII.",
+      "A classic car shop for Leduc and Nisku. Nisku is fleet country — 2240 Speed Shop takes passenger classics, muscle cars and custom pickups. Thirty minutes north.",
     lede:
       "Leduc and Nisku are full of shops, and most of them were built for heavy truck, fleet, and oilfield iron. A classic car shop is a different animal. 2240 Speed Shop takes passenger classics, muscle cars, and custom pickups, and the run north on the QEII is about thirty minutes.",
     drive: "QEII north to the Anthony Henday, then east — about 30 minutes",
@@ -237,9 +237,9 @@ const content: Record<string, AreaContent> = {
   "spruce-grove": {
     keyword: "car restoration Spruce Grove",
     h1: "Car restoration for Spruce Grove and the west end",
-    metaTitle: "Car Restoration Spruce Grove — Worth the Henday Haul",
+    metaTitle: "Car Restoration, Spruce Grove AB",
     metaDescription:
-      "Car restoration for Spruce Grove, Stony Plain, and Parkland County. 2240 Speed Shop is about forty minutes around the Anthony Henday — one trip in, one trip out, photos at stages in between.",
+      "Car restoration for Spruce Grove, Stony Plain and Parkland County. 2240 Speed Shop is about forty minutes around the Henday — one trip in, photos at stages.",
     lede:
       "Spruce Grove is the long way around — the full arc of the Anthony Henday from the west end down and across to southeast Edmonton, roughly forty minutes on a clear road. Car restoration is worth that drive precisely because it is not a weekly trip. You come twice, and the work happens in between.",
     drive: "Anthony Henday, west end around to the southeast — about 40 minutes",
@@ -325,6 +325,13 @@ export async function generateMetadata({
     alternates: { canonical: `/edmonton/${slug}` },
     openGraph: {
       type: "website",
+      title: `${copy.h1} — 2240 Speed Shop`,
+      description: copy.metaDescription,
+      url: `/edmonton/${slug}`,
+      images: [copy.image.src],
+    },
+    twitter: {
+      card: "summary_large_image",
       title: `${copy.h1} — 2240 Speed Shop`,
       description: copy.metaDescription,
       images: [copy.image.src],

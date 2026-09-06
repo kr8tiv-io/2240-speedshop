@@ -1,22 +1,22 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Image from "next/image";
 import Link from "next/link";
 import { site } from "@/lib/site";
 import { breadcrumbSchema, JsonLd } from "@/lib/schema";
+import { getArticle } from "@/lib/blog/registry";
 
-export const metadata: Metadata = {
-  title: "Classic Car Guides for Alberta — Costs, Laws, Winter",
-  description:
-    "Straight answers for Alberta classic car owners: what restoration costs in Canadian dollars, what modified vehicle laws in Alberta actually say, and how classics survive a −40 winter. Written in an Edmonton shop.",
+export const metadata: Metadata = withPageMetadata("/guides", {
+  title: "Alberta Guides: Cost, Law, Winter",
+  description: "Straight answers for Alberta classic owners: restoration costs in CAD, modified vehicle laws, and how classics survive −40. Written in an Edmonton shop.",
   alternates: { canonical: "/guides" },
   openGraph: {
     type: "website",
-    title: "Straight Answers, Alberta Numbers — 2240 Speed Shop Guides",
-    description:
-      "Three pillar guides on restoration cost in Canada, Alberta modified vehicle law, and winter survival for classic cars.",
+    title: "Alberta Guides: Cost, Law, Winter",
+    description: "Straight answers for Alberta classic owners: restoration costs in CAD, modified vehicle laws, and how classics survive −40. Written in an Edmonton shop.",
     url: "/guides",
   },
-};
+});
 
 type Pillar = {
   href: string;
@@ -86,11 +86,63 @@ const pillars: Pillar[] = [
   },
 ];
 
+// Keep the editorial labels while resolving published destinations through
+// the same registry used by the journal and static article routes.
+const publishedTopicSlugs: Record<string, string> = {
+  "What Classic Car Restoration Really Costs in Canada (Edmonton): Driver, Show, and Concours Tiers": "classic-car-restoration-cost-canada",
+  "Engine Rebuild and Performance Build Costs in Canada: Stock Refresh to Full Build": "engine-rebuild-cost-canada",
+  "LS Swap Cost in Canada: The Real All-In Number, and the Alberta Paperwork Nobody Mentions": "ls-swap-cost-canada",
+  "How Much Does It Cost to Paint a Car in Canada? Driver-Quality vs. Show-Quality, Priced Honestly": "classic-car-paint-job-cost-canada",
+  "Are Exhaust Mods Legal in Alberta? Noise Rules, Edmonton Enforcement, and How Not to Get Ticketed": "alberta-exhaust-noise-laws",
+  "Out-of-Province Inspection in Edmonton: Cost, What Is Checked, and the Modified-Car Trap": "out-of-province-inspection-edmonton",
+  "Buying a Write-Off to Build? Alberta Salvage-to-Rebuilt, Explained for Builders": "salvage-rebuilt-status-alberta",
+  "Antique Plates in Alberta: The 25-Year Rule, the Restrictions, and Whether They Suit Your Classic": "antique-plates-alberta",
+  "Classic and Collector Insurance in Alberta: Agreed Value, Appraisals, and Insuring a Restomod": "collector-car-insurance-alberta",
+  "Ethanol, Octane, and Old Iron: The Alberta Fuel Guide for Classic Engines": "ethanol-fuel-classic-cars-canada",
+  "The Winter Storage Bible for Classic and Modified Cars (Alberta Edition)": "classic-car-winter-storage-alberta",
+  "The Spring Startup Checklist: Waking Up Your Summer Car After an Alberta Winter": "classic-car-spring-startup-checklist",
+  "Block Heaters, Pan Heaters, and Battery Blankets: Winter Gear for Built and Classic Engines": "do-classics-need-block-heaters",
+  "Protecting a Classic or Lowered Car from Edmonton Road Salt and Calcium Chloride": "alberta-road-salt-rust-prevention",
+  "Can You Daily a Mustang, or Any RWD Classic, Through an Edmonton Winter?": "daily-driving-a-classic-in-alberta",
+  "What Is a Restomod? The Definitive Guide, With Real Builds": "what-is-a-restomod",
+  "Restomod vs. Restoration: Which Is Right for Your Classic?": "what-is-a-restomod",
+  "Is It Worth Restoring a Classic Car? An Honest Answer from Inside the Shop": "restore-or-sell-classic-car",
+  "How Long a Classic Restoration Takes Timelines": "classic-car-restoration-timeline",
+  "Frame-Off vs. Rolling Restoration, and Driver vs. Show vs. Concours": "frame-off-vs-rolling-restoration",
+  "How to Buy a Classic or Project in Canada: The Inspection Checklist We Use": "buying-your-first-classic-car",
+  "Classic Car Rust: How Bad Is Too Bad? Triage from the Restoration Bay": "rust-repair-cost-canada",
+  "Barn Find First Steps: Do Not Start It. Reviving a Car That Sat for Years": "barn-find-first-steps",
+  "Eight Signs Your Classic Carburetor Needs a Rebuild, Not Just an Adjustment": "carburetor-rebuild-signs",
+  "The Chevy C10 and Square-Body Buyer’s and Builder’s Guide (Alberta Edition)": "c10-square-body-alberta-guide",
+};
+
+function topicArticle(title: string) {
+  const slug = publishedTopicSlugs[title];
+  return slug ? getArticle(slug) : undefined;
+}
+
+function TopicLink({ title }: { title: string }) {
+  const article = topicArticle(title);
+  return article ? (
+    <Link
+      href={`/blog/${article.meta.slug}/`}
+      className="underline decoration-tungsten/40 underline-offset-4 hover:text-bone"
+    >
+      {title}
+    </Link>
+  ) : (
+    <span>
+      {title}
+      <span className="ml-2 font-mono text-[10px] uppercase tracking-widest text-tungsten/70">Planned</span>
+    </span>
+  );
+}
+
 const shopFloor = [
   "What Is a Restomod? The Definitive Guide, With Real Builds",
   "Restomod vs. Restoration: Which Is Right for Your Classic?",
   "Is It Worth Restoring a Classic Car? An Honest Answer from Inside the Shop",
-  "How Long Does a Classic Car Restoration Take? Stage-by-Stage Timelines",
+  "How Long a Classic Restoration Takes Timelines",
   "Frame-Off vs. Rolling Restoration, and Driver vs. Show vs. Concours",
   "How to Buy a Classic or Project in Canada: The Inspection Checklist We Use",
   "Classic Car Rust: How Bad Is Too Bad? Triage from the Restoration Bay",
@@ -202,9 +254,7 @@ export default function GuidesPage() {
         </h2>
         <p className="mt-4 max-w-3xl leading-relaxed text-steel">
           Each pillar is a hub. Under it sits a run of specific answers, each one taking a single
-          question that currently has no Canadian answer worth reading. The titles below are the
-          publishing queue, in order. None of them are live yet — this is the architecture, stated
-          plainly, so you can see where the work is going before it gets there.
+          question. Published articles are linked below; upcoming topics are marked planned.
         </p>
 
         <div className="mt-12 space-y-14">
@@ -217,7 +267,8 @@ export default function GuidesPage() {
                   </Link>
                 </h3>
                 <span className="font-mono text-xs uppercase tracking-widest text-tungsten">
-                  {p.spokes.length} planned
+                  {p.spokes.filter((title) => topicArticle(title)).length} published ·{" "}
+                  {p.spokes.filter((title) => !topicArticle(title)).length} planned
                 </span>
               </div>
               <ol className="mt-5 grid gap-x-10 gap-y-3 sm:grid-cols-2">
@@ -226,7 +277,7 @@ export default function GuidesPage() {
                     <span className="font-mono text-xs text-tungsten/50">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span>{s}</span>
+                    <TopicLink title={s} />
                   </li>
                 ))}
               </ol>
@@ -252,14 +303,14 @@ export default function GuidesPage() {
           <Link href="/builds" className="text-bone underline decoration-tungsten/40 underline-offset-4 hover:text-neon-bloom">
             build case studies
           </Link>
-          , because that is where the proof is. Same queue, different shelf.
+          , because that is where the proof is. Published articles are linked below; upcoming topics are marked planned.
         </p>
 
         <ul className="mt-8 grid gap-x-10 gap-y-3 sm:grid-cols-2">
           {shopFloor.map((t) => (
             <li key={t} className="flex gap-3 text-sm leading-relaxed text-steel">
               <span aria-hidden className="mt-[7px] h-[6px] w-[6px] shrink-0 rotate-45 bg-tungsten/50" />
-              <span>{t}</span>
+              <TopicLink title={t} />
             </li>
           ))}
         </ul>

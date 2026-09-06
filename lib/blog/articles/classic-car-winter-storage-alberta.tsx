@@ -12,9 +12,8 @@ export const meta: ArticleMeta = {
   slug: "classic-car-winter-storage-alberta",
   title: "How to Put a Classic Car Away for an Alberta Winter",
   accent: "Winter",
-  metaTitle: "How to Store a Classic Car for an Alberta Winter",
-  description:
-    "The October put-away procedure — fuel, oil, battery, tires, and mice — that gets a classic through five months of Alberta winter and starts clean in April.",
+  metaTitle: "Store a Classic for Alberta Winter",
+  description: "The October put-away procedure — fuel, oil, battery, tires, and mice — that gets a classic through five months of Alberta winter and starts clean in April.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

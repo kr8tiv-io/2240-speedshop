@@ -16,12 +16,49 @@
 param(
   [Parameter(Mandatory = $true)][string]$Repo,
   [string]$Message = "Combined site: After Hours film + shop walk-through + Journal",
-  [string]$LiveUrl = "https://steelblue-gaur-917651.hostingersite.com"
+  [string]$LiveUrl = "https://2240speedshop.com",
+  [switch]$PrepareOnly
 )
 
 $ErrorActionPreference = "Stop"
 $project = Split-Path -Parent $PSScriptRoot
 Set-Location $project
+$project = [System.IO.Path]::GetFullPath($project)
+$out = [System.IO.Path]::GetFullPath((Join-Path $project "out"))
+$Repo = [System.IO.Path]::GetFullPath($Repo).TrimEnd('\', '/')
+if ($PrepareOnly -and $Repo -ne 'C:\tmp\2240deploy\daylight') {
+  throw "PrepareOnly is restricted to the verified 2240 deployment checkout"
+}
+if (-not (Test-Path -LiteralPath (Join-Path $Repo ".git"))) {
+  throw "deployment target must be an existing Git checkout"
+}
+if ($Repo -eq $project -or $Repo -eq $out -or $Repo -eq [System.IO.Path]::GetPathRoot($Repo)) {
+  throw "deployment target is not a dedicated deployment checkout"
+}
+
+function Assert-NoReparsePoints {
+  param([Parameter(Mandatory = $true)][string]$Root)
+  if (-not (Test-Path -LiteralPath $Root)) { return }
+  $items = @(Get-Item -LiteralPath $Root -Force) + @(Get-ChildItem -LiteralPath $Root -Recurse -Force)
+  if ($items | Where-Object { $_.Attributes -band [System.IO.FileAttributes]::ReparsePoint } | Select-Object -First 1) {
+    throw "refusing filesystem mutation through a link or junction under $Root"
+  }
+}
+
+function Remove-ExportPath {
+  param([Parameter(Mandatory = $true)][string]$RelativePath)
+  $target = [System.IO.Path]::GetFullPath((Join-Path $out $RelativePath))
+  if (-not $target.StartsWith($out + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "prune target escaped the export: $RelativePath"
+  }
+  if (Test-Path -LiteralPath $target) {
+    Assert-NoReparsePoints -Root $target
+    Remove-Item -LiteralPath $target -Recurse -Force
+  }
+}
+
+Assert-NoReparsePoints -Root $out
+Assert-NoReparsePoints -Root $Repo
 
 function Wait-ForPublishedRelease {
   param(
@@ -140,16 +177,18 @@ if ($LASTEXITCODE -ne 0) { throw "precompress failed" }
 
 Write-Host "== building static export"
 $env:EXPORT = "1"
+Remove-Item Env:HOSTINGER_PREVIEW -ErrorAction SilentlyContinue
+Remove-Item Env:BASEPATH -ErrorAction SilentlyContinue
 # Webpack resolves next/font during the build. Honour the Windows trust store
 # instead of weakening TLS when the machine sits behind an HTTPS inspector.
 if ($env:NODE_OPTIONS -notmatch "(?:^|\s)--use-system-ca(?:\s|$)") {
   $env:NODE_OPTIONS = ($env:NODE_OPTIONS + " --use-system-ca").Trim()
 }
-pnpm exec next build --webpack
+node --use-system-ca node_modules/next/dist/bin/next build --webpack
 if ($LASTEXITCODE -ne 0) { throw "next build failed" }
 
-$out = Join-Path $project "out"
 if (-not (Test-Path $out)) { throw "no out/ produced" }
+Assert-NoReparsePoints -Root $out
 
 Write-Host "== content-addressing the model shelves"
 node scripts/prepare-deploy.js
@@ -158,14 +197,15 @@ if ($LASTEXITCODE -ne 0) { throw "prepare-deploy failed" }
 Write-Host "== pruning payload"
 # Raw source GLBs (~140 MB) never ship; only models/hero-<hash> survives, and
 # prepare-deploy has already enforced that. Belt and braces on the rest:
-Get-ChildItem (Join-Path $out "models") -File -ErrorAction SilentlyContinue | Remove-Item -Force
-Remove-Item (Join-Path $out "draco") -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $out "models\CREDITS.md") -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $out "shop\_orig-letterboxed") -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $out "shop\_orig-ig") -Recurse -Force -ErrorAction SilentlyContinue
+foreach ($file in @(Get-ChildItem -LiteralPath (Join-Path $out "models") -File -ErrorAction SilentlyContinue)) {
+  Remove-ExportPath -RelativePath ("models\" + $file.Name)
+}
+foreach ($relative in @("draco", "models\CREDITS.md", "shop\_orig-letterboxed", "shop\_orig-ig")) {
+  Remove-ExportPath -RelativePath $relative
+}
 # The un-stamped shelves must not ship next to the stamped ones: double weight.
-if (Test-Path (Join-Path $out "models-opt")) { Remove-Item (Join-Path $out "models-opt") -Recurse -Force }
-if (Test-Path (Join-Path $out "models-mobile")) { Remove-Item (Join-Path $out "models-mobile") -Recurse -Force }
+Remove-ExportPath -RelativePath "models-opt"
+Remove-ExportPath -RelativePath "models-mobile"
 
 node scripts/flatten-rsc.mjs $out
 if ($LASTEXITCODE -ne 0) { throw "flatten-rsc failed" }
@@ -262,6 +302,17 @@ try {
       }
     })
   }
+  # A previously prepared but uncommitted checkout may have newer markers
+  # than the published Git tree. Keep that committed generation too.
+  foreach ($manifest in @(".deploy-current-static.txt", ".deploy-current-shelves.txt")) {
+    $committedPaths = @(git -C $Repo show "HEAD:$manifest" 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw "could not read the prior committed immutable manifest: $manifest" }
+    if ($manifest -eq ".deploy-current-static.txt") {
+      $previousStatic += @($committedPaths | Where-Object { $_.Trim().Length -gt 0 })
+    } else {
+      $previousShelves += @($committedPaths | Where-Object { $_.Trim().Length -gt 0 })
+    }
+  }
   $previousImmutable = @($previousStatic + $previousShelves | Sort-Object -Unique)
 
   Write-Host "== preserving previous immutable runtime/model generation ($($previousImmutable.Count) files)"
@@ -281,8 +332,18 @@ try {
     Copy-Item -LiteralPath $source -Destination $target -Force
   }
 
-  Get-ChildItem $Repo -Force | Where-Object { $_.Name -ne ".git" } | Remove-Item -Recurse -Force
-  Copy-Item (Join-Path $out "*") $Repo -Recurse -Force
+  Assert-NoReparsePoints -Root $Repo
+  if (-not (Test-Path -LiteralPath (Join-Path $Repo ".git"))) { throw "deployment checkout lost its Git metadata" }
+  foreach ($item in @(Get-ChildItem -LiteralPath $Repo -Force | Where-Object { $_.Name -ne ".git" })) {
+    $target = [System.IO.Path]::GetFullPath($item.FullName)
+    if (-not $target.StartsWith($repoRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "mirror delete escaped the deployment checkout"
+    }
+    Remove-Item -LiteralPath $target -Recurse -Force
+  }
+  foreach ($item in @(Get-ChildItem -LiteralPath $out -Force)) {
+    Copy-Item -LiteralPath $item.FullName -Destination $Repo -Recurse -Force
+  }
 
   if ($previousImmutable.Count -gt 0) {
     Write-Host "== restoring previous immutable runtime/model generation"
@@ -318,6 +379,23 @@ try {
   if (Test-Path -LiteralPath $overlapResolved) {
     Remove-Item -LiteralPath $overlapResolved -Recurse -Force
   }
+}
+
+if ($PrepareOnly) {
+  $reportDirectory = Join-Path $project "output"
+  New-Item -ItemType Directory -Path $reportDirectory -Force | Out-Null
+  [ordered]@{
+    releaseId = $releaseId
+    preparedAt = [DateTime]::UtcNow.ToString("o")
+    deploymentCheckout = $Repo
+    exportRoot = $out
+    exportBytes = $size
+    preservedImmutableFiles = $previousImmutable.Count
+    criticalAssets = $criticalAssets
+    published = $false
+  } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $reportDirectory "release-prepared.json")
+  Write-Host "== prepared release $releaseId in $Repo; no Git mutation or publish performed"
+  return
 }
 
 Write-Host "== committing"

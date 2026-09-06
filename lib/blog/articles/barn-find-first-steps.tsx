@@ -12,9 +12,8 @@ export const meta: ArticleMeta = {
   title:
     "Barn Find First Steps: Don't Start It! How to Revive a Car That Sat for Years",
   accent: "Don't",
-  metaTitle: "Barn Find First Steps — Don't Start It. Revive It Properly",
-  description:
-    "Why you never turn the key on a car that sat for years, and the five-step protocol that wakes one up safely — free the engine, replace the fluids, sort the fuel, then first start. From an Edmonton shop.",
+  metaTitle: "Barn Find First Steps, Don't Start",
+  description: "Why you never turn the key on a car that sat for years, and the five-step protocol that wakes one up safely — free the engine, replace the fluids, sort the.",
   datePublished: "2026-08-12",
   dateModified: "2026-08-12",
   author: "2240 Speed Shop",

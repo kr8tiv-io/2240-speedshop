@@ -15,9 +15,8 @@ export const meta: ArticleMeta = {
   title:
     "Rust Repair on a Classic: Patch Panels, Full Panels, and Honest CAD Numbers",
   accent: "Honest",
-  metaTitle: "Classic Car Rust Repair Cost in Canada: Patch vs Full Panel",
-  description:
-    "What rust repair really costs on a classic in Canada — patch panels, full panels, and hand fabrication — and why honest estimates move once the paint comes off.",
+  metaTitle: "Classic Rust Repair Cost in Canada",
+  description: "What rust repair really costs on a classic in Canada — patch panels, full panels, and hand fabrication — and why honest estimates move once the paint comes off.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

@@ -1,0 +1,17 @@
+# Quote photo drops. Customer sheets stay private; only image links are public.
+Options -Indexes
+<IfModule mod_authz_core.c>
+  <FilesMatch "(?i)(^sheet\.txt$|\.(php|phtml|php[0-9]|phar|cgi|pl|exe|sh)(\.|$))">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  <FilesMatch "(?i)(^sheet\.txt$|\.(php|phtml|php[0-9]|phar|cgi|pl|exe|sh)(\.|$))">
+    Deny from all
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+  Header set Cache-Control "no-store"
+</IfModule>

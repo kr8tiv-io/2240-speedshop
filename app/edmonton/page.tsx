@@ -1,22 +1,20 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Image from "next/image";
 import Link from "next/link";
 import { site, services, areas } from "@/lib/site";
 import { JsonLd, breadcrumbSchema, faqSchema } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "Classic Car Restoration Edmonton — Where the Shop Is and Who We Serve",
-  description:
-    "Looking for classic car restoration near you in Edmonton? 2240 Speed Shop sits at 2009 91 Ave NW on the Sherwood Park line. Drive times, areas served, and links to Sherwood Park, St. Albert, Leduc, Nisku, and Spruce Grove.",
+export const metadata: Metadata = withPageMetadata("/edmonton", {
+  title: "Classic Car Restoration Edmonton",
+  description: "Classic car restoration in Edmonton at 2240 Speed Shop, 2009 91 Ave NW on the Sherwood Park line. Drive times for Sherwood Park, St. Albert, Leduc and Nisku.",
   alternates: { canonical: "/edmonton" },
   openGraph: {
     type: "website",
-    title: "Classic Car Restoration Near You in Edmonton — 2240 Speed Shop",
-    description:
-      "2009 91 Ave NW, right on the Sherwood Park boundary. Most of the metro is inside a forty-minute drive.",
-    images: ["/shop/IMG_2943-original.jpeg"],
+    title: "Classic Car Restoration Edmonton",
+    description: "Classic car restoration in Edmonton at 2240 Speed Shop, 2009 91 Ave NW on the Sherwood Park line. Drive times for Sherwood Park, St. Albert, Leduc and Nisku.",
   },
-};
+});
 
 const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
   `${site.street}, ${site.city}, ${site.region} ${site.postalCode}`

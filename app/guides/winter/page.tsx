@@ -1,22 +1,21 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Image from "next/image";
 import Link from "next/link";
 import { site } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, JsonLd } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "Winter Storage for Classic Cars in Alberta — The −40 Guide",
-  description:
-    "Winter storage and cold-weather survival for classic cars in Alberta: storage prep, fuel stabiliser, battery tenders, mice, moisture, block heaters, cold-start reality, and the spring wake-up checklist.",
+export const metadata: Metadata = withPageMetadata("/guides/winter", {
+  title: "Winter Storage for Alberta Classics",
+  description: "Winter storage for classic cars in Alberta: fuel stabiliser, battery tenders, mice, moisture, block heaters, cold starts, and the spring wake-up checklist.",
   alternates: { canonical: "/guides/winter" },
   openGraph: {
     type: "article",
-    title: "Winter Storage and Cold-Weather Survival for Alberta Classics",
-    description:
-      "Storage prep, fuel, batteries, rodents, moisture, block heaters, and the spring checklist — written where it actually hits −40.",
+    title: "Winter Storage for Alberta Classics",
+    description: "Winter storage for classic cars in Alberta: fuel stabiliser, battery tenders, mice, moisture, block heaters, cold starts, and the spring wake-up checklist.",
     url: "/guides/winter",
   },
-};
+});
 
 const faqs = [
   {

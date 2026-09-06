@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   title:
     "Alberta Antique Plates: The 25-Year Rule, the Restrictions, and Whether They Are Worth It",
   accent: "Worth It",
-  metaTitle: "Antique Plates in Alberta: Rules, Cost, and Restrictions",
-  description:
-    "What Alberta antique vehicle registration allows and forbids, the one-time fee, year-of-manufacture plates, and how the plate squares with collector insurance.",
+  metaTitle: "Alberta Antique Plates: The Rules",
+  description: "What Alberta antique vehicle registration allows and forbids, the one-time fee, year-of-manufacture plates, and how the plate squares with collector insurance.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

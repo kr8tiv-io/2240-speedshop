@@ -5,6 +5,30 @@
 # the fingerprinted assets forever, and serve the 3D formats with the right MIME
 # type so the browser streams them instead of guessing.
 
+# One public origin. Keep Hostinger's preview available for release verification.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Exact legacy GoDaddy paths only; unrelated missing pages remain 404s.
+  RewriteRule ^f/cutting-edge-automotive-solutions/?$ https://2240speedshop.com/blog/ [R=301,L,NE]
+  RewriteRule ^sitemap\.(?:website|blog)\.xml$ https://2240speedshop.com/sitemap.xml [R=301,L,NE]
+  RewriteCond %{HTTP_HOST} ^www\.2240speedshop\.com$ [NC]
+  RewriteRule ^ https://2240speedshop.com%{REQUEST_URI} [R=301,L,NE]
+  RewriteCond %{HTTP_HOST} ^2240speedshop\.com$ [NC]
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !^https$ [NC]
+  RewriteRule ^ https://2240speedshop.com%{REQUEST_URI} [R=301,L,NE]
+</IfModule>
+
+<IfModule mod_setenvif.c>
+  SetEnvIfNoCase Host "\.hostingersite\.com$" preview_host
+</IfModule>
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-Robots-Tag "noindex, follow" env=preview_host
+</IfModule>
+
 # ── MIME ────────────────────────────────────────────────────────────────────
 <IfModule mod_mime.c>
   AddType model/gltf-binary          .glb
@@ -13,7 +37,12 @@
   AddType font/woff2                 .woff2
   AddType image/webp                 .webp
   AddType image/avif                 .avif
+  AddType application/rss+xml        .rss
+  AddType application/atom+xml       .atom
 </IfModule>
+<Files "f.json">
+  ForceType application/feed+json
+</Files>
 
 # ── Pre-compressed models ───────────────────────────────────────────────────
 # The claim below — that .glb is "already compressed" — is true of the props,
@@ -30,6 +59,7 @@
 # request to notice rather than an outage.
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteRule ^quote\.php$ - [L]
   RewriteCond %{HTTP:Accept-Encoding} br
   RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}\.br -f
   RewriteRule ^(.+)\.glb$ /$1.glb.br [L]
@@ -56,6 +86,7 @@
   AddOutputFilterByType BROTLI_COMPRESS application/javascript application/x-javascript
   AddOutputFilterByType BROTLI_COMPRESS application/json application/manifest+json
   AddOutputFilterByType BROTLI_COMPRESS image/svg+xml application/xml
+  AddOutputFilterByType BROTLI_COMPRESS application/rss+xml application/atom+xml application/feed+json
 </IfModule>
 
 <IfModule mod_deflate.c>
@@ -63,6 +94,7 @@
   AddOutputFilterByType DEFLATE application/javascript application/x-javascript
   AddOutputFilterByType DEFLATE application/json application/manifest+json
   AddOutputFilterByType DEFLATE image/svg+xml application/xml
+  AddOutputFilterByType DEFLATE application/rss+xml application/atom+xml application/feed+json
 </IfModule>
 
 # ── Cache ───────────────────────────────────────────────────────────────────
@@ -88,8 +120,12 @@
   # Browsers always revalidate. The shared Hostinger edge may reuse a page for
   # one minute (and refresh it in the background) now that deployment waits for
   # a live release marker before purging, which removes the old publish race.
-  <FilesMatch "\.(html|txt|xml|json)$">
+  <FilesMatch "\.(html|txt|xml|json|rss|atom)$">
     Header set Cache-Control "public, max-age=0, s-maxage=60, stale-while-revalidate=300, stale-if-error=86400, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "\.php$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate"
+    Header set X-Robots-Tag "noindex, nofollow"
   </FilesMatch>
 </IfModule>
 

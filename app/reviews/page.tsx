@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import Image from "next/image";
 import { site } from "@/lib/site";
 import { breadcrumbSchema, JsonLd } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "2240 Speed Shop Reviews — What Customers Say in Edmonton",
-  description:
-    "2240 Speed Shop reviews from Google: beautiful cars, outstanding service, terrific quality work. Read what customers wrote about Terry Harmider's Edmonton restoration shop, then come see the work in person.",
+export const metadata: Metadata = withPageMetadata("/reviews", {
+  title: "2240 Speed Shop Reviews Edmonton",
+  description: "2240 Speed Shop reviews from Google: beautiful cars, outstanding service, terrific quality work. What customers wrote about Terry Harmider's Edmonton shop.",
   alternates: { canonical: "/reviews" },
   openGraph: {
-    title: "2240 Speed Shop Reviews — Edmonton",
-    description:
-      "Customer words, quoted exactly, plus a practical way to judge the workmanship in person.",
+    title: "2240 Speed Shop Reviews Edmonton",
+    description: "2240 Speed Shop reviews from Google: beautiful cars, outstanding service, terrific quality work. What customers wrote about Terry Harmider's Edmonton shop.",
     url: "/reviews",
   },
-};
+});
 
 // Verbatim from public Google reviews. No names are published here beyond the
 // platform, and no aggregateRating markup is emitted — self-reported ratings

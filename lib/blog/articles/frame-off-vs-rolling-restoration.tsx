@@ -12,9 +12,8 @@ export const meta: ArticleMeta = {
   slug: "frame-off-vs-rolling-restoration",
   title: "Frame-Off or Rolling Restoration: Which One Your Car Actually Needs",
   accent: "Rolling",
-  metaTitle: "Frame-Off vs Rolling Restoration: Which One Your Car Needs",
-  description:
-    "The structure decides — what a frame-off actually buys, when a rolling restoration is the smarter spend, and the rot and end-use markers that make the call.",
+  metaTitle: "Frame-Off vs Rolling Restoration",
+  description: "The structure decides — what a frame-off actually buys, when a rolling restoration is the smarter spend, and the rot and end-use markers that make the call.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

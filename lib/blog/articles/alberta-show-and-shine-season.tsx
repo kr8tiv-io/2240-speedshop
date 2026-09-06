@@ -13,9 +13,8 @@ export const meta: ArticleMeta = {
   slug: "alberta-show-and-shine-season",
   title: "The Alberta Show Circuit: A Season Planner From May Long to September",
   accent: "Season",
-  metaTitle: "Alberta Car Show Season Planner: May Long to September",
-  description:
-    "Which Alberta shows are worth the fuel, how to plan the calendar around three anchor weekends, and how to finish September without burning out car or family.",
+  metaTitle: "Alberta Car Show Season Planner AB",
+  description: "Which Alberta shows are worth the fuel, how to plan the calendar around three anchor weekends, and how to finish September without burning out car or family.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

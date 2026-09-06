@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ArticleMeta } from "../types";
 
 /**
- * JOURNAL No. 11 — Patina: Keep It, Seal It, or Paint Over It?
+ * JOURNAL No. 11 — Patina: Keep It, Seal It, or Paint
  * The body-and-paint wedge for the patina keyword cluster. Answers the value
  * question honestly, tells the truth about clear-over-patina, and draws the
  * line between character and structure. Links down into the C10 guide, the
@@ -12,11 +12,10 @@ import type { ArticleMeta } from "../types";
 
 export const meta: ArticleMeta = {
   slug: "patina-keep-it-or-paint-it",
-  title: "Patina: Keep It, Seal It, or Paint Over It?",
+  title: "Patina: Keep It, Seal It, or Paint",
   accent: "Patina",
-  metaTitle: "Patina: Keep It, Seal It, or Paint Over It?",
-  description:
-    "When original paint adds value, how clear-over-patina really holds up, and the exact line where truck character ends and structural rust begins — from an Edmonton shop.",
+  metaTitle: "Patina: Keep It, Seal It, or Paint",
+  description: "When original paint adds value, how clear-over-patina really holds up, and the exact line where truck character ends and structural rust begins — from an.",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

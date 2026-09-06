@@ -14,9 +14,8 @@ export const meta: ArticleMeta = {
   slug: "classic-car-restoration-cost-canada",
   title: "What a Classic Car Restoration Costs in Canada, Stage by Stage",
   accent: "Costs",
-  metaTitle: "What a Classic Car Restoration Costs in Canada (Stage by Stage)",
-  description:
-    "Hedged Canadian-dollar ranges for every stage of a classic restoration — teardown, metal, paint, drivetrain, assembly — plus the Alberta rules that protect your budget.",
+  metaTitle: "Classic Restoration Cost in Canada",
+  description: "Hedged Canadian-dollar ranges for every stage of a classic restoration — teardown, metal, paint, drivetrain, assembly — plus the Alberta rules that protect your",
   datePublished: "2026-08-21",
   dateModified: "2026-08-21",
   author: "2240 Speed Shop",

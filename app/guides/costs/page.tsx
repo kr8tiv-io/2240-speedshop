@@ -1,22 +1,21 @@
 import type { Metadata } from "next";
+import { withPageMetadata } from "@/lib/metadata";
 import Image from "next/image";
 import Link from "next/link";
 import { site } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, JsonLd } from "@/lib/schema";
 
-export const metadata: Metadata = {
-  title: "Classic Car Restoration Cost in Canada — Real CAD Ranges",
-  description:
-    "What classic car restoration actually costs in Canada. Honest CAD ranges for mechanical refresh, rolling restoration, frame-off, and restomod builds, what drives the price, and why quotes vary. From an Edmonton shop.",
+export const metadata: Metadata = withPageMetadata("/guides/costs", {
+  title: "Restoration Cost Guide in Canada",
+  description: "What classic car restoration actually costs in Canada. Honest CAD ranges for mechanical refresh, rolling restoration, frame-off and restomod. Edmonton shop.",
   alternates: { canonical: "/guides/costs" },
   openGraph: {
     type: "article",
-    title: "What Classic Car Restoration Actually Costs in Canada",
-    description:
-      "Honest Canadian-dollar ranges by scope, where the money goes, and why two shops quote the same car differently.",
+    title: "Restoration Cost Guide in Canada",
+    description: "What classic car restoration actually costs in Canada. Honest CAD ranges for mechanical refresh, rolling restoration, frame-off and restomod. Edmonton shop.",
     url: "/guides/costs",
   },
-};
+});
 
 const faqs = [
   {
