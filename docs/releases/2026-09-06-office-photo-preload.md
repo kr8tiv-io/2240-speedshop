@@ -1,7 +1,10 @@
 # Original garage photographs: earlier cache fill — 2026-09-06
 
-Prepared release: `acce5c29994840cda346ff4e6119f2ea`.
-Publication and final browser evidence are recorded below after verification.
+Published release: `acce5c29994840cda346ff4e6119f2ea`.
+Application source: `ec8ce5710639c9c0d3d265f98c68c1a94ac94d12`, pushed to both
+kr8tiv-io and kr8tiv-ai. Deployment: `45bb7eb3dccf23cb59c133260430e0e79161e285`
+on kr8tiv-io/2240-daylight-preview main. Later evidence-only source commits do
+not change the deployed application bytes.
 Previous live release: `f89f11d92629434280962e1468514fcd`.
 Exact rollback archive: `output/baseline-f89f.zip`, created from deployment
 `8479a2663ebe3b8d5f390d9085558ee805b2d808` before preparing this candidate.
@@ -115,5 +118,32 @@ DNS/mail/SSL change, real client test lead, phone call or email was made.
 
 ## Publication and final browser checks
 
-Pending; do not treat this candidate as published until this section records
-the verified production marker, exact live bytes and final interaction results.
+The exact production marker was observed before the required Hostinger cache
+purge, which the API accepted. All 69 queryless canonical pages and 24 key
+assets matched the prepared bytes after that purge. Trusted HTTPS, apex/www
+and legacy-blog redirects passed. Versioned model responses retain Brotli
+encoding and one-year immutable caching. The API's generic purge wording does
+not establish that a separate CDN is active. Report:
+`output/published-release-check.json` (2026-09-06 06:22 UTC).
+
+The live cold mobile-emulated tour passed all seven stations, with 131 textures,
+74 model responses, no errors or horizontal overflow. The seven exact photos
+started at 9.890 s, finished by 12.178 s, and transferred their full original
+3,172,098 bytes once. Their dimensions and GPU texture settings match baseline.
+The full reveal occurred at 17.056 s, including the harness's approach scroll
+and original reveal fade. The previous single live tour was 27.936 s, but
+other prior live runs were much faster: network/cache variance prevents
+attributing that entire difference to this change. Use the controlled
+comparisons above for measured improvement, not a universal live speed claim.
+Report: `office-live-mobile/results.json` in the performance evidence directory.
+
+Three focused live navigation checks passed with no browser errors or
+unexpected mutation requests: desktop/mobile KR8TIV and Contact after leaving
+the loaded garage, plus quote fragment → Guides → quote → browser Back.
+Report: `output/playwright/site-actions-office-live/results.json`.
+
+Next useful investigation is desktop steady GPU/render-loop cost: this pass
+does not improve the roughly 24–29 fps observed on this integrated GPU with
+the current full desktop effects. Preserve those effects and profile the
+actual cost before changing scheduling or draw-call implementation. The
+continuous optimization goal remains active.
