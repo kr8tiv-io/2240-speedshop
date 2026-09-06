@@ -1,11 +1,11 @@
 # Lossless garage model packets
 
-## Candidate and rollback
+## Release and rollback
 
-Prepared candidate: `b51232a823e2442bb76e7c6e6c85bd84`, application source
-`b72b5c1`. **Publication is pending the remaining browser release checks.**
-The current live application is still `acce5c29994840cda346ff4e6119f2ea`,
-deployment `45bb7eb3`. Its exact rollback is `output/baseline-acce.zip`
+Published release: `b51232a823e2442bb76e7c6e6c85bd84`, application source
+`b72b5c1`, deployment `d02c8e7395df28636d2fba6510d9eb2931afdd4e`.
+The previous application was `acce5c29994840cda346ff4e6119f2ea`, deployment
+`45bb7eb3`. Its exact rollback is `output/baseline-acce.zip`
 (67,250,890 bytes). Existing backups are preserved.
 
 ## What changed
@@ -72,7 +72,7 @@ Evidence: `output/model-packet-comparison.json`,
 `output/model-packet-release-fidelity.json`, and the `packets-abba-v3-*` /
 `packets-local-*` folders under `output/playwright/garage-performance-2026-09-06/`.
 
-## Verification recorded so far
+## Verification
 
 - Decoder: 31 checks; coordinator: 16; real HTTP loader integration: 9.
 - Generator contract proves deterministic packets, exact bytes, route order,
@@ -94,6 +94,11 @@ Evidence: `output/model-packet-comparison.json`,
   5,324 local link/asset references resolve. All 40 entries in each feed resolve.
 - Exact small `Made with ♥ by KR8TIV` footer credit appears in all 72 HTML
   documents, with only `KR8TIV` linked. Export and deployment mirror match.
+- Full prepared-site action audit: **127 passed, zero failed, zero browser
+  errors**. Covers a quote CTA on all 69 pages, six service lanes, disclosures,
+  Maps/address, repeated fragments, desktop/mobile navigation, all shared footer
+  destinations, and KR8TIV/Contact after the loaded garage. Four intercepted
+  quote responses prove UI failure/retry/success handling; no lead was sent.
 
 ## External limits
 
@@ -102,3 +107,32 @@ claim is made. SeaOcean 95+, rankings, separate Hostinger CDN activation,
 Search Console/Bing ownership, physical Apple performance and actual email
 inbox delivery remain unverified. No client lead, call, purchase, DNS/mail/SSL
 change or user support-tab manipulation is part of this release.
+
+## Publication verification
+
+The exact Hostinger marker appeared before the authorized cache purge, which
+was accepted. The post-purge queryless release checker passed all 69 live HTML
+pages and 45 assets, including all 21 packets. Each packet returned HTTP 200,
+`application/octet-stream`, `Content-Encoding: br`, year-long immutable caching
+and the exact expected decoded bytes. Trusted HTTPS and apex/www/legacy-path
+redirects passed. The quote endpoint returned its expected GET 405; no lead
+was sent. Report: `output/published-release-check.json`.
+
+The live full mobile tour passes all seven stations with all 71 original model
+hashes, three hero resources and 47 total model transports. Reveal was 17.651 s
+in this one live run; do not compare it to earlier live sessions as a controlled
+gain. A second private live-browser test forced all 14 packet requests to 404:
+the complete seven-station tour still passed through 74 exact individual model
+transfers (including hero), with only the deliberately injected packet errors.
+
+Three focused live action checks pass: cold quote fragment -> Guides -> quote
+and back, plus KR8TIV and Contact after the garage is ready on both desktop and
+mobile. No uncaught browser errors, unexpected mutations or real submissions.
+Reports: `packets-live-phone390`, `packets-live-fallback404` under the garage
+performance output and `output/playwright/packets-live-footer-actions/results.json`.
+
+The continuous goal remains active. Next useful work is measuring remaining
+CPU/GPU warm-up scheduling and the main shaded desktop scene. Packet transport
+does not solve those costs. Preserve this checkpoint; do not remove features,
+relax model fidelity, retry the rejected rendering shortcuts or repeat unchanged
+external paywall checks merely to generate activity.

@@ -12,6 +12,13 @@
 
 ## Current checkpoint and scope
 
+**Execution update:** Tasks 1–5 completed and verified in release
+`b51232a823e2442bb76e7c6e6c85bd84`, deployment `d02c8e73`. The original planning
+context below is retained as history. Final measured results and scope are in
+`docs/releases/2026-09-06-lossless-model-packets.md`. The separate continuous
+optimization goal is still active; the release is not a claim of universal
+maximum performance, physical Apple testing or a paid SeaOcean score.
+
 This is a transport implementation plan, **not a shipped feature**. The user's
 standing authorization covers implementation and deployment after verification;
 continue locally without creating another user task. Use the existing dedicated
