@@ -301,6 +301,15 @@ try {
     assert.ok(Number.isFinite(rendererAt), "Read the actual renderer creation time");
     assert.ok(result.officeResources.every(r => r.startTime <= rendererAt + 250), "Office requests must start with this renderer, not late at station five");
   }
+  if (process.env.QA_PHOTO_EXPECT_PREMOUNT === "1") {
+    const heroStages = await page.evaluate(() => window.__garageQA.heroStages);
+    const heroAt = heroStages.find(entry => entry.stage === "true")?.at;
+    const rendererAt = Number(result.consoleLog.find(log => /renderer created/.test(log.text))?.text.match(/@(\d+)/)?.[1]);
+    assert.ok(Number.isFinite(heroAt) && Number.isFinite(rendererAt), "Record real hero readiness and renderer creation");
+    result.photoPreloadGate = { heroAt, rendererAt, starts: result.officeResources.map(r => r.startTime) };
+    assert.ok(result.officeResources.every(r => r.startTime >= heroAt - 25), "Office preloading must not compete with the unready hero");
+    assert.ok(result.officeResources.every(r => r.startTime < rendererAt - 1000), "Office downloads must overlap the approach before the garage GPU context, not wait for scroll-stop");
+  }
   if (process.env.QA_GL_PROFILE === "1") {
     const programs = await page.evaluate(() => window.__glStartup);
     await fs.writeFile(path.join(out, "startup-programs.json"), JSON.stringify(programs, null, 2));

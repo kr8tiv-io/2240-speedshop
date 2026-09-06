@@ -68,6 +68,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [runtimeAllowed, setRuntimeAllowed] = useState(false);
   const [heroActive, setHeroActive] = useState(true);
+  const [curtainVisible, setCurtainVisible] = useState(true);
   const uiOverlay = useUIOverlay();
   const flared = useRef(false);
   const motionEnabled =
@@ -211,11 +212,18 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
       const canvasHost = wrap.querySelector<HTMLElement>("[data-film-canvas]");
       const showCanvas = (on: boolean) => {
         if (!canvasHost) return;
+        // The broad proximity observer is a wake-up margin, not proof that
+        // this canvas is visible. Keep every frame of the outgoing fade, then
+        // stop its full post chain while the garage owns the screen.
+        if (on) setCurtainVisible(true);
         gsap.to(canvasHost, {
           autoAlpha: on ? 1 : 0,
           duration: on ? 0.55 : 0.45,
           ease: "power2.out",
           overwrite: "auto",
+          onComplete: () => {
+            if (!on) setCurtainVisible(false);
+          },
         });
       };
 
@@ -302,6 +310,9 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
       const stC = tlC.scrollTrigger;
       if (canvasHost && stA && stC && stA.progress >= 1 && stC.progress <= 0) {
         gsap.set(canvasHost, { autoAlpha: 0 });
+        setCurtainVisible(false);
+      } else {
+        setCurtainVisible(true);
       }
 
       /* ── ACT I — the finished car ───────────────────────────────────── */
@@ -423,7 +434,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
           <LazyHeroRuntime
             shot={shot}
             mobile={runtimeProfile.mobile}
-            active={heroActive && uiOverlay === null}
+            active={heroActive && curtainVisible && uiOverlay === null}
           />
         ) : null}
       </div>
