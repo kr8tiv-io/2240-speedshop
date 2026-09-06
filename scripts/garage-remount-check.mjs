@@ -125,12 +125,24 @@ try {
       const rotated = await enterGarage();
       assert.equal(rotated.stage, "world");
       assert.equal(rotated.canvases, 1);
+      assert.equal(rotated.scene, second.scene, "Rotation must resize the existing renderer, not rebuild the scene");
+      await page.waitForFunction(() => {
+        const { gl, camera } = window.__shop;
+        const rect = gl.domElement.getBoundingClientRect();
+        const size = gl.getSize({ set(x, y) { this.x = x; this.y = y; return this; } });
+        const dpr = gl.getPixelRatio();
+        return Math.abs(size.x - rect.width) < 1 && Math.abs(size.y - rect.height) < 1 &&
+          Math.abs(size.x - innerWidth) < 1 && Math.abs(size.y - innerHeight) < 1 &&
+          gl.domElement.width === Math.floor(size.x * dpr) &&
+          gl.domElement.height === Math.floor(size.y * dpr) &&
+          Math.abs(camera.aspect - size.x / size.y) < 0.000001;
+      }, { timeout: 15_000 });
       const layout = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth,
         body: document.body.scrollWidth, x: scrollX, rail: window.__shop.camera.userData.rail.t }));
       assert.ok(layout.document <= layout.width && layout.body <= layout.width, "Rotation cannot create sideways overflow");
       assert.equal(layout.x, 0);
       assert.ok(Number.isFinite(layout.rail), "Tour camera remains live after rotation");
-      console.log(`garage orientation: PASS ${viewport.width} x ${viewport.height}, one populated Canvas, no overflow`);
+      console.log(`garage orientation: PASS ${viewport.width} x ${viewport.height}, same populated scene, resized drawing buffer and camera, no overflow`);
     }
   }
   assert.deepEqual(errors, [], `garage remount emitted errors: ${errors.join(" | ")}`);

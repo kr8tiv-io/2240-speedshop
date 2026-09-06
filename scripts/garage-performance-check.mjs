@@ -98,7 +98,26 @@ page.on("response", (response) => {
 });
 await page.evaluateOnNewDocument(() => {
   performance.setResourceTimingBufferSize(2000);
-  const qa = window.__garageQA = { stages: [], longTasks: [], frames: [], phase: "hero", cls: 0 };
+  const qa = window.__garageQA = { stages: [], heroStages: [], runwayIntersections: [], longTasks: [], frames: [], phase: "hero", cls: 0 };
+  const NativeIntersectionObserver = window.IntersectionObserver;
+  window.IntersectionObserver = class extends NativeIntersectionObserver {
+    constructor(callback, options) {
+      super((entries, observer) => {
+        for (const entry of entries) {
+          if (entry.target.id !== "walkthrough-runway") continue;
+          qa.runwayIntersections.push({
+            at: performance.now(), rootMargin: observer.rootMargin,
+            isIntersecting: entry.isIntersecting, ratio: entry.intersectionRatio,
+            targetTop: entry.boundingClientRect.top, targetBottom: entry.boundingClientRect.bottom,
+            rootTop: entry.rootBounds?.top, rootBottom: entry.rootBounds?.bottom,
+            scrollY, innerHeight,
+            heroReady: document.querySelector("[data-hero-scene-ready]")?.getAttribute("data-hero-scene-ready"),
+          });
+        }
+        callback(entries, observer);
+      }, options);
+    }
+  };
   new PerformanceObserver((list) => { for (const entry of list.getEntries()) qa.longTasks.push({ startTime: entry.startTime, duration: entry.duration, name: entry.name, phase: qa.phase, attribution: entry.attribution.map((a) => ({ name: a.name, containerType: a.containerType })) }); }).observe({ type: "longtask", buffered: true });
   new PerformanceObserver((list) => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) qa.cls += entry.value; }).observe({ type: "layout-shift", buffered: true });
   let last = 0;
@@ -112,9 +131,11 @@ await page.evaluateOnNewDocument(() => {
     const scan = () => {
       const stage = document.querySelector("[data-shop-stage]")?.getAttribute("data-shop-stage");
       if (stage && qa.stages.at(-1)?.stage !== stage) qa.stages.push({ stage, at: performance.now() });
+      const heroStage = document.querySelector("[data-hero-scene-ready]")?.getAttribute("data-hero-scene-ready");
+      if (heroStage && qa.heroStages.at(-1)?.stage !== heroStage) qa.heroStages.push({ stage: heroStage, at: performance.now() });
     };
     scan();
-    new MutationObserver(scan).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ["data-shop-stage"] });
+    new MutationObserver(scan).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-shop-stage", "data-hero-scene-ready"] });
   }, { once: true });
 });
 
@@ -163,7 +184,7 @@ if (process.env.QA_GL_PROFILE === "1") await page.evaluateOnNewDocument(() => {
   });
   wrap("attachShader", function (original, args) {
     if (!programs.has(args[0])) {
-      const entry = { id: ++programId, context: context(this), sources: [], queriesMs: 0 };
+      const entry = { id: ++programId, context: context(this), sources: [], queriesMs: 0, readiness: { count: 0, pending: 0, totalMs: 0, maxMs: 0 } };
       programs.set(args[0], entry); events.push(entry);
     }
     programs.get(args[0]).sources.push(shaders.get(args[1]));
@@ -178,6 +199,22 @@ if (process.env.QA_GL_PROFILE === "1") await page.evaluateOnNewDocument(() => {
     const start = performance.now();
     const value = original.apply(this, args);
     const elapsed = performance.now() - start;
+    // COMPLETION_STATUS_KHR is the non-blocking query Three's isReady() uses.
+    // Count it separately from uniform discovery, including repeated pending
+    // queries for materials which share the same real WebGLProgram. This is
+    // private QA instrumentation only; do not change the driver's return value.
+    if (name === "getProgramParameter" && args[1] === 0x91b1) {
+      const entry = programs.get(args[0]);
+      if (entry) {
+        entry.readiness.firstAt ??= start;
+        entry.readiness.lastAt = start;
+        entry.readiness.count++;
+        entry.readiness.pending += value === false ? 1 : 0;
+        entry.readiness.totalMs += elapsed;
+        entry.readiness.maxMs = Math.max(entry.readiness.maxMs, elapsed);
+        if (value === true) entry.readiness.readyAt ??= start;
+      }
+    }
     if (name !== "getProgramParameter" || args[1] === this.ACTIVE_UNIFORMS) {
       const entry = programs.get(args[0]);
       if (entry) {
@@ -229,6 +266,17 @@ try {
     return !!window.__shop?.scene && world && Number.parseFloat(getComputedStyle(world).opacity) > 0.98;
   }, { timeout: 20_000 });
   result.worldVisibleAt = await page.evaluate(() => performance.now());
+  if (process.env.QA_EXPECT_EARLY_MOUNT === "1") {
+    const gate = await page.evaluate(() => ({ hero: window.__garageQA.heroStages, intersections: window.__garageQA.runwayIntersections }));
+    const hero = gate.hero.find(entry => entry.stage === "true");
+    const near = gate.intersections.find(entry => entry.isIntersecting && Number.parseFloat(entry.rootMargin) >= entry.innerHeight * 6);
+    const created = result.consoleLog.find(log => /renderer created/.test(log.text));
+    const rendererAt = Number(created?.text.match(/@(\d+)/)?.[1]);
+    assert.ok(hero && near && Number.isFinite(rendererAt), "Record the real hero, runway and renderer gates");
+    const eligibleAt = Math.max(hero.at, near.at);
+    result.mountGate = { heroAt: hero.at, nearAt: near.at, eligibleAt, rendererAt, delayMs: rendererAt - eligibleAt };
+    assert.ok(rendererAt - eligibleAt < 1000, `The fixed garage canvas must initialize during continuous scrolling, not wait for scroll-stop (${Math.round(rendererAt - eligibleAt)} ms after its gates)`);
+  }
   result.officeTextures = await page.evaluate(files => {
     const textures = new Map();
     window.__shop.scene.traverse(object => {
