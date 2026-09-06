@@ -62,9 +62,9 @@ const preloadShopWorld = () => {
 };
 
 const POST_HERO_PRELOAD_TIMEOUT_MS = 1_200;
-const preloadGarageRoute = (tier: "full" | "lite") =>
+const preloadGarageRoute = (tier: "full" | "lite", isCurrent: () => boolean) =>
   preloadShopWorld().then((module) => {
-    module.preloadOpeningGarage(tier);
+    if (isCurrent()) module.preloadOpeningGarage(tier);
     return module;
   });
 
@@ -157,6 +157,7 @@ export function WalkthroughWorld() {
      without letting the shop compete with first paint. */
   useEffect(() => {
     if (!run) return;
+    let cancelled = false;
     let scheduled = false;
     let idle = 0;
     let timer = 0;
@@ -168,12 +169,12 @@ export function WalkthroughWorld() {
       const tier = verdict === "run-full" ? "full" : "lite";
       if (typeof window.requestIdleCallback === "function") {
         idle = window.requestIdleCallback(
-          () => void preloadGarageRoute(tier).catch(() => undefined),
+          () => void preloadGarageRoute(tier, () => !cancelled).catch(() => undefined),
           { timeout: POST_HERO_PRELOAD_TIMEOUT_MS },
         );
       } else {
         timer = window.setTimeout(
-          () => void preloadGarageRoute(tier).catch(() => undefined),
+          () => void preloadGarageRoute(tier, () => !cancelled).catch(() => undefined),
           180,
         );
       }
@@ -181,6 +182,7 @@ export function WalkthroughWorld() {
     schedule();
     const unsubscribe = subscribeHeroBoot(schedule);
     return () => {
+      cancelled = true;
       unsubscribe();
       if (idle) window.cancelIdleCallback(idle);
       if (timer) window.clearTimeout(timer);
@@ -253,7 +255,7 @@ export function WalkthroughWorld() {
               // Seven viewports of approach is enough to fill the shared model
               // cache without charging the landing page for garage bytes a
               // visitor may never request.
-              void preloadGarageRoute(verdict === "run-full" ? "full" : "lite")
+              void preloadGarageRoute(verdict === "run-full" ? "full" : "lite", () => !cancelled)
                 .catch(() => undefined);
             }
           }

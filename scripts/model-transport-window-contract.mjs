@@ -4,7 +4,7 @@ import { createRequestPool } from "../components/shop/modelRequest.ts";
 
 const source = await fs.readFile("components/shop/Loaders.tsx", "utf8");
 assert.match(source, /const PREFETCH_CONCURRENCY = 2;/,
-  "The held four-slot experiment must not replace the verified production window");
+  "The default window remains two; any expansion must pass the tier/network policy");
 
 // Both pool sizes are behaviorally valid. That does NOT establish a speed
 // benefit: the separate controlled comparison held four slots on desktop.
@@ -44,4 +44,4 @@ for (const limit of [2, 4]) {
     else { assert.equal(outcome.status, "fulfilled"); assert.equal(outcome.value, buffers[index], "Exact ArrayBuffer, no transforms"); }
   }
 }
-console.log("unchanged two-slot application; two/four-slot pool demand, bounds and recovery: PASS");
+console.log("default two-slot application; two/four-slot pool demand, bounds and recovery: PASS");

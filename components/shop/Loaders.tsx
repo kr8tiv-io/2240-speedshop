@@ -30,6 +30,7 @@ import {
 } from "./meshoptWorkerDecoder";
 import {
   createRequestPool,
+  getModelTransportConcurrency,
   loadModelRequestAttempt,
   runModelResourceAttempts,
 } from "./modelRequest";
@@ -1647,12 +1648,15 @@ const PREFETCHED_ROUTE_URLS = new Set<string>();
  * until the real Canvas reaches its existing warm gate.
  */
 export function preloadOpeningModels(lite: boolean) {
+  const connection = typeof navigator !== "undefined" && "connection" in navigator ? navigator.connection : undefined;
+  modelTransport.setLimit(getModelTransportConcurrency(lite, connection));
   const urls = ROUTE_PREFETCH_MODELS.map((url) => tierUrl(url, lite));
-  // Two lossless transfers at a time keep cellular congestion low. This fills
+  // Healthy lite worlds overlap up to four lossless transfers; full worlds
+  // and unknown/slow connections retain two. This fills
   // the exact byte cache IdleGLTFLoader consumes later; parsing remains serial
   // in the parked Canvas instead of interrupting the visible film in a burst.
   // Register every route promise synchronously. The shared transport pool
-  // admits two at a time even if the Canvas mounts while this loop is running.
+  // remains shared even if the Canvas mounts while this loop is running.
   // Only successful URLs latch, so a transient edge miss can re-arm on the
   // next proximity/hero-ready signal.
   for (const url of urls) {

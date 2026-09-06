@@ -44,6 +44,16 @@ export type ModelResourceAttemptOptions<T> = {
   clock?: ModelRequestClock;
 };
 
+/** HTTP capacity follows the existing world tier; it never selects quality. */
+export function getModelTransportConcurrency(lite: boolean, connection?: unknown): 2 | 4 {
+  if (!lite || !connection || typeof connection !== "object") return 2;
+  const hints = connection as { effectiveType?: string; downlink?: number; rtt?: number; saveData?: boolean };
+  return hints.effectiveType === "4g" && hints.saveData === false &&
+    typeof hints.downlink === "number" && Number.isFinite(hints.downlink) && hints.downlink >= 1.5 &&
+    typeof hints.rtt === "number" && Number.isFinite(hints.rtt) && hints.rtt >= 0 && hints.rtt <= 300
+    ? 4 : 2;
+}
+
 /** Register every request immediately while admitting only `limit` transports. */
 export function createRequestPool(limit: number, clock: ModelRequestClock = DEFAULT_CLOCK) {
   if (!Number.isInteger(limit) || limit < 1) {
@@ -132,7 +142,18 @@ export function createRequestPool(limit: number, clock: ModelRequestClock = DEFA
     return true;
   };
 
-  return { run, demand };
+  const setLimit = (nextLimit: number) => {
+    if (!Number.isInteger(nextLimit) || nextLimit < 1) {
+      throw new RangeError("Request pool limit must be a positive integer");
+    }
+    if (limit === nextLimit) return;
+    // Narrowing never cancels in-flight bytes. The same queue/owners resume
+    // only when active transports fall below the newly selected ceiling.
+    limit = nextLimit;
+    drain();
+  };
+
+  return { run, demand, setLimit };
 }
 
 /** Keep a transient exact-byte/decoder failure inside one Suspense resource. */

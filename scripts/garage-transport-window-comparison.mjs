@@ -3,8 +3,11 @@ import fs from "node:fs/promises";
 const root = "output/playwright/garage-performance-2026-09-06";
 const prefix = process.env.QA_COMPARISON_PREFIX || "transport";
 assert.match(prefix, /^[a-z0-9-]+$/, "Comparison labels stay within the report directory");
+const policy = process.env.QA_COMPARISON_POLICY || "all-tiers";
+assert.ok(["all-tiers", "lite-only"].includes(policy), "Only named transport experiments may be compared");
+const expectedCandidateSlots = group => policy === "lite-only" && group === "desktop" ? 2 : 4;
 const mean = rows => rows.reduce((a, b) => a + b, 0) / rows.length;
-const report = { checkedAt: new Date().toISOString(), profiles: {}, status: "HOLD",
+const report = { checkedAt: new Date().toISOString(), policy, profiles: {}, status: "HOLD",
   scope: "Sequential cold Chromium ABBA on Radeon 740M. Fast 4G must have nonoverlapping earlier reveal; other profiles must retain mean reveal within 3% and entry p95 within 0.5 ms. These are experiment gates, not field performance guarantees." };
 const all = [];
 for (const group of ["4g", "desktop", "local"]) {
@@ -14,7 +17,7 @@ for (const group of ["4g", "desktop", "local"]) {
   for (const [index, run] of runs.entries()) {
     assert.equal(run.status, "PASS");
     assert.equal(run.diagnosticOnly, undefined, "Do not benchmark timer/CPU probes");
-    assert.equal(run.transportSlots.peak, index === 0 || index === 3 ? 2 : 4);
+    assert.equal(run.transportSlots.peak, index === 0 || index === 3 ? 2 : expectedCandidateSlots(group));
     assert.equal(run.modelCoverage.garage, 71); assert.equal(run.modelCoverage.hero, 3);
     for (const field of ["gpu", "profile", "networkConditions", "officeTextures", "modelCoverage"])
       assert.deepEqual(run[field], runs[0][field], `No change to ${field}`);
