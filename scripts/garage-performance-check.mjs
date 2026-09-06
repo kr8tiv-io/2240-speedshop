@@ -2,6 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import assert from "node:assert/strict";
 import puppeteer, { PredefinedNetworkConditions } from "puppeteer-core";
+import { createHash } from "node:crypto";
+import { brotliCompressSync, brotliDecompressSync } from "node:zlib";
+import { decodeModelPacket } from "../components/shop/modelPackets.ts";
+import { readModelCatalog } from "./build-model-packets.mjs";
 
 const base = process.env.BASE_URL || "http://127.0.0.1:3197";
 const label = process.env.QA_LABEL || "baseline";
@@ -12,6 +16,13 @@ const profile = process.env.QA_PROFILE === "phone-390"
   : { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false };
 const deviceLabel = profile.isMobile ? "phone-390" : "desktop";
 const result = { label, startedAt: new Date().toISOString(), base, profile, status: "RUNNING", stations: [], errors: [], warnings: [], consoleLog: [], modelResponses: [] };
+const packetManifest = JSON.parse(await fs.readFile("components/shop/modelPackets.generated.json", "utf8"));
+const packetFailure = process.env.QA_PACKET_FAILURE || "";
+assert.ok(["", "404", "corrupt"].includes(packetFailure));
+result.packetFailure = packetFailure;
+result.packetResponses = [];
+result.expectedPacketErrors = [];
+const isPacket = url => new URL(url).pathname.includes("/model-packets/");
 const officeFiles = ["car-d100-truck.jpg", "car-green-coupe.jpg", "car-black-muscle.jpg", "car-blue-pickup.jpg", "car-red-pickup.jpg", "car-black-classic.jpg", "badge-2240-sign.png"];
 const officeUrl = url => officeFiles.includes(new URL(url).pathname.split("/").at(-1));
 const officeDelay = Number(process.env.QA_PHOTO_DELAY_MS || 0);
@@ -28,12 +39,39 @@ const context = await browser.createBrowserContext();
 const page = await context.newPage();
 await page.setViewport(profile);
 await page.setCacheEnabled(false);
+// The application's streamed FileLoader bodies are not reliably retained by
+// DevTools. Tee exact fetch responses in this private test only, identically
+// for old/new runs; defer hashing and Node transfer until timing has ended.
+await page.evaluateOnNewDocument(() => {
+  const original = window.fetch;
+  window.__modelByteCapture = [];
+  window.fetch = async function (...args) {
+    const response = await original.apply(this, args);
+    if (/\.(?:glb(?:\.br)?|bin\.br)$/.test(new URL(response.url).pathname)) {
+      const bytes = response.clone().arrayBuffer();
+      void bytes.catch(() => {});
+      window.__modelByteCapture.push({ url: response.url, status: response.status, bytes });
+    }
+    return response;
+  };
+});
 if (network) await page.emulateNetworkConditions(network);
-if (officeDelay > 0) {
+if (officeDelay > 0 || packetFailure) {
   // Optional, identical added latency for every office photo in both builds.
   // The actual unmodified image bytes still come from the normal local host.
   await page.setRequestInterception(true);
-  page.on("request", request => {
+  page.on("request", async request => {
+    if (packetFailure && isPacket(request.url())) {
+      if (packetFailure === "404") await request.respond({ status: 404, body: "deliberate private QA failure" });
+      else {
+        const file = new URL(request.url()).pathname.split("/").at(-1);
+        assert.match(file, /^[a-f0-9]{64}\.bin\.br$/);
+        const decoded = brotliDecompressSync(await fs.readFile(`public/model-packets/${file}`));
+        decoded[24] ^= 1;
+        await request.respond({ status: 200, headers: { "content-type": "application/octet-stream", "content-encoding": "br" }, body: brotliCompressSync(decoded) });
+      }
+      return;
+    }
     const proceed = () => {
       if (!request.isInterceptResolutionHandled()) void request.continue().catch(() => {});
     };
@@ -43,13 +81,20 @@ if (officeDelay > 0) {
 }
 page.on("pageerror", (error) => result.errors.push(`page: ${error.message}`));
 page.on("console", (message) => {
-  if (message.type() === "error") result.errors.push(message.text());
+  if (message.type() === "error") {
+    if (packetFailure === "404" && message.location().url && isPacket(message.location().url) && /404/.test(message.text())) result.expectedPacketErrors.push(message.text());
+    else result.errors.push(message.text());
+  }
   if (message.type() === "warn") result.warnings.push(message.text());
   if (/\[shop\]/.test(message.text())) result.consoleLog.push({ receivedAt: new Date().toISOString(), text: message.text() });
 });
 page.on("response", (response) => {
-  if (response.status() >= 400) result.errors.push(`${response.status()} ${response.url()}`);
+  if (response.status() >= 400) {
+    if (packetFailure === "404" && isPacket(response.url()) && response.status() === 404) result.expectedPacketErrors.push(`${response.status()} ${response.url()}`);
+    else result.errors.push(`${response.status()} ${response.url()}`);
+  }
   if (/\.glb(?:\.br)?$/.test(new URL(response.url()).pathname)) result.modelResponses.push({ url: response.url(), status: response.status(), compressedBytes: Number(response.headers()["content-length"] || 0) });
+  if (isPacket(response.url())) result.packetResponses.push({ url: response.url(), status: response.status(), compressedBytes: Number(response.headers()["content-length"] || 0) });
 });
 await page.evaluateOnNewDocument(() => {
   performance.setResourceTimingBufferSize(2000);
@@ -288,6 +333,48 @@ try {
     await page.screenshot({ path: path.join(out, "desktop-rail-last-station.png"), captureBeyondViewport: false });
   }
   assert.deepEqual(result.errors, []);
+  // Verify bytes after the timing window so Node-side response inspection
+  // cannot improve or slow the measured startup. Packet count never stands
+  // in for model coverage: every one of the 71 original GLBs is required.
+  const covered = new Set(), hero = new Set();
+  const tier = profile.isMobile ? "lite" : "full";
+  const shelf = profile.isMobile ? "models-mobile" : "models-opt";
+  const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+  result.verifiedModels = [];
+  const captures = await page.evaluate(() => window.__modelByteCapture.map(({ url, status }) => ({ url, status })));
+  for (const [index, capture] of captures.entries()) {
+    const response = { url: () => capture.url, status: () => capture.status, buffer: async () => {
+      const encoded = await page.evaluate(async index => {
+        const bytes = new Uint8Array(await window.__modelByteCapture[index].bytes);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+        return btoa(binary);
+      }, index);
+      return Buffer.from(encoded, "base64");
+    } };
+    const pathname = new URL(response.url()).pathname;
+    if (response.status() !== 200 || (packetFailure && isPacket(response.url()))) continue;
+    if (isPacket(response.url())) {
+      const descriptor = packetManifest.shelves[tier].find(item => pathname.endsWith(`/${item.file}`));
+      assert.ok(descriptor, `Packet belongs to the unchanged ${tier} shelf`);
+      const body = await response.buffer();
+      const models = await decodeModelPacket(body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength), descriptor);
+      for (const [name, bytes] of models) {
+        const expected = await fs.readFile(`public/${shelf}/${name}`);
+        assert.equal(hash(Buffer.from(bytes)), hash(expected), `Exact packet model ${name}`);
+        covered.add(name); result.verifiedModels.push({ name, sha256: hash(expected), via: "packet" });
+      }
+    } else if (/\/models-(opt|mobile)-[^/]+\//.test(pathname)) {
+      assert.ok(pathname.includes(`/${shelf}-`), `No model shelf quality substitution: ${pathname}`);
+      const name = pathname.split("/").at(-1).replace(/\.br$/, "");
+      const body = await response.buffer(), expected = await fs.readFile(`public/${shelf}/${name}`);
+      assert.equal(hash(body), hash(expected), `Exact individual model ${name}`);
+      covered.add(name); result.verifiedModels.push({ name, sha256: hash(expected), via: "individual" });
+    } else if (pathname.includes("/models/hero-")) hero.add(pathname.split("/").at(-1).replace(/\.br$/, ""));
+  }
+  assert.deepEqual([...covered].sort(), (await readModelCatalog()).names.sort(), "All 71 exact garage resources arrived");
+  assert.equal(hero.size, 3, "All three original hero resources arrived");
+  result.modelCoverage = { garage: covered.size, hero: hero.size, individualRequests: result.modelResponses.length, packetRequests: result.packetResponses.length };
   result.status = "PASS";
 } catch (error) {
   result.status = "FAIL";
@@ -297,6 +384,10 @@ try {
 } finally {
   result.metrics = await page.evaluate(() => ({ ...window.__garageQA, fcp: performance.getEntriesByName("first-contentful-paint")[0]?.startTime, resources: performance.getEntriesByType("resource").map((r) => ({ name: r.name, initiatorType: r.initiatorType, startTime: r.startTime, responseStart: r.responseStart, responseEnd: r.responseEnd, duration: r.duration, transferSize: r.transferSize, encodedBodySize: r.encodedBodySize, decodedBodySize: r.decodedBodySize })) })).catch(() => null);
   if (result.metrics) {
+    if (result.measurementFinishedAt) {
+      result.metrics.frames = result.metrics.frames.filter(frame => frame.at <= result.measurementFinishedAt);
+      result.metrics.longTasks = result.metrics.longTasks.filter(task => task.startTime <= result.measurementFinishedAt);
+    }
     result.frameSummary = Object.fromEntries([...new Set(result.metrics.frames.map((f) => f.phase))].map((phase) => [phase, summary(result.metrics.frames.filter((f) => f.phase === phase).map((f) => f.duration))]));
     result.longTaskSummary = summary(result.metrics.longTasks.map((t) => t.duration));
     result.startupLongTaskSummary = summary(result.metrics.longTasks.filter((t) => t.startTime < result.worldVisibleAt).map((t) => t.duration));

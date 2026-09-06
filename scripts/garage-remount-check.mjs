@@ -119,6 +119,20 @@ try {
   assert.equal(second.stage, "world");
   assert.equal(second.canvases, 1);
   assert.notEqual(second.scene, first.scene, "route revisit reused disposed renderer scene");
+  if (process.env.QA_ORIENTATION === "1") {
+    for (const viewport of [{ width: 844, height: 390 }, { width: 390, height: 844 }]) {
+      await page.setViewport({ ...viewport, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+      const rotated = await enterGarage();
+      assert.equal(rotated.stage, "world");
+      assert.equal(rotated.canvases, 1);
+      const layout = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth, x: scrollX, rail: window.__shop.camera.userData.rail.t }));
+      assert.ok(layout.document <= layout.width && layout.body <= layout.width, "Rotation cannot create sideways overflow");
+      assert.equal(layout.x, 0);
+      assert.ok(Number.isFinite(layout.rail), "Tour camera remains live after rotation");
+      console.log(`garage orientation: PASS ${viewport.width} x ${viewport.height}, one populated Canvas, no overflow`);
+    }
+  }
   assert.deepEqual(errors, [], `garage remount emitted errors: ${errors.join(" | ")}`);
 
   console.log(

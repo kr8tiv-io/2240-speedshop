@@ -9,7 +9,7 @@ import { createRequestPool, loadModelRequestAttempt } from "../components/shop/m
 import { createModelPacketStore } from "../components/shop/modelPackets.ts";
 
 const source = await readFile(new URL("../components/shop/Loaders.tsx", import.meta.url), "utf8");
-assert.match(source, /function getModelPacketStore\(/, "Connect verified packets to the existing exact-byte loader");
+assert.ok(/function getModelPacketStore\(/.test(source), "Connect verified packets to the existing exact-byte loader");
 const manifest = JSON.parse(await readFile(new URL("../components/shop/modelPackets.generated.json", import.meta.url), "utf8"));
 const packet = manifest.shelves.lite.find(item => item.entries);
 const names = packet.entries.map(entry => entry.name);
@@ -18,8 +18,9 @@ const originals = new Map(await Promise.all(names.map(async name => [name, await
 let mode = "normal";
 const requests = [];
 const server = http.createServer(async (req, res) => {
-  const pathname = new URL(req.url, "http://localhost").pathname;
-  requests.push({ pathname, header: req.headers["x-packet-test"] });
+  const originalPath = new URL(req.url, "http://localhost").pathname;
+  const pathname = originalPath.replace(/^\/preview\//, "/");
+  requests.push({ pathname: originalPath, header: req.headers["x-packet-test"] });
   if (pathname.startsWith("/model-packets/")) {
     if (mode === "404") { res.writeHead(404); res.end(); return; }
     let body = packetWire;
@@ -51,8 +52,8 @@ ts.forEachChild(ast, node => {
 assert.equal(constants.size, 0, `Missing transport constants: ${[...constants]}`);
 assert.equal(functions.size, 0, `Missing transport functions: ${[...functions]}`);
 const code = ts.transpileModule(`${pieces.join("\n")}\nmodule.exports = { fetchModelBytes, releaseModelBytes, cache: MODEL_BYTE_CACHE };`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
-const create = (data = manifest, version = manifest.modelsVersion) => {
-  const context = vm.createContext({ module: { exports: {} }, THREE, createModelPacketStore, createRequestPool, loadModelRequestAttempt, packetManifest: data, process: { env: { NEXT_PUBLIC_BASE_PATH: base, NEXT_PUBLIC_MODELS_VERSION: version } }, setTimeout, clearTimeout, window: { setTimeout, clearTimeout } });
+const create = (data = manifest, version = manifest.modelsVersion, basePath = base) => {
+  const context = vm.createContext({ module: { exports: {} }, THREE, createModelPacketStore, createRequestPool, loadModelRequestAttempt, packetManifest: data, process: { env: { NEXT_PUBLIC_BASE_PATH: basePath, NEXT_PUBLIC_MODELS_VERSION: version } }, setTimeout, clearTimeout, window: { setTimeout, clearTimeout } });
   vm.runInContext(code, context);
   return context.module.exports;
 };
@@ -63,6 +64,12 @@ const test = async (name, work) => { requests.length = 0; await work(); checks++
 const url = name => `${base}/models-mobile-${manifest.modelsVersion}/${name}`;
 const matches = (bytes, name) => assert.deepEqual(Buffer.from(bytes), originals.get(name));
 try {
+  await test("subdirectory base path applies to model and packet URLs", async () => {
+    const api = create(manifest, manifest.modelsVersion, `${base}/preview`);
+    matches(await api.fetchModelBytes(`${base}/preview/models-mobile-${manifest.modelsVersion}/${names[0]}`), names[0]);
+    assert.equal(requests.length, 1);
+    assert.ok(requests[0].pathname.startsWith("/preview/model-packets/"));
+  });
   await test("actual loader shares one HTTP packet across original model cache entries", async () => {
     const api = create(), pending = names.map(name => api.fetchModelBytes(url(name)));
     assert.equal(api.fetchModelBytes(url(names[0]), { demanded: true }), pending[0]);
@@ -106,6 +113,18 @@ try {
     try { matches(await create().fetchModelBytes(url(names[0])), names[0]); }
     finally { Object.defineProperty(globalThis, "crypto", original); }
     assert.equal(requests.length, 1); assert.ok(requests[0].pathname.endsWith(".glb.br"));
+  });
+  await test("custom LoadingManager retains balanced individual transport ownership", async () => {
+    const manager = new THREE.LoadingManager();
+    const starts = [], ends = [];
+    const start = manager.itemStart.bind(manager), end = manager.itemEnd.bind(manager);
+    manager.itemStart = url => { starts.push(url); start(url); };
+    manager.itemEnd = url => { ends.push(url); end(url); };
+    matches(await create().fetchModelBytes(url(names[0]), { manager }), names[0]);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(ends, starts); assert.equal(starts.length, 1);
+    assert.ok(starts[0].endsWith(".glb.br"));
+    assert.equal(requests.length, 1);
   });
 } finally {
   globalThis.ProgressEvent = originalProgressEvent;
