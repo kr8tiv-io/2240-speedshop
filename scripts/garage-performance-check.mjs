@@ -16,7 +16,7 @@ const profile = process.env.QA_PROFILE === "phone-390"
   : { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false };
 const deviceLabel = profile.isMobile ? "phone-390" : "desktop";
 const result = { label, startedAt: new Date().toISOString(), base, profile, status: "RUNNING", stations: [], errors: [], warnings: [], consoleLog: [], modelResponses: [] };
-if (["QA_GL_PROFILE", "QA_CPU_PROFILE", "QA_LIGHT_PROFILE"].some(key => process.env[key] === "1")) {
+if (["QA_GL_PROFILE", "QA_CPU_PROFILE", "QA_LIGHT_PROFILE", "QA_HERO_OWNER_PROFILE"].some(key => process.env[key] === "1")) {
   result.diagnosticOnly = "Private CPU/GL/light tracing adds overhead; not a controlled speed comparison";
 }
 const packetManifest = JSON.parse(await fs.readFile("components/shop/modelPackets.generated.json", "utf8"));
@@ -349,6 +349,30 @@ if (process.env.QA_GL_PROFILE === "1") await page.evaluateOnNewDocument(() => {
     }
     return value;
   });
+  // Resolve ownership after startup, when the existing hero diagnostics are
+  // available. This is attribution, not a claim about first-use visibility;
+  // retain the real program identity, including older variants on a material.
+  window.__attributeStartupPrograms = () => {
+    for (const [owner, view] of [["hero", window.__film?.three], ["garage", window.__shop]]) {
+      if (!view?.scene || !view?.gl) continue;
+      view.scene.traverse(object => {
+        for (const material of [object.material].flat().filter(Boolean)) {
+          const properties = view.gl.properties.get(material);
+          const variants = new Set([properties.currentProgram, ...(properties.programs?.values() ?? [])]);
+          for (const variant of variants) {
+            const entry = variant?.program && programs.get(variant.program);
+            if (!entry) continue;
+            const ancestry = []; let current = object;
+            while (current) { ancestry.push(`${current.type}:${current.name}`); current = current.parent; }
+            entry.finalOwners ??= [];
+            entry.finalOwners.push({ owner, ancestry, material: material.uuid, materialType: material.type,
+              materialName: material.name, geometry: object.geometry?.type, visible: object.visible });
+          }
+        }
+      });
+    }
+    return events;
+  };
 });
 
 try {
@@ -363,7 +387,7 @@ try {
     await startupProfiler.send("Profiler.setSamplingInterval", { interval: 1000 });
     await startupProfiler.send("Profiler.start");
   }
-  await page.goto(`${base}/?perf=1`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.goto(`${base}/?perf=1${process.env.QA_HERO_OWNER_PROFILE === "1" ? "&tune=1" : ""}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   if (network) {
     // Chrome resets navigator's network override on cross-document navigation
     // while continuing to throttle requests. Reapply the native hint override
@@ -473,7 +497,7 @@ try {
     assert.ok(result.officeResources.every(r => r.startTime < rendererAt - 1000), "Office downloads must overlap the approach before the garage GPU context, not wait for scroll-stop");
   }
   if (process.env.QA_GL_PROFILE === "1") {
-    const programs = await page.evaluate(() => window.__glStartup);
+    const programs = await page.evaluate(() => window.__attributeStartupPrograms());
     await fs.writeFile(path.join(out, "startup-programs.json"), JSON.stringify(programs, null, 2));
     console.log(JSON.stringify(programs.filter(p => p.queriesMs > 10).map(({ sources, ...p }) => ({ ...p, defines: sources.map(s => s?.match(/^#define .*/gm)?.slice(0, 35)) })), null, 2));
   }

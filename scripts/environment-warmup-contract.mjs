@@ -115,7 +115,8 @@ const shop = readFileSync(new URL("../components/shop/ShopWorld.tsx", import.met
 const loader = readFileSync(new URL("../components/shop/Loaders.tsx", import.meta.url), "utf8");
 assert.ok(hero.includes('startEnvironmentWarmup(gl, mobile ? 128 : 256)'), "Hero must submit the exact existing environment resolution at renderer creation");
 assert.ok(shop.includes('startEnvironmentWarmup(gl, tier === "lite" ? 64 : 256)'), "Garage must submit the exact existing environment resolution at renderer creation");
-assert.ok(hero.includes("await waitForEnvironmentWarmup(gl)") && hero.indexOf("await waitForEnvironmentWarmup(gl)") < hero.indexOf("await gl.compileAsync(actRoot"), "Hero reflection filtering must be ready before material compilation");
+const heroMaterialCompile = hero.indexOf("await gl.compileAsync(compileScope, camera, scene)");
+assert.ok(heroMaterialCompile >= 0 && hero.includes("await waitForEnvironmentWarmup(gl)") && hero.indexOf("await waitForEnvironmentWarmup(gl)") < heroMaterialCompile, "Hero reflection filtering must be ready before material compilation");
 assert.match(loader, /await primeEnvironment\(get\(\), stale\);\s*await waitForEnvironmentWarmup\(gl\)/);
 assert.match(hero, /releaseEnvironmentWarmup\(gl\)/);
 assert.match(loader, /releaseLoaderRenderer\(gl: THREE.WebGLRenderer\) \{\s*releaseEnvironmentWarmup\(gl\)/);

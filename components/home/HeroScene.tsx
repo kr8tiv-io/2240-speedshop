@@ -1691,6 +1691,29 @@ function restoreVisibility(visibility: Map<THREE.Object3D, boolean>) {
   for (const [object, visible] of visibility) object.visible = visible;
 }
 
+/** Material-only view: original objects stay attached, and the target scene
+ * supplies lights once. Prepare the shared stage alongside the first car. */
+function heroCompileScope(
+  scene: THREE.Scene,
+  actRoot: THREE.Object3D,
+  actRoots: THREE.Object3D[],
+  includeStage: boolean,
+) {
+  const scope = new THREE.Group();
+  const roots = new Set(actRoots);
+  scope.traverse = (callback) => {
+    actRoot.traverse(callback);
+    if (!includeStage) return;
+    const visitStage = (object: THREE.Object3D) => {
+      if (roots.has(object)) return;
+      callback(object);
+      for (const child of object.children) visitStage(child);
+    };
+    for (const child of scene.children) visitStage(child);
+  };
+  return scope;
+}
+
 /**
  * Compile every shader in the film BEFORE the preloader lifts, one act at a
  * time so the browser gets a scheduling boundary between expensive passes.
@@ -1703,8 +1726,9 @@ function restoreVisibility(visibility: Map<THREE.Object3D, boolean>) {
  * compiles a program the first time it has to DRAW with it — which is the
  * first frame the visitor scrolls, the worst possible moment.
  *
- * compileAsync only walks visible objects. Each pass therefore exposes every
- * shared stage object plus exactly one named act root, restores the complete
+ * compileAsync traverses the material scope regardless of visibility; the
+ * real scene supplies visible lights. Each draw exposes the shared stage and
+ * exactly one named act root, then restores the complete
  * visibility snapshot, exercises the shipped composer path, waits for the
  * driver's parallel compile queue, then yields. Every model, shader and post
  * effect is ready before the handoff, but the former all-at-once main-thread
@@ -1753,11 +1777,12 @@ function ScenePrimer({
         });
         for (const root of actRoots) root.visible = root === actRoot;
 
-        /* Three's compile() traverses the compile object regardless of
-           visibility. Compile exactly this act root, and use the full scene
-           only as lighting/environment context, so another act can neither
-           inflate this pass nor enter its asynchronous polling set. */
-        const compileMaterials = collectSceneMaterials(actRoot);
+        /* Keep other cars out of the polling set, but prepare the original
+           lamp, floor and particles with the first act. They are drawn by
+           that act's composer too; omitting the metal lamp housing left a
+           110–130 ms synchronous first-use shader wait on the phone. */
+        const compileScope = heroCompileScope(scene, actRoot, actRoots, actRoot === actRoots[0]);
+        const compileMaterials = collectSceneMaterials(compileScope);
         const releaseMaterialDisposals = deferMaterialDisposal(compileMaterials);
         const traceCompile = window.location.search.includes("compiletrace");
         const traceCleanups: Array<() => void> = [];
@@ -1780,7 +1805,7 @@ function ScenePrimer({
           /* Compile the exact half-float variant used by EffectComposer.
              ANGLE otherwise builds a second program on the first film draw. */
           if (warmTarget) gl.setRenderTarget(warmTarget);
-          await gl.compileAsync(actRoot, camera, scene);
+          await gl.compileAsync(compileScope, camera, scene);
           if (cancelled) return;
 
           if (composer.current) {
