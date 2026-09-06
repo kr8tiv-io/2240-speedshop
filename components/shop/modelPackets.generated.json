@@ -1,0 +1,830 @@
+{
+  "format": 1,
+  "modelsVersion": "ca7a02ee",
+  "shelves": {
+    "full": [
+      {
+        "individual": "car-dodge-charger.glb"
+      },
+      {
+        "individual": "car-camaro.glb"
+      },
+      {
+        "individual": "truck-pickup-classic.glb"
+      },
+      {
+        "file": "4982a05d6a7ef34c5b5d0f53a84c883744b6771be6bd98d7e4e3a553d36b5fe7.bin.br",
+        "encodedLength": 25918,
+        "decodedLength": 40736,
+        "entries": [
+          {
+            "name": "prop-oil-drum.glb",
+            "offset": 0,
+            "length": 14720,
+            "sha256": "41295e360cdac2bc9d5eb78c6a8557016c09f30d1ef0bf2e4286f8810e84a422"
+          },
+          {
+            "name": "prop-fire-extinguisher.glb",
+            "offset": 14720,
+            "length": 20012,
+            "sha256": "e593600bbe9271da0ca0a2c51300b23290a62f1cd3e8c1aeeadb16c4aed90e62"
+          },
+          {
+            "name": "prop-pallet.glb",
+            "offset": 34732,
+            "length": 6004,
+            "sha256": "28e87655d7f33f6937a807e8bdad75021a2f5fbe273f7c05a0a1c85c62a69ad2"
+          }
+        ]
+      },
+      {
+        "individual": "prop-tyre-old.glb"
+      },
+      {
+        "individual": "prop-wheel-rim-rusted-a.glb"
+      },
+      {
+        "individual": "prop-jerry-can.glb"
+      },
+      {
+        "individual": "prop-jerrycan-green.glb"
+      },
+      {
+        "individual": "prop-wheel-mag.glb"
+      },
+      {
+        "individual": "car-muscle-challenger.glb"
+      },
+      {
+        "individual": "car-muscle-coupe-hoodup.glb"
+      },
+      {
+        "file": "eaf4ef7066dbd8b1016e23a8c1326cf7e039b7a591afdc0e14720b06c72d26f6.bin.br",
+        "encodedLength": 100731,
+        "decodedLength": 125028,
+        "entries": [
+          {
+            "name": "prop-wheel-stack-bare.glb",
+            "offset": 0,
+            "length": 10836,
+            "sha256": "86e0a1e03ea83c0f48689195a02e2fced3b3f3ff3e4dbadb630d78ee25f4c928"
+          },
+          {
+            "name": "prop-tire-pump.glb",
+            "offset": 10836,
+            "length": 114192,
+            "sha256": "18ababddb2c92ce4d1abcb2d7b99e07e0078e981efd04796fbdd1101611a5cee"
+          }
+        ]
+      },
+      {
+        "individual": "prop-oil-can-small.glb"
+      },
+      {
+        "file": "8f2a1d26c64087dcd80730d99275b56482bf8bb7a4c7782c6b7d21c17aa739fc.bin.br",
+        "encodedLength": 104844,
+        "decodedLength": 238044,
+        "entries": [
+          {
+            "name": "prop-funnel.glb",
+            "offset": 0,
+            "length": 2816,
+            "sha256": "10575a6b78c0601fd1084d404d94a4d040e6c0874c3a87e3488efd46dc7d6e96"
+          },
+          {
+            "name": "prop-droplight-pendant.glb",
+            "offset": 2816,
+            "length": 235228,
+            "sha256": "1085661ec0e30abda5b16c5dbb11362b815571ade8d3a0fa9847f3f9459cb48a"
+          }
+        ]
+      },
+      {
+        "individual": "prop-power-box.glb"
+      },
+      {
+        "individual": "prop-tool-cart-rolling.glb"
+      },
+      {
+        "file": "ace7c4b6d047367a64d61e7fd1d43de0e4dec5b4feea029f221a9db01a262388.bin.br",
+        "encodedLength": 53066,
+        "decodedLength": 137284,
+        "entries": [
+          {
+            "name": "prop-hoist-hook-chain.glb",
+            "offset": 0,
+            "length": 53904,
+            "sha256": "65e019721c051e17c71a3f294978f03eb00dd36b7ca99812d5450fadb5f5b9ac"
+          },
+          {
+            "name": "prop-spark-plug.glb",
+            "offset": 53904,
+            "length": 71896,
+            "sha256": "9a85a25f92f12a59aaed1ea038aefbdfd6f099bc1e1eea34045b4a4f3f254a56"
+          },
+          {
+            "name": "prop-car-battery.glb",
+            "offset": 125800,
+            "length": 11484,
+            "sha256": "cbb0b57883ce0edf321f409f4b706bc9d0b0fd532e3d02d95424ab3b1965c00d"
+          }
+        ]
+      },
+      {
+        "individual": "prop-metal-jug.glb"
+      },
+      {
+        "individual": "prop-pipes-industrial.glb"
+      },
+      {
+        "file": "5b20bd27b5f7483f558f6e70d7f0b653313107b94bd0b885085b3af0e6e406e0.bin.br",
+        "encodedLength": 116660,
+        "decodedLength": 201060,
+        "entries": [
+          {
+            "name": "prop-jumper-cables.glb",
+            "offset": 0,
+            "length": 41432,
+            "sha256": "2e35ddd654c62cd3b0a9eeab8cfca0925423cdc402626a98b458762bcdf02b8b"
+          },
+          {
+            "name": "prop-workbench-cluttered.glb",
+            "offset": 41432,
+            "length": 149360,
+            "sha256": "00f08af598482265ab4ed9f1bc21d3c1529e7256c48a6a4c6dd0a9f2e82092b2"
+          },
+          {
+            "name": "prop-parts-cabinet.glb",
+            "offset": 190792,
+            "length": 10268,
+            "sha256": "0fbbfeb3c3772adbc0068b0a87ff97110132dc1d881585cc0e5407d8866d108b"
+          }
+        ]
+      },
+      {
+        "individual": "prop-tool-chest-metal.glb"
+      },
+      {
+        "file": "77c0207a12ce5400d5a581c6abebb33b8817ff6856bd0fcacf225e2041edad43.bin.br",
+        "encodedLength": 13702,
+        "decodedLength": 29068,
+        "entries": [
+          {
+            "name": "prop-drill.glb",
+            "offset": 0,
+            "length": 15712,
+            "sha256": "ec7056fac32ee0cc66b79dba7a0e7562ddb1392093ca174fdaf4342aa447512b"
+          },
+          {
+            "name": "prop-hammer.glb",
+            "offset": 15712,
+            "length": 7216,
+            "sha256": "75d2dab5ef897a21f6e6fe4f69e61ace6a46ffa1f85281821d6db3f38dbd56db"
+          },
+          {
+            "name": "prop-pliers.glb",
+            "offset": 22928,
+            "length": 6140,
+            "sha256": "bd5f214f179fdea0e8667e2814aa79cf678aa6d9db18cf35bf43a0bd440204e0"
+          }
+        ]
+      },
+      {
+        "individual": "prop-barrel-rusted-b.glb"
+      },
+      {
+        "individual": "prop-gas-tank-yellow.glb"
+      },
+      {
+        "individual": "prop-crate-wooden.glb"
+      },
+      {
+        "individual": "prop-cardboard-boxes.glb"
+      },
+      {
+        "individual": "prop-bench-vice.glb"
+      },
+      {
+        "individual": "prop-lubricant-spray.glb"
+      },
+      {
+        "individual": "prop-wrench-adjustable.glb"
+      },
+      {
+        "individual": "prop-ammo-box.glb"
+      },
+      {
+        "individual": "prop-lamp-caged-hanging.glb"
+      },
+      {
+        "file": "94e364c133cb3d70d3c76918e8965f0509ecd909cad0702b60544017ff73e580.bin.br",
+        "encodedLength": 8096,
+        "decodedLength": 18604,
+        "entries": [
+          {
+            "name": "prop-workbench-anvil.glb",
+            "offset": 0,
+            "length": 7652,
+            "sha256": "596ed5427b6a3214ccc1fdc4016e4daa4e607e412a3c5dbbebb64bac0f247810"
+          },
+          {
+            "name": "prop-workbench-grinder.glb",
+            "offset": 7652,
+            "length": 10952,
+            "sha256": "1326769f634e3cde8ec8d8f591d4c4148ed401c2d9cf707c7939967762181fd5"
+          }
+        ]
+      },
+      {
+        "individual": "car-prewar-hotrod-donor.glb"
+      },
+      {
+        "individual": "prop-welding-cart.glb"
+      },
+      {
+        "individual": "prop-gas-bottle-propane.glb"
+      },
+      {
+        "individual": "prop-toolbox-metal.glb"
+      },
+      {
+        "file": "4e1b59681f6607ab84494c5dead3003d4eb71ab5be6aeab7914618f802b65f02.bin.br",
+        "encodedLength": 96918,
+        "decodedLength": 236300,
+        "entries": [
+          {
+            "name": "prop-barrel-rusted-c.glb",
+            "offset": 0,
+            "length": 76820,
+            "sha256": "6719571dc3f0062d8337ddb37f42456c07a2db22287034ddecee017fc587ab95"
+          },
+          {
+            "name": "car-camaro-primer-shell.glb",
+            "offset": 76820,
+            "length": 159480,
+            "sha256": "93faa48a643ac682a0b2c4db829085550dbcf6da40d2a10976b392f257e22d86"
+          }
+        ]
+      },
+      {
+        "file": "865c3ff968dca4c07aa4dde2b28dff648e8c70322058725703748c618a12136b.bin.br",
+        "encodedLength": 108427,
+        "decodedLength": 257220,
+        "entries": [
+          {
+            "name": "car-project-shell-rusted.glb",
+            "offset": 0,
+            "length": 209904,
+            "sha256": "92806f28cf762e11e76b748974927a00843de2e70f3a011ae5b20f3dccc39d52"
+          },
+          {
+            "name": "prop-tyre-bare.glb",
+            "offset": 209904,
+            "length": 40432,
+            "sha256": "7c016f0b5256534909343fedb80f76c00aa9e50a723d1f4e0cec28e2cba66de2"
+          },
+          {
+            "name": "prop-ladder.glb",
+            "offset": 250336,
+            "length": 6884,
+            "sha256": "66bc69ffbc5003dc7bb3f1d2278b7c74361cfc14f4cdc87cfd89317d2f421bfc"
+          }
+        ]
+      },
+      {
+        "individual": "prop-stool-metal-a.glb"
+      },
+      {
+        "individual": "prop-shop-machine.glb"
+      },
+      {
+        "individual": "prop-stool-metal-b.glb"
+      },
+      {
+        "individual": "prop-gas-can-red.glb"
+      },
+      {
+        "individual": "prop-storage-cart-industrial.glb"
+      },
+      {
+        "individual": "prop-barrel-rusted-a.glb"
+      },
+      {
+        "individual": "car-convertible-50s.glb"
+      },
+      {
+        "individual": "prop-desk-metal-office.glb"
+      },
+      {
+        "individual": "prop-rack-metal-worn.glb"
+      },
+      {
+        "file": "4cb089af98078ca9a7f3263b58fa051da86f3f9cc3dbf24282fe1c09d063a715.bin.br",
+        "encodedLength": 99929,
+        "decodedLength": 139136,
+        "entries": [
+          {
+            "name": "prop-shelving-tall.glb",
+            "offset": 0,
+            "length": 11308,
+            "sha256": "e4987ef4680c8bc0a58aa7cead32966d432370874d11282e194793ee9f02019c"
+          },
+          {
+            "name": "prop-tyre-stack.glb",
+            "offset": 11308,
+            "length": 30340,
+            "sha256": "3ac6777eac0d987da226f3189eda4d8d4f0be93445866d4d87be714243e86d10"
+          },
+          {
+            "name": "prop-pallet-jack.glb",
+            "offset": 41648,
+            "length": 15628,
+            "sha256": "9812d5a3609c66c035a7757a8ae4e58ac78855db205ca5472de113befe07f2b8"
+          },
+          {
+            "name": "prop-metal-door.glb",
+            "offset": 57276,
+            "length": 20496,
+            "sha256": "d043c241f3a7ed3c24293da0ba38c3667a71672233fb37d40ffc0609fa43a556"
+          },
+          {
+            "name": "prop-shelf-wooden.glb",
+            "offset": 77772,
+            "length": 61364,
+            "sha256": "262539e4bed4e9a02d71a2a5d2a17dbfb889d40024c8a1365c9033ee980968d3"
+          }
+        ]
+      },
+      {
+        "individual": "car-covered-project.glb"
+      },
+      {
+        "file": "06d96b362a117828c3c29e8eb07dcb094d7e140849a1777be9ea0235649d4cd6.bin.br",
+        "encodedLength": 20991,
+        "decodedLength": 69952,
+        "entries": [
+          {
+            "name": "prop-oil-drums-row.glb",
+            "offset": 0,
+            "length": 39544,
+            "sha256": "da22022321cb9392d7ade11dee9e8e2dc3c64418942e7ab9adcb328db3c41538"
+          },
+          {
+            "name": "prop-service-ramp.glb",
+            "offset": 39544,
+            "length": 7012,
+            "sha256": "e369aec5986d013681236392e55c496dc3c7986e00a30422e019fb67f3461f84"
+          },
+          {
+            "name": "prop-tyre-truck.glb",
+            "offset": 46556,
+            "length": 15396,
+            "sha256": "1683beae451ca0b9572a4514f346f1bd835b7049fe5ca511d7d6a0bfdd8189d5"
+          },
+          {
+            "name": "prop-gas-bottle-tall.glb",
+            "offset": 61952,
+            "length": 8000,
+            "sha256": "8c85c883697adbcab23579d0d58a4e54ad3629c377e65a43cd30057a08135474"
+          }
+        ]
+      }
+    ],
+    "lite": [
+      {
+        "individual": "car-dodge-charger.glb"
+      },
+      {
+        "individual": "car-camaro.glb"
+      },
+      {
+        "individual": "truck-pickup-classic.glb"
+      },
+      {
+        "file": "2a3d1c064b294b26a581b5a5585f92092be12b41ca677be2a0cd242a0b46db5a.bin.br",
+        "encodedLength": 24901,
+        "decodedLength": 39396,
+        "entries": [
+          {
+            "name": "prop-oil-drum.glb",
+            "offset": 0,
+            "length": 14160,
+            "sha256": "119096b398a119fdb7814d399cc517e835140570b49e66692de03b95005ee3d7"
+          },
+          {
+            "name": "prop-fire-extinguisher.glb",
+            "offset": 14160,
+            "length": 20012,
+            "sha256": "e593600bbe9271da0ca0a2c51300b23290a62f1cd3e8c1aeeadb16c4aed90e62"
+          },
+          {
+            "name": "prop-pallet.glb",
+            "offset": 34172,
+            "length": 5224,
+            "sha256": "2365c505645d0e0badc3c81d8d43fd6e7226752e5b9fd85363445e8aa14252db"
+          }
+        ]
+      },
+      {
+        "individual": "prop-tyre-old.glb"
+      },
+      {
+        "individual": "prop-wheel-rim-rusted-a.glb"
+      },
+      {
+        "file": "f2f183291109d3bc9b926cc9b90764fb15f431524fdd2807f838a55415d18fae.bin.br",
+        "encodedLength": 103428,
+        "decodedLength": 138876,
+        "entries": [
+          {
+            "name": "prop-jerry-can.glb",
+            "offset": 0,
+            "length": 12992,
+            "sha256": "1dee1a7a26a0e1798979e29757114c755a73ebec8562de58db65a15905c73275"
+          },
+          {
+            "name": "prop-jerrycan-green.glb",
+            "offset": 12992,
+            "length": 119684,
+            "sha256": "d71d1391f4edf4eb090679fb3f193beb5142664d90f55de5330a3ef271eb71e2"
+          },
+          {
+            "name": "prop-wheel-mag.glb",
+            "offset": 132676,
+            "length": 6200,
+            "sha256": "fbb107106667c0c964de5fae7cdaa1f3539df5bb147ccda60044e66a74ba9578"
+          }
+        ]
+      },
+      {
+        "individual": "car-muscle-challenger.glb"
+      },
+      {
+        "individual": "car-muscle-coupe-hoodup.glb"
+      },
+      {
+        "file": "51a0b6cc4b8883704113e09ce24b95357f366891ec31a8dd3f249eda249ba9a1.bin.br",
+        "encodedLength": 72923,
+        "decodedLength": 97272,
+        "entries": [
+          {
+            "name": "prop-wheel-stack-bare.glb",
+            "offset": 0,
+            "length": 10276,
+            "sha256": "b91e6a808b2204ac862014e8d76c4dc6680d48867a77989c71d6639c3e6c74ec"
+          },
+          {
+            "name": "prop-tire-pump.glb",
+            "offset": 10276,
+            "length": 86996,
+            "sha256": "6b6a1f1f769c2492ad3afdad0395ad5de8068223409af5561c2793f3e5d2bff4"
+          }
+        ]
+      },
+      {
+        "individual": "prop-oil-can-small.glb"
+      },
+      {
+        "file": "8f2a1d26c64087dcd80730d99275b56482bf8bb7a4c7782c6b7d21c17aa739fc.bin.br",
+        "encodedLength": 104844,
+        "decodedLength": 238044,
+        "entries": [
+          {
+            "name": "prop-funnel.glb",
+            "offset": 0,
+            "length": 2816,
+            "sha256": "10575a6b78c0601fd1084d404d94a4d040e6c0874c3a87e3488efd46dc7d6e96"
+          },
+          {
+            "name": "prop-droplight-pendant.glb",
+            "offset": 2816,
+            "length": 235228,
+            "sha256": "1085661ec0e30abda5b16c5dbb11362b815571ade8d3a0fa9847f3f9459cb48a"
+          }
+        ]
+      },
+      {
+        "individual": "prop-power-box.glb"
+      },
+      {
+        "individual": "prop-tool-cart-rolling.glb"
+      },
+      {
+        "file": "ace7c4b6d047367a64d61e7fd1d43de0e4dec5b4feea029f221a9db01a262388.bin.br",
+        "encodedLength": 53066,
+        "decodedLength": 137284,
+        "entries": [
+          {
+            "name": "prop-hoist-hook-chain.glb",
+            "offset": 0,
+            "length": 53904,
+            "sha256": "65e019721c051e17c71a3f294978f03eb00dd36b7ca99812d5450fadb5f5b9ac"
+          },
+          {
+            "name": "prop-spark-plug.glb",
+            "offset": 53904,
+            "length": 71896,
+            "sha256": "9a85a25f92f12a59aaed1ea038aefbdfd6f099bc1e1eea34045b4a4f3f254a56"
+          },
+          {
+            "name": "prop-car-battery.glb",
+            "offset": 125800,
+            "length": 11484,
+            "sha256": "cbb0b57883ce0edf321f409f4b706bc9d0b0fd532e3d02d95424ab3b1965c00d"
+          }
+        ]
+      },
+      {
+        "individual": "prop-metal-jug.glb"
+      },
+      {
+        "individual": "prop-pipes-industrial.glb"
+      },
+      {
+        "file": "5b20bd27b5f7483f558f6e70d7f0b653313107b94bd0b885085b3af0e6e406e0.bin.br",
+        "encodedLength": 116660,
+        "decodedLength": 201060,
+        "entries": [
+          {
+            "name": "prop-jumper-cables.glb",
+            "offset": 0,
+            "length": 41432,
+            "sha256": "2e35ddd654c62cd3b0a9eeab8cfca0925423cdc402626a98b458762bcdf02b8b"
+          },
+          {
+            "name": "prop-workbench-cluttered.glb",
+            "offset": 41432,
+            "length": 149360,
+            "sha256": "00f08af598482265ab4ed9f1bc21d3c1529e7256c48a6a4c6dd0a9f2e82092b2"
+          },
+          {
+            "name": "prop-parts-cabinet.glb",
+            "offset": 190792,
+            "length": 10268,
+            "sha256": "0fbbfeb3c3772adbc0068b0a87ff97110132dc1d881585cc0e5407d8866d108b"
+          }
+        ]
+      },
+      {
+        "individual": "prop-tool-chest-metal.glb"
+      },
+      {
+        "file": "b5a8bd068213b7dee880ec312a27c9d78953feb8ab8d254968695cfaf35c7103.bin.br",
+        "encodedLength": 93871,
+        "decodedLength": 127356,
+        "entries": [
+          {
+            "name": "prop-drill.glb",
+            "offset": 0,
+            "length": 15712,
+            "sha256": "ec7056fac32ee0cc66b79dba7a0e7562ddb1392093ca174fdaf4342aa447512b"
+          },
+          {
+            "name": "prop-hammer.glb",
+            "offset": 15712,
+            "length": 7216,
+            "sha256": "75d2dab5ef897a21f6e6fe4f69e61ace6a46ffa1f85281821d6db3f38dbd56db"
+          },
+          {
+            "name": "prop-pliers.glb",
+            "offset": 22928,
+            "length": 6140,
+            "sha256": "bd5f214f179fdea0e8667e2814aa79cf678aa6d9db18cf35bf43a0bd440204e0"
+          },
+          {
+            "name": "prop-barrel-rusted-b.glb",
+            "offset": 29068,
+            "length": 84112,
+            "sha256": "fa707acf734bbcaf8e2693295d6cf99cb3cf6d9dd335e6c844642d0e61200fcf"
+          },
+          {
+            "name": "prop-gas-tank-yellow.glb",
+            "offset": 113180,
+            "length": 14176,
+            "sha256": "bbf867b7e40944fc4ded27c4a739cfb39b4693cc794962c86b0b9c4ad07c62e7"
+          }
+        ]
+      },
+      {
+        "individual": "prop-crate-wooden.glb"
+      },
+      {
+        "individual": "prop-cardboard-boxes.glb"
+      },
+      {
+        "individual": "prop-bench-vice.glb"
+      },
+      {
+        "individual": "prop-lubricant-spray.glb"
+      },
+      {
+        "individual": "prop-wrench-adjustable.glb"
+      },
+      {
+        "individual": "prop-ammo-box.glb"
+      },
+      {
+        "individual": "prop-lamp-caged-hanging.glb"
+      },
+      {
+        "file": "94e364c133cb3d70d3c76918e8965f0509ecd909cad0702b60544017ff73e580.bin.br",
+        "encodedLength": 8096,
+        "decodedLength": 18604,
+        "entries": [
+          {
+            "name": "prop-workbench-anvil.glb",
+            "offset": 0,
+            "length": 7652,
+            "sha256": "596ed5427b6a3214ccc1fdc4016e4daa4e607e412a3c5dbbebb64bac0f247810"
+          },
+          {
+            "name": "prop-workbench-grinder.glb",
+            "offset": 7652,
+            "length": 10952,
+            "sha256": "1326769f634e3cde8ec8d8f591d4c4148ed401c2d9cf707c7939967762181fd5"
+          }
+        ]
+      },
+      {
+        "individual": "car-prewar-hotrod-donor.glb"
+      },
+      {
+        "individual": "prop-welding-cart.glb"
+      },
+      {
+        "individual": "prop-gas-bottle-propane.glb"
+      },
+      {
+        "individual": "prop-toolbox-metal.glb"
+      },
+      {
+        "file": "d2b1644c423b70bf075689ed4a59a63003615df0c3f371b9776551354bdcd78c.bin.br",
+        "encodedLength": 55698,
+        "decodedLength": 195248,
+        "entries": [
+          {
+            "name": "prop-barrel-rusted-c.glb",
+            "offset": 0,
+            "length": 35768,
+            "sha256": "abd8aed099aa5e020db56e3788f028c1fc6b3f9f58e9bb946522fb73a94f0c9a"
+          },
+          {
+            "name": "car-camaro-primer-shell.glb",
+            "offset": 35768,
+            "length": 159480,
+            "sha256": "93faa48a643ac682a0b2c4db829085550dbcf6da40d2a10976b392f257e22d86"
+          }
+        ]
+      },
+      {
+        "file": "79f1b1c1e3b1c284743986b439604e81acf01231e85fab9f047126782d1c6efb.bin.br",
+        "encodedLength": 101853,
+        "decodedLength": 250412,
+        "entries": [
+          {
+            "name": "car-project-shell-rusted.glb",
+            "offset": 0,
+            "length": 209904,
+            "sha256": "92806f28cf762e11e76b748974927a00843de2e70f3a011ae5b20f3dccc39d52"
+          },
+          {
+            "name": "prop-tyre-bare.glb",
+            "offset": 209904,
+            "length": 33624,
+            "sha256": "276e4752a159b9452b278d792853e73b004a64e06d3b1c0ded598cddc6ad2196"
+          },
+          {
+            "name": "prop-ladder.glb",
+            "offset": 243528,
+            "length": 6884,
+            "sha256": "66bc69ffbc5003dc7bb3f1d2278b7c74361cfc14f4cdc87cfd89317d2f421bfc"
+          }
+        ]
+      },
+      {
+        "individual": "prop-stool-metal-a.glb"
+      },
+      {
+        "file": "1398e5b4af6f64dcdeea4ba46ff7740cfd4359c54db2559cc47497679cd06736.bin.br",
+        "encodedLength": 85662,
+        "decodedLength": 123472,
+        "entries": [
+          {
+            "name": "prop-shop-machine.glb",
+            "offset": 0,
+            "length": 14656,
+            "sha256": "2975df92f4782ad460621f4948c06964763e0c596b5f3466cdfa74a412ae7d18"
+          },
+          {
+            "name": "prop-stool-metal-b.glb",
+            "offset": 14656,
+            "length": 90664,
+            "sha256": "6e6240c776088be33dd10e174df8138acdde8c31945f04a4955c1d867d1ebaff"
+          },
+          {
+            "name": "prop-gas-can-red.glb",
+            "offset": 105320,
+            "length": 18152,
+            "sha256": "0fb072c86e4794ff6e2de5ff26de75e95beea2d592900873a7589e182833347b"
+          }
+        ]
+      },
+      {
+        "individual": "prop-storage-cart-industrial.glb"
+      },
+      {
+        "individual": "prop-barrel-rusted-a.glb"
+      },
+      {
+        "individual": "car-convertible-50s.glb"
+      },
+      {
+        "individual": "prop-desk-metal-office.glb"
+      },
+      {
+        "file": "739c4ec5ef850d6d3798ea4d06ec509741624eab70eba91331cc5fb621a92f6e.bin.br",
+        "encodedLength": 120614,
+        "decodedLength": 167448,
+        "entries": [
+          {
+            "name": "prop-rack-metal-worn.glb",
+            "offset": 0,
+            "length": 156140,
+            "sha256": "c2252d99f9c2a62746e6876d332a14a2b3c4a72e42ea04240dbd524fead37dc5"
+          },
+          {
+            "name": "prop-shelving-tall.glb",
+            "offset": 156140,
+            "length": 11308,
+            "sha256": "e4987ef4680c8bc0a58aa7cead32966d432370874d11282e194793ee9f02019c"
+          }
+        ]
+      },
+      {
+        "file": "6d63862ef178e32d3f7b1ce7b98483f9be3b956e59e5e3e6ac3dddba10d81e20.bin.br",
+        "encodedLength": 57573,
+        "decodedLength": 89536,
+        "entries": [
+          {
+            "name": "prop-tyre-stack.glb",
+            "offset": 0,
+            "length": 30340,
+            "sha256": "3ac6777eac0d987da226f3189eda4d8d4f0be93445866d4d87be714243e86d10"
+          },
+          {
+            "name": "prop-pallet-jack.glb",
+            "offset": 30340,
+            "length": 15628,
+            "sha256": "9812d5a3609c66c035a7757a8ae4e58ac78855db205ca5472de113befe07f2b8"
+          },
+          {
+            "name": "prop-metal-door.glb",
+            "offset": 45968,
+            "length": 20496,
+            "sha256": "d043c241f3a7ed3c24293da0ba38c3667a71672233fb37d40ffc0609fa43a556"
+          },
+          {
+            "name": "prop-shelf-wooden.glb",
+            "offset": 66464,
+            "length": 23072,
+            "sha256": "5334c95377bece201f9f8b4364abe0fcc204c733c50e6bbea54716560884ebfb"
+          }
+        ]
+      },
+      {
+        "individual": "car-covered-project.glb"
+      },
+      {
+        "file": "a5369f4201d747daae6e810af1198c89fbccdf082f2dac9b6b5f96499241840d.bin.br",
+        "encodedLength": 20789,
+        "decodedLength": 69568,
+        "entries": [
+          {
+            "name": "prop-oil-drums-row.glb",
+            "offset": 0,
+            "length": 39544,
+            "sha256": "da22022321cb9392d7ade11dee9e8e2dc3c64418942e7ab9adcb328db3c41538"
+          },
+          {
+            "name": "prop-service-ramp.glb",
+            "offset": 39544,
+            "length": 6628,
+            "sha256": "3936581b50248d8dab89d8fd6e103cdc4e66dd6a3dc98b3c56d51f3b4e271c2d"
+          },
+          {
+            "name": "prop-tyre-truck.glb",
+            "offset": 46172,
+            "length": 15396,
+            "sha256": "1683beae451ca0b9572a4514f346f1bd835b7049fe5ca511d7d6a0bfdd8189d5"
+          },
+          {
+            "name": "prop-gas-bottle-tall.glb",
+            "offset": 61568,
+            "length": 8000,
+            "sha256": "8c85c883697adbcab23579d0d58a4e54ad3629c377e65a43cd30057a08135474"
+          }
+        ]
+      }
+    ]
+  }
+}
