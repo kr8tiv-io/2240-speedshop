@@ -476,7 +476,7 @@ export function Body() {
       </p>
       <p>
         Then send the photos and the honest story through the{" "}
-        <Link href="/quote">quote page</Link>. What comes back will be structured the way this
+        <Link href="/quote#form">quote page</Link>. What comes back will be structured the way this
         article is: firm numbers on the rust that can be seen, named unknowns on the areas that
         cannot, and a recommendation — patch, panel, or fabrication — for each spot, with the
         reasoning attached. A quote you can read beats a quote you have to trust. That is the

@@ -431,7 +431,7 @@ export function Body() {
         The money argument, stage by stage, sits in the{" "}
         <Link href="/guides/costs">restoration cost guide</Link>. If the car is coming in for a
         driveline conversation — overdrive only, or overdrive as part of a swap — send photos and
-        the rear-gear ratio through the <Link href="/quote">quote page</Link>. The first honest
+        the rear-gear ratio through the <Link href="/quote#form">quote page</Link>. The first honest
         answer is usually which box fits the tunnel you already have.
       </p>
     </>

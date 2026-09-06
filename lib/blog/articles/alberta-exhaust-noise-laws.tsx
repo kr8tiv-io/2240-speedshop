@@ -591,7 +591,7 @@ export function Body() {
       </p>
       <p>
         If you are planning an exhaust for a classic, a restomod, or a fresh swap, tell us what
-        the car is and how you drive it through the <Link href="/quote">quote page</Link>. You
+        the car is and how you drive it through the <Link href="/quote#form">quote page</Link>. You
         will get a straight answer on what will sound right, what will pass, and where those two
         things need a better plan than a sawzall.
       </p>

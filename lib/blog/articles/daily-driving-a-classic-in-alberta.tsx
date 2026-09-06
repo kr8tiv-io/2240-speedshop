@@ -559,7 +559,7 @@ export function Body() {
       <p>
         If your classic is not ready for that seven-month job — starts hard, stops long, wanders,
         or is already showing brine scars in the rockers — send the year, engine, and what it is
-        doing through the <Link href="/quote">quote page</Link>. You will get a straight answer on
+        doing through the <Link href="/quote#form">quote page</Link>. You will get a straight answer on
         what it needs to earn a daily slot in April, what it costs in honest ranges, and — when it
         is true — which of those things can safely wait another season.
       </p>

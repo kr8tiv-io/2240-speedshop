@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { QuoteForm } from "@/components/QuoteForm";
+import { IntentLink } from "@/components/IntentLink";
 import { site, services } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, JsonLd } from "@/lib/schema";
 
@@ -160,12 +161,12 @@ export default function QuotePage() {
           <ul className="flex flex-wrap gap-2">
             {services.map((s) => (
               <li key={s.slug}>
-                <Link
+                <IntentLink
                   href={`/quote?service=${s.slug}#form`}
                   className="inline-block border border-rust/35 px-4 py-2 font-sub text-[11px] uppercase tracking-[0.16em] text-steel transition-colors hover:border-rust hover:text-bone"
                 >
                   {s.nav}
-                </Link>
+                </IntentLink>
               </li>
             ))}
           </ul>
@@ -173,7 +174,7 @@ export default function QuotePage() {
       </section>
 
       {/* -------------------------------------------------------------- form */}
-      <section id="form" className="mx-auto max-w-6xl px-5 pb-16">
+      <section id="form" className="mx-auto max-w-6xl scroll-mt-28 px-5 pb-16">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
           <Suspense fallback={null}>
             <QuoteForm />

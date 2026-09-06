@@ -607,7 +607,7 @@ export function Body() {
         And if you are standing in the garage trying to decide which column of that table your car
         lands in — that is a photo conversation. Send pictures of the panels, what you know of the
         paint history, and where the car has to end up through the{" "}
-        <Link href="/quote">quote page</Link>, and you will get a straight answer: what we would
+        <Link href="/quote#form">quote page</Link>, and you will get a straight answer: what we would
         blast, what we would strip by hand, and what we would leave alone.
       </p>
     </>

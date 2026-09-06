@@ -332,7 +332,7 @@ export function Body() {
         If the underside is already bubbling, stop spraying film over scale and get the car on a
         hoist. That is{" "}
         <Link href="/services/body-paint-metalwork">body, paint, and metalwork</Link>, not a
-        rustproofing upsell. Send underside photos through the <Link href="/quote">quote page</Link>{" "}
+        rustproofing upsell. Send underside photos through the <Link href="/quote#form">quote page</Link>{" "}
         if you want a straight call on whether the car needs film, a rinse habit, or a cutter.
         Chloride will not wait for the decision.
       </p>

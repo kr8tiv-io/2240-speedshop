@@ -590,7 +590,7 @@ export function Body() {
       <p>
         If the walk-around turns up something you do not like — a soft pedal, a sinking float, a
         stain with no obvious address — that is what the shop is for. Send the year, engine, how
-        long it sat, and what you found through the <Link href="/quote">quote page</Link>, and you
+        long it sat, and what you found through the <Link href="/quote#form">quote page</Link>, and you
         will get a straight answer about what needs doing now, what can wait until fall, and what
         was never actually a problem.
       </p>

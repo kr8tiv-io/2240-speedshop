@@ -615,7 +615,7 @@ export function Body() {
       <p>
         If you are staring at a rocker wondering which side of the line it sits on, do not guess.
         Take photos of the worst of it — rockers, cab corners, mounts, and floors, not the good
-        fender — and send them through the <Link href="/quote">quote page</Link> with the year and
+        fender — and send them through the <Link href="/quote#form">quote page</Link> with the year and
         model. You will get a straight answer: preserve, seal, or cut steel. The truck already
         knows which one it needs. It just takes a pick and honest eyes to hear it.
       </p>

@@ -446,7 +446,7 @@ export function Body() {
         service page</Link> covers how the work is structured, and the{" "}
         <Link href="/guides/costs">restoration cost guide</Link> carries honest CAD ranges for
         everything from a mechanical refresh to a frame-off. If you have a barn find and a phone
-        full of photos, send them through the <Link href="/quote">quote page</Link> — you will get
+        full of photos, send them through the <Link href="/quote#form">quote page</Link> — you will get
         a straight answer on what it needs, what that typically costs, and whether the car
         deserves it. Sometimes the honest answer is that it does not, and you will get that answer
         too.

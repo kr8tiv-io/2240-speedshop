@@ -447,7 +447,7 @@ export function Body() {
       <p>
         If the plan is bigger than this September — if the truck in your garage is supposed to be
         the one you drive down Highway 93 some year soon — send photos through the{" "}
-        <Link href="/quote">quote page</Link> and say exactly that. A build with a destination
+        <Link href="/quote#form">quote page</Link> and say exactly that. A build with a destination
         attached gets scoped differently, and better.
       </p>
 

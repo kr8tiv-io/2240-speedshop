@@ -541,7 +541,7 @@ export function Body() {
       <p>
         If you are circling a car right now — in the city, in another province, or on an auction
         site with a countdown clock — send the listing through the{" "}
-        <Link href="/quote">quote page</Link> and you will get a straight answer on what an
+        <Link href="/quote#form">quote page</Link> and you will get a straight answer on what an
         inspection should cover for that specific car, what it will cost, and how fast it can
         happen. The deposit can wait two days. The rot has been there for thirty years, and it is
         not going anywhere.

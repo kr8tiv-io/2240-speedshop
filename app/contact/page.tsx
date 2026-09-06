@@ -46,15 +46,12 @@ const bring = [
 ];
 
 export default function ContactPage() {
-  const { lat, lng } = site.geo;
-  const bbox = [lng - 0.012, lat - 0.006, lng + 0.012, lat + 0.006]
-    .map((n) => n.toFixed(4))
-    .join(",");
-  const osmEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
-  const osmLink = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
   const addressQuery = encodeURIComponent(
-    `${site.name}, ${site.street}, ${site.city}, ${site.region} ${site.postalCode}`,
+    `${site.street}, ${site.city}, ${site.region} ${site.postalCode}`,
   );
+  // Resolve the published address instead of displaying an unverified pin.
+  const mapsEmbed = `https://www.google.com/maps?q=${addressQuery}&output=embed`;
+  const mapsDirections = `https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`;
 
   return (
     <>
@@ -183,7 +180,7 @@ export default function ContactPage() {
             <div className="plate overflow-hidden">
               <iframe
                 title="Map showing 2240 Speed Shop at 2009 91 Ave NW, Edmonton"
-                src={osmEmbed}
+                src={mapsEmbed}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 className="h-[420px] w-full border-0 sm:h-[520px]"
@@ -191,12 +188,12 @@ export default function ContactPage() {
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               <a
-                href={osmLink}
+                href={mapsDirections}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-sub text-[11px] uppercase tracking-[0.2em] text-steel underline decoration-tungsten/40 underline-offset-4 transition-colors hover:text-bone"
               >
-                Open in OpenStreetMap
+                Get directions
               </a>
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${addressQuery}`}
@@ -220,7 +217,7 @@ export default function ContactPage() {
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  href="/quote"
+                  href="/quote#form"
                   className="border border-tungsten/70 px-6 py-3 font-sub text-xs uppercase tracking-[0.2em] text-bone transition-all hover:border-neon-bloom hover:shadow-[0_0_24px_rgba(255,176,102,0.15)]"
                 >
                   Start a quote
@@ -306,7 +303,7 @@ export default function ContactPage() {
             you list the photos as you go.
           </p>
           <Link
-            href="/quote"
+            href="/quote#form"
             className="shrink-0 border border-tungsten/70 px-6 py-3 text-center font-sub text-xs uppercase tracking-[0.2em] text-bone transition-all hover:border-neon-bloom hover:shadow-[0_0_24px_rgba(255,176,102,0.15)]"
           >
             Get a quote

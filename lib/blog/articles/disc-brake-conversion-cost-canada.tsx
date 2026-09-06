@@ -441,7 +441,7 @@ export function Body() {
       </p>
       <p>
         If the car is coming in for brakes as part of a larger plan — stance, power, the rest of
-        the spine — send what you have through the <Link href="/quote">quote page</Link>. Photos of
+        the spine — send what you have through the <Link href="/quote#form">quote page</Link>. Photos of
         the spindle, the wheels you want to keep, and the engine that will actually have to stop
         are enough for a straight range. The first honest answer on a lot of these is: convert the
         front, refresh the rear, and drive it.

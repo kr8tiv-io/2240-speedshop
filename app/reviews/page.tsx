@@ -267,7 +267,7 @@ export default function ReviewsPage() {
             Meet Terry
           </Link>
           <Link
-            href="/quote"
+            href="/quote#form"
             className="font-sub text-xs uppercase tracking-[0.22em] text-steel transition-colors hover:text-bone"
           >
             Start a quote

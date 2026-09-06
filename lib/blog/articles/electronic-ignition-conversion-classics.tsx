@@ -388,7 +388,7 @@ export function Body() {
         The winter half of this conversation — storage, fuel, and the first start in April — is
         the <Link href="/guides/winter">winter guide</Link>. If the car is coming in for a no-start
         that is actually an ignition, send a photo of the distributor cap (inside, please) through
-        the <Link href="/quote">quote page</Link>. Half of those photos already have the answer
+        the <Link href="/quote#form">quote page</Link>. Half of those photos already have the answer
         written in white film on the plastic.
       </p>
     </>

@@ -187,8 +187,10 @@ assert.ok(
   "Model textures must upload one paced frame at a time before their first visible draw.",
 );
 assert.ok(
-  /await warmTextures\(gl, node, isStale\);[\s\S]*await warmUp\(gl, node, camera, scene, isStale\)/.test(loaders),
-  "Texture upload must finish before shader compile and geometry first-use.",
+  /await warmUp\(gl, node, camera, scene, isStale\)/.test(loaders) &&
+    /await compileProgramsWithin\([\s\S]{0,240}\(\) => warmTextures\(gl, node, isStale\)/.test(loaders) &&
+    /if \(prepareTextures\) await prepareTextures\(\);/.test(loaders),
+  "Exact paced textures must finish inside shader warm-up before geometry first-use.",
 );
 assert.ok(
   /function firstUseKey[\s\S]*const rawDefines/.test(loaders) &&

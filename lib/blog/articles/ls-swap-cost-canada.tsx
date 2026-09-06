@@ -607,7 +607,7 @@ export function Body() {
       <p>
         If you are pricing a swap now, the process here starts the same way every time — photos of
         the car, what it has, what you want it to do — through the{" "}
-        <Link href="/quote">quote page</Link>. You will get the six buckets, honest ranges for
+        <Link href="/quote#form">quote page</Link>. You will get the six buckets, honest ranges for
         your actual car, and if the right answer is the junkyard path instead of the crate, that
         is the answer you will get.
       </p>

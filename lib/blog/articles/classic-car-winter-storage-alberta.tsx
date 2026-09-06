@@ -582,7 +582,7 @@ export function Body() {
         And if the wake-up is not clean — it cranks and will not run right, the fuel smell
         says the carb flooded, or the car went into storage with a problem you hoped winter
         would fix — stop cranking and send the year, engine, and symptoms through the{" "}
-        <Link href="/quote">quote page</Link>. Spring is our season for exactly this, and the
+        <Link href="/quote#form">quote page</Link>. Spring is our season for exactly this, and the
         honest answer is sometimes ten minutes of choke adjustment, not a rebuild. Either way,
         you will know before you spend.
       </p>

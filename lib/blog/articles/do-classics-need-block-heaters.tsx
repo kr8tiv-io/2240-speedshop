@@ -572,7 +572,7 @@ export function Body() {
         Either way, the cheap moves happen before the snow. A core-plug heater, a choke set for
         this latitude, and a maintainer together cost less than one flatbed ride and a spring
         no-start diagnosis. Send the year, the engine, and how the car gets used through the{" "}
-        <Link href="/quote">quote page</Link>, and you will get a straight answer on which heater
+        <Link href="/quote#form">quote page</Link>, and you will get a straight answer on which heater
         fits your block, what it should cost, and whether your cold-start problem is weather or
         wear.
       </p>

@@ -570,7 +570,7 @@ export function Body() {
       </p>
       <p>
         Either way, the process starts the same: photos and a compression story in, honest scope
-        out. Send what you have through the <Link href="/quote">quote page</Link> and you will
+        out. Send what you have through the <Link href="/quote#form">quote page</Link> and you will
         get a straight answer — including, when it is true, that your engine needs a tune-up and
         a valve adjustment, not a rebuild. You will get that answer too.
       </p>

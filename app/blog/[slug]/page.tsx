@@ -260,7 +260,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             </p>
           </div>
           <div className="flex flex-wrap gap-4">
-            <Link href="/quote" className="cta">
+            <Link href="/quote#form" className="cta">
               Start your build
             </Link>
             <a href={`tel:${site.phone}`} className="cta cta-ghost">

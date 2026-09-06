@@ -351,7 +351,7 @@ export function Body() {
         <Link href="/blog/classic-car-restoration-cost-canada">stage-by-stage restoration cost</Link>{" "}
         piece and the <Link href="/guides/costs">costs guide</Link>. If the cabin is the reason
         the car is coming in, send photos of the seats, the headliner, and the floors — floors
-        especially — through the <Link href="/quote">quote page</Link>. A pretty cabin on a rusty
+        especially — through the <Link href="/quote#form">quote page</Link>. A pretty cabin on a rusty
         pan is the wrong sequence, and we will say so.
       </p>
     </>

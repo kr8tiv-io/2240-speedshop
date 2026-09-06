@@ -300,7 +300,7 @@ export function WalkthroughSections() {
           like this started as a phone call and a handful of photos.
         </p>
         <div className="pointer-events-auto mt-8 flex flex-wrap justify-center gap-3 sm:gap-4">
-          <Link href="/quote" data-magnetic className="cta cta-compact">
+          <Link href="/quote#form" data-magnetic className="cta cta-compact">
             Start your build
           </Link>
           <a href={`tel:${site.phone}`} className="cta cta-ghost cta-compact">

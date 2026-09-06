@@ -525,7 +525,7 @@ export function Body() {
         If you are pricing paint for a classic in Edmonton, Sherwood Park, St. Albert, or
         anywhere in the region, send the year, model, current condition, and what you want the
         car to be — ten-foot driver or trophy hunter — through the{" "}
-        <Link href="/quote">quote page</Link>. You will get a straight answer about which of the
+        <Link href="/quote#form">quote page</Link>. You will get a straight answer about which of the
         three jobs your car and your budget actually call for, a staged range in Canadian
         dollars, and — when it is true — the advice that your money should go into metal first
         and colour next year.

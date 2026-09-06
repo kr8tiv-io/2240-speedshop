@@ -538,7 +538,7 @@ export function Body() {
       <p>
         And if the car needs its sorting done before the photos get taken: that is deliberately an
         easy job to hand a shop. Send the year, the model, and the list of what it does wrong
-        through the <Link href="/quote">quote page</Link>, and you will get a straight answer on
+        through the <Link href="/quote#form">quote page</Link>, and you will get a straight answer on
         what is worth fixing to sell — and what is the next owner&rsquo;s problem, priced
         accordingly.
       </p>

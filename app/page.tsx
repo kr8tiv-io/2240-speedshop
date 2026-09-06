@@ -364,7 +364,7 @@ export default function HomePage() {
               two business days.
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <Link href="/quote" data-magnetic className="cta">
+              <Link href="/quote#form" data-magnetic className="cta">
                 Start your build
               </Link>
               <div className="font-mono text-sm text-steel">

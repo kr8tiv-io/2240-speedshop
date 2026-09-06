@@ -581,7 +581,7 @@ export function Body() {
       </p>
       <p>
         Either way, the decision costs nothing to check twice. Send the year, model, where the
-        car has lived, and your photos through the <Link href="/quote">quote page</Link>, or
+        car has lived, and your photos through the <Link href="/quote#form">quote page</Link>, or
         bring it by the shop — an hour on the hoist settles what a listing paragraph never will.
         You will get a straight answer: frame-off, rolling, or — when it is true — that the car
         is better than you feared and the first stage is smaller than you budgeted.

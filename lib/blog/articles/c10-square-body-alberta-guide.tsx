@@ -519,7 +519,7 @@ export function Body() {
       <p>
         If you are circling a truck right now — a Kijiji find, a family longbox, a square-body
         that has been waiting behind the shop since the nineties — send photos of the seams, the
-        floors, and the windshield corners through the <Link href="/quote">quote page</Link>.
+        floors, and the windshield corners through the <Link href="/quote#form">quote page</Link>.
         You will get a straight read on what the steel says, what it typically costs to answer,
         and whether that particular truck deserves it. Sometimes the best money you spend on a
         C10 is the price of walking away from the wrong one.

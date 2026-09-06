@@ -623,7 +623,7 @@ export function Body() {
         Carburetor work is deliberately the easy first job to hand a shop — no trailer, no
         teardown, one component off the engine and back on tuned. Send the year, engine, carb
         model if you know it, and what the car is doing through the{" "}
-        <Link href="/quote">quote page</Link>, and you will get a straight answer: adjustment,
+        <Link href="/quote#form">quote page</Link>, and you will get a straight answer: adjustment,
         rebuild, or — when it is true — the answer that your carb is fine and the problem lives
         in the ignition.
       </p>

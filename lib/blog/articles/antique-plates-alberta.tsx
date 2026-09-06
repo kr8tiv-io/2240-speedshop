@@ -561,7 +561,7 @@ export function Body() {
         and battery strategy in one place. And if the paperwork question is attached to a build —
         an out-of-province purchase, a restoration nearing its first start-up, a truck that needs
         to be roadworthy before any plate goes on — send the details through the{" "}
-        <Link href="/quote">quote page</Link> and you will get a straight answer on the work, the
+        <Link href="/quote#form">quote page</Link> and you will get a straight answer on the work, the
         order to do it in, and what it typically runs.
       </p>
     </>

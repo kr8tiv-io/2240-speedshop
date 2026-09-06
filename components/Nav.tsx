@@ -180,7 +180,7 @@ export function Nav() {
               </IntentLink>
             );
           })}
-          <IntentLink href="/quote" data-magnetic className="cta ml-4 !px-6 !py-3 !text-[11px]">
+          <IntentLink href="/quote#form" data-magnetic className="cta ml-4 !px-6 !py-3 !text-[11px]">
             Start your build
           </IntentLink>
         </nav>
@@ -264,7 +264,7 @@ export function Nav() {
 
               <div className="space-y-3 border-t border-bone/10 pt-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <IntentLink href="/quote" onClick={closeMenu} className="cta min-h-12 text-center">
+                  <IntentLink href="/quote#form" onClick={closeMenu} className="cta min-h-12 text-center">
                     Start your build
                   </IntentLink>
                   <a

@@ -542,7 +542,7 @@ export function Body() {
         to need metal, you will know exactly what the{" "}
         <Link href="/services/classic-car-restoration">restoration work</Link> involves before
         the seller&rsquo;s number moves. Send the listing and the seller&rsquo;s story through
-        the <Link href="/quote">quote page</Link>, and buy the first classic on evidence instead
+        the <Link href="/quote#form">quote page</Link>, and buy the first classic on evidence instead
         of hope.
       </p>
     </>

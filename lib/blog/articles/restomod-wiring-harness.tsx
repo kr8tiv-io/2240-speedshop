@@ -366,7 +366,7 @@ export function Body() {
       <p>
         If the car is coming in because something smells hot, because an LS is going in, or because
         a previous owner wired a fuel pump through a door-jamb switch, send photos of the fuse
-        block and the battery feed through the <Link href="/quote">quote page</Link>. The first
+        block and the battery feed through the <Link href="/quote#form">quote page</Link>. The first
         honest answer is often: stop patching, buy the harness, and let one shop answer for the
         whole circuit.
       </p>

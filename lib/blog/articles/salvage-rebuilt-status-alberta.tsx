@@ -707,7 +707,7 @@ export function Body() {
         If the math holds and the status is clean enough to build on, the structural repair,
         the documentation, and the inspection prep are all work this shop does with the registry
         rules in mind. Send the VIN, the status line, and a few photos through the{" "}
-        <Link href="/quote">quote page</Link> and you will get a straight answer — including,
+        <Link href="/quote#form">quote page</Link> and you will get a straight answer — including,
         when the stamp says so, the answer that the car is a parts donor and your money belongs
         in a better shell.
       </p>

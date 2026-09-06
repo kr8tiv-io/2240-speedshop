@@ -2157,8 +2157,6 @@ async function warmSubtree(
   unifyTree(node);
   await untilIdle();
   if (isStale()) return;
-  await warmTextures(gl, node, isStale);
-  if (isStale()) return;
   await warmUp(gl, node, camera, scene, isStale);
 }
 
@@ -2182,9 +2180,53 @@ async function compileProgramsWithin(
   camera: THREE.Camera,
   targetScene: THREE.Scene | undefined,
   isStale: () => boolean,
+  renderTarget: THREE.WebGLRenderTarget,
+  prepareTextures?: () => Promise<void>,
 ) {
   if (isStale()) return;
-  const pending = gl.compile(node, camera, targetScene);
+  let pending = new Set<THREE.Material>();
+  let submissionFailure: { error: unknown } | undefined;
+  const previousTarget = gl.getRenderTarget();
+  const previousFace = gl.getActiveCubeFace();
+  const previousMip = gl.getActiveMipmapLevel();
+  let compileScope = node;
+  if (targetScene && node !== targetScene) {
+    for (let parent = node.parent; parent; parent = parent.parent) {
+      if (parent !== targetScene) continue;
+      // Three gathers lights from targetScene AND the object being added.
+      // Our shell is already attached, so passing it directly doubles its
+      // lights and compiles a variant the real frame never uses. Delegate
+      // only material traversal; the actual scene supplies every light once.
+      // Original objects/materials, visibility and parentage remain untouched.
+      const materialsOnly = new THREE.Group();
+      materialsOnly.traverse = node.traverse.bind(node);
+      compileScope = materialsOnly;
+      break;
+    }
+  }
+  try {
+    gl.setRenderTarget(renderTarget);
+    pending = gl.compile(compileScope, camera, targetScene);
+  } catch (error) {
+    submissionFailure = { error };
+  } finally {
+    // compile() submits synchronously; only driver completion is asynchronous.
+    // Never retain a private HDR framebuffer while textures or visible frames
+    // yield, and never overwrite a newer frame's state in an async finally.
+    try {
+      gl.setRenderTarget(previousTarget, previousFace, previousMip);
+    } catch {
+      // A superseded Canvas may already have released its renderer.
+    }
+  }
+  if (isStale()) return;
+  // The driver can compile while the unchanged one-texture-per-frame upload
+  // pass runs. This is one awaited chain, not competing GL mutation promises.
+  // Keep uploads even when optional shader submission failed: the first-use
+  // fallback must not inherit an unpaced texture bill.
+  if (prepareTextures) await prepareTextures();
+  if (isStale()) return;
+  if (submissionFailure) throw submissionFailure.error;
   const deadline = performance.now() + PROGRAM_COMPILE_PATIENCE_MS;
   while (!isStale() && performance.now() < deadline) {
     for (const material of pending) {
@@ -2221,30 +2263,23 @@ async function warmUp(
       type: THREE.HalfFloatType,
       depthBuffer: true,
     });
-  const previousTarget = gl.getRenderTarget();
   try {
     // Our bounded readiness poll lets KHR_parallel_shader_compile keep ANGLE's
     // link work off the main thread. The old synchronous compile could hold
     // the film still for seconds even though this shop canvas was parked.
     if (isStale()) return;
-    gl.setRenderTarget(target);
     await compileProgramsWithin(
       gl,
       node,
       camera,
       node === scene ? undefined : scene,
       isStale,
+      target,
+      () => warmTextures(gl, node, isStale),
     );
   } catch {
     /* A material the renderer will not touch is not one we can warm. */
   } finally {
-    // Suspense can cancel work while retaining this renderer; a Canvas
-    // teardown can dispose it. Restore when possible and tolerate the latter.
-    try {
-      gl.setRenderTarget(previousTarget);
-    } catch {
-      // Superseded renderer.
-    }
     if (!composerTarget) target.dispose();
   }
   if (isStale()) return;
@@ -2372,11 +2407,9 @@ async function warmComposerPrograms(
       type: THREE.HalfFloatType,
       depthBuffer: true,
     });
-  const previousTarget = gl.getRenderTarget();
   try {
     if (isStale()) return;
-    gl.setRenderTarget(target);
-    await compileProgramsWithin(gl, scene, camera, undefined, isStale);
+    await compileProgramsWithin(gl, scene, camera, undefined, isStale, target);
     if (isStale()) return;
     if (DEBUG) {
       const parallel = Boolean(gl.getContext().getExtension("KHR_parallel_shader_compile"));
@@ -2386,11 +2419,6 @@ async function warmComposerPrograms(
     // The composed verification frame below remains the authoritative fallback
     // for browsers whose driver rejects an isolated pass material.
   } finally {
-    try {
-      gl.setRenderTarget(previousTarget);
-    } catch {
-      // The old Canvas may already have released its renderer.
-    }
     geometry.dispose();
     if (!composerTarget) target.dispose();
     scene.clear();

@@ -571,7 +571,7 @@ export function Body() {
       <p>
         And if the reason you are reading this is a car that is about to become worth insuring —
         a build you are pricing, a barn car you are weighing, a restoration you want done right —
-        send the details through the <Link href="/quote">quote page</Link>. Every car that leaves
+        send the details through the <Link href="/quote#form">quote page</Link>. Every car that leaves
         here goes out with the paper trail an agreed-value policy wants, because a restoration
         you cannot prove the value of is a restoration you paid for twice.
       </p>

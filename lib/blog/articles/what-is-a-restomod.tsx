@@ -482,7 +482,7 @@ export function Body() {
       </p>
       <p>
         If the car passes, the process starts the same way every time: photos in, honest scope out.
-        Send what you have through the <Link href="/quote">quote page</Link> and you will get a
+        Send what you have through the <Link href="/quote#form">quote page</Link> and you will get a
         straight answer — including, when it is true, the answer that your car is worth more left
         original.
       </p>

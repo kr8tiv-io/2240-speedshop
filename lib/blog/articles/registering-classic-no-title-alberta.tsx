@@ -630,7 +630,7 @@ export function Body() {
         before anything comes apart, because a discrepancy is cheaper to solve while the seller
         still answers the phone. Found something in a field between Leduc and Vegreville and want
         a straight answer on what it needs — paper and metal both? Send the photos and the story
-        through the <Link href="/quote">quote page</Link>. If the paperwork side smells wrong, you
+        through the <Link href="/quote#form">quote page</Link>. If the paperwork side smells wrong, you
         will hear that too, before you have spent a dollar on the car.
       </p>
     </>

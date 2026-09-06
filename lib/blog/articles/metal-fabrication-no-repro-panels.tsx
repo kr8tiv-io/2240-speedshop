@@ -506,7 +506,7 @@ export function Body() {
         for, whether it is one cab corner on a driver or every panel on a{" "}
         <Link href="/services/classic-car-restoration">frame-off restoration</Link>. If your
         classic needs steel nobody makes, send photos of the rust, the make and model, and what
-        the car means to you through the <Link href="/quote">quote page</Link>. You will get a
+        the car means to you through the <Link href="/quote#form">quote page</Link>. You will get a
         straight answer on which route fits — repair, splice, or hand-formed — and an honest
         range before any metal gets cut.
       </p>

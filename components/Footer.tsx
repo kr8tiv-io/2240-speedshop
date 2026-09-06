@@ -2,12 +2,13 @@ import Link from "next/link";
 import { site, services, areas } from "@/lib/site";
 import { FooterWordmark } from "@/components/FooterWordmark";
 import { Roll } from "@/components/fx/Roll";
+import { IntentLink } from "@/components/IntentLink";
 
 const bigLinks = [
   { href: "/builds", label: "Builds" },
   { href: "/services", label: "Services" },
   { href: "/about", label: "About" },
-  { href: "/quote", label: "Quote" },
+  { href: "/quote#form", label: "Quote" },
 ];
 
 /**
@@ -46,7 +47,7 @@ export function Footer() {
           <ul className="flex flex-wrap items-baseline gap-x-10 gap-y-4">
             {bigLinks.map((l, i) => (
               <li key={l.href}>
-                <Link
+                <IntentLink
                   href={l.href}
                   className="group inline-flex items-baseline gap-3 font-display text-[clamp(1.9rem,4.5vw,3.6rem)] uppercase leading-none tracking-wide text-bone transition-colors hover:text-ember"
                 >
@@ -54,7 +55,7 @@ export function Footer() {
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <Roll text={l.label} />
-                </Link>
+                </IntentLink>
               </li>
             ))}
           </ul>

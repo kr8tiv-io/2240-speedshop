@@ -310,7 +310,7 @@ export default function AboutPage() {
           </div>
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
             <Link
-              href="/quote"
+              href="/quote#form"
               className="border border-tungsten/70 px-6 py-3 text-center font-sub text-xs uppercase tracking-[0.2em] text-bone transition-all hover:border-neon-bloom hover:shadow-[0_0_24px_rgba(255,176,102,0.15)]"
             >
               Start your quote

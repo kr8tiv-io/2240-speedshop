@@ -579,7 +579,7 @@ export function Body() {
         The year is not the punishment. It is the method — teardown that tells the truth, metal
         done before paint, assembly that waits for the right parts, and sorting that catches the
         faults before you do. If you want to know what your car needs and how long it honestly
-        takes, send photos through the <Link href="/quote">quote page</Link>. You will get scope,
+        takes, send photos through the <Link href="/quote#form">quote page</Link>. You will get scope,
         sequence, and a straight read on both the number and the calendar — inside two business
         days.
       </p>

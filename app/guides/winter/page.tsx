@@ -540,7 +540,7 @@ export default function WinterGuidePage() {
             </div>
             <div className="flex flex-wrap gap-4">
               <Link
-                href="/quote"
+                href="/quote#form"
                 className="border border-tungsten/70 px-6 py-3 font-sub text-xs uppercase tracking-[0.18em] text-bone transition-all hover:border-neon-bloom hover:shadow-[0_0_24px_rgba(255,176,102,0.15)]"
               >
                 Start your quote

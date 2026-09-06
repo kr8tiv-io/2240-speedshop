@@ -922,7 +922,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
           the{" "}
           <Link
             className="text-tungsten underline decoration-tungsten/40 underline-offset-4 hover:text-bone"
-            href="/quote"
+            href="/quote#form"
           >
             quote form
           </Link>
@@ -943,7 +943,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         <p className="mx-auto mt-4 max-w-2xl leading-relaxed text-steel">{d.ctaBody}</p>
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
-            href="/quote"
+            href="/quote#form"
             className="w-full border border-tungsten bg-tungsten/5 px-8 py-3 font-sub text-xs uppercase tracking-[0.22em] text-bone transition-all hover:border-neon-bloom hover:shadow-[0_0_24px_rgba(255,176,102,0.15)] sm:w-auto"
           >
             Start your quote

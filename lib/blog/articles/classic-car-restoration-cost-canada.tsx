@@ -558,7 +558,7 @@ export function Body() {
         If you are trying to put a number on a specific car — a truck in the yard, a coupe on a
         marketplace ad, the family sedan in a relative&rsquo;s barn — send the year, model, where
         it has lived, and photos of the rockers and floors through the{" "}
-        <Link href="/quote">quote page</Link>. You will get a straight answer about which stages
+        <Link href="/quote#form">quote page</Link>. You will get a straight answer about which stages
         that car actually needs, what each one typically runs, and — when it is true — the answer
         that this particular car is not worth restoring, before it costs you anything to learn.
       </p>

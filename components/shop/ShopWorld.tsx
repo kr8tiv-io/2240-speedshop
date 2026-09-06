@@ -2583,6 +2583,7 @@ export function ShopWorld({
       }`}
     >
       <Canvas
+        style={{ pointerEvents: "none" }}
         /* FIXED RESOLUTION FOR THE LIFE OF THE CONTEXT.
            Changing DPR rebuilds the composer's render targets and can force
            ANGLE to translate the post chain again. The hidden warm therefore

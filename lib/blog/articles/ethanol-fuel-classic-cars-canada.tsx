@@ -353,7 +353,7 @@ export function Body() {
         <Link href="/guides/winter">winter guide</Link>. If the car is coming in because it idled
         fine in October and will not idle now, send a photo of the filter and a note about what
         was in the tank when it went to sleep, through the{" "}
-        <Link href="/quote">quote page</Link>. Most of those stories are the same story.
+        <Link href="/quote#form">quote page</Link>. Most of those stories are the same story.
       </p>
     </>
   );

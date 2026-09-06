@@ -600,7 +600,7 @@ export function Body() {
       </p>
       <p>
         If you are watching an auction in Scottsdale or a Craigslist ad in Phoenix right now,
-        send the listing through the <Link href="/quote">quote page</Link> before you bid. We
+        send the listing through the <Link href="/quote#form">quote page</Link> before you bid. We
         will tell you what the photos say about the metal, what the border math looks like for
         that specific year, and — when it is true — that the car three provinces over is the
         better buy.

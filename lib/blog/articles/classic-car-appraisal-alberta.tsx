@@ -557,7 +557,7 @@ export function Body() {
         appraiser needs to defend the strong number, and what an insurer needs to write the
         agreed value that matches the finished car. If you are planning the build now, plan the
         paperwork with it. And if the first honest question is what the project is worth doing at
-        all, send the details through the <Link href="/quote">quote page</Link> and we will give
+        all, send the details through the <Link href="/quote#form">quote page</Link> and we will give
         you the shop-floor version of an appraisal: what it is, what it needs, and what that
         costs — in ranges we will stand behind.
       </p>

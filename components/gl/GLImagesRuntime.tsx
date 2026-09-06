@@ -423,6 +423,7 @@ export function GLImagesRuntime({
   return (
     <div className="pointer-events-none fixed inset-0 z-30" aria-hidden="true">
       <Canvas
+        style={{ pointerEvents: "none" }}
         dpr={[1, 1.5]}
         frameloop={active ? "demand" : "never"}
         gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}

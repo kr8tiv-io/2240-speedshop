@@ -383,7 +383,7 @@ export function Body() {
         Get the car on a hoist. Photograph the rails, the floors, the rockers. Compare that to
         the <Link href="/blog/classic-car-restoration-cost-canada">stage-by-stage cost</Link>{" "}
         ranges. Then pick a column. If you want this shop to say the quiet part — including
-        &ldquo;sell it&rdquo; — send those photos through the <Link href="/quote">quote page</Link>.
+        &ldquo;sell it&rdquo; — send those photos through the <Link href="/quote#form">quote page</Link>.
         We would rather lose a restoration than win a rust balloon.
       </p>
     </>

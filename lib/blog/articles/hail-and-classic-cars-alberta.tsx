@@ -531,7 +531,7 @@ export function Body() {
         — cracked paint, folded ridges, broken glass — needs real bodywork, planned properly,
         because a hurried insurance-grade respray is the kind of repair this shop spends winters
         undoing. If your classic caught a storm this season, send photos of every panel in
-        raking light through the <Link href="/quote">quote page</Link> and you will get a
+        raking light through the <Link href="/quote#form">quote page</Link> and you will get a
         straight answer: what PDR can save, what needs steel and paint, and what — honestly — is
         better left exactly as the sky made it.
       </p>

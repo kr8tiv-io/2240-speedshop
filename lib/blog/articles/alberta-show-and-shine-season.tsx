@@ -533,7 +533,7 @@ export function Body() {
         build decisions we see are made in October, by owners who just spent eighteen weekends
         finding out exactly what the car does well and what it does not. If this season wrote
         you a list — the soft brakes, the hot-start stumble, the paint that stopped winning —
-        send it through the <Link href="/quote">quote page</Link> with the year, the engine, and
+        send it through the <Link href="/quote#form">quote page</Link> with the year, the engine, and
         what the car is doing. Winter is when next season&rsquo;s car gets built.
       </p>
     </>

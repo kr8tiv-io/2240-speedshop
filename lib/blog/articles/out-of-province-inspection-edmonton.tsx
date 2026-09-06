@@ -563,7 +563,7 @@ export function Body() {
         <Link href="/edmonton/sherwood-park">minutes off the Sherwood Park line</Link> — convenient
         when the vehicle is arriving by trailer from Saskatchewan on a Wednesday and the plan
         needs to survive contact with reality. Bring the ad, the photos, or the vehicle itself
-        through the <Link href="/quote">quote page</Link> and you will get a straight read: what
+        through the <Link href="/quote#form">quote page</Link> and you will get a straight read: what
         would likely fail, what it typically costs to make right, and — when it is true — that the
         truck you are about to buy is a parts vehicle wearing licence plates.
       </p>

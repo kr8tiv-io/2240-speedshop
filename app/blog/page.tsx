@@ -66,7 +66,7 @@ export default function BlogIndexPage() {
         <section aria-label="Featured article" className="mt-16">
           <div className="weld" aria-hidden="true" />
           <a
-            href={`/blog/${featured.meta.slug}`}
+            href={`/blog/${featured.meta.slug}/`}
             className="backlit group mt-px grid !bg-transparent gap-8 py-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center"
           >
             <div className="journal-illo order-2 lg:order-1">
@@ -105,7 +105,7 @@ export default function BlogIndexPage() {
               {rest.map((a, i) => (
                 <li key={a.meta.slug} className="relative border-b border-rust/40">
                   <a
-                    href={`/blog/${a.meta.slug}`}
+                    href={`/blog/${a.meta.slug}/`}
                     className="backlit group flex flex-col gap-2 !bg-transparent px-2 py-6 sm:flex-row sm:items-baseline sm:gap-8 sm:px-4 sm:py-7"
                   >
                     <span className="font-mono text-[11px] tracking-[0.2em] text-tungsten/70">

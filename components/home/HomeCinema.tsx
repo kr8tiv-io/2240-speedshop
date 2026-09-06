@@ -637,7 +637,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
                   </span>
                 </p>
                 <div className="pointer-events-auto mt-4 flex flex-wrap gap-2 sm:mt-6 sm:gap-4">
-                  <IntentLink href="/quote" data-magnetic className="cta cta-compact cta-act-three">
+                  <IntentLink href="/quote#form" data-magnetic className="cta cta-compact cta-act-three">
                     Start your build
                   </IntentLink>
                   <a href={`tel:${site.phone}`} className="cta cta-ghost cta-compact cta-act-three">
@@ -789,7 +789,7 @@ function ChapterZeroCopy({ kinetic = false }: { kinetic?: boolean; ready?: boole
           Built in Edmonton. Driven anywhere.
         </p>
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-          <IntentLink href="/quote" data-magnetic className="cta cta-compact">
+          <IntentLink href="/quote#form" data-magnetic className="cta cta-compact">
             Start your build
           </IntentLink>
           <IntentLink href="/builds" className="cta cta-ghost cta-compact">

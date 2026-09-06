@@ -85,6 +85,19 @@ body {
   }
 }
 
+/* Keep the phone/tablet camera projection stable while browser controls move.
+   The large viewport covers the whole screen with the controls collapsed;
+   unlike a bottom-inset stretch, it does not resize for toolbar animation.
+   Native viewport units still update for rotation and genuine window resizing.
+   Copy keeps its separate small-viewport safe area above. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  [data-film-canvas] {
+    bottom: auto;
+    height: 100vh;
+    height: 100lvh;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    FILM GRAIN + VIGNETTE — the stage is never flat black.
    One fixed SVG turbulence layer over everything (DOM and canvas alike) plus a
