@@ -141,6 +141,12 @@ trials unchanged, or remove visual quality to chase a timing number.
 
 ## Next bounded investigation
 
+Follow-up completed: the curtain-aware sizing trial was measured and rejected,
+not deployed. See `2026-09-06-curtain-measurement-investigation.md` for exact
+red/green evidence, sequential comparisons, rollback and the next critical-path
+investigation. The original hypothesis below is retained as history; do not
+repeat it unchanged.
+
 Use the now-proven curtain-completion boundary to investigate the previously
 measured initial Canvas sizing starvation. A possible policy is to retain the
 current scroll courtesy while the hero is visibly animating, but allow the

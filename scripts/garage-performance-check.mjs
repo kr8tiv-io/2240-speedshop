@@ -98,7 +98,7 @@ page.on("response", (response) => {
 });
 await page.evaluateOnNewDocument(() => {
   performance.setResourceTimingBufferSize(2000);
-  const qa = window.__garageQA = { stages: [], heroStages: [], runwayIntersections: [], longTasks: [], frames: [], phase: "hero", cls: 0 };
+  const qa = window.__garageQA = { stages: [], heroStages: [], curtainStages: [], runwayIntersections: [], longTasks: [], frames: [], phase: "hero", cls: 0 };
   const NativeIntersectionObserver = window.IntersectionObserver;
   window.IntersectionObserver = class extends NativeIntersectionObserver {
     constructor(callback, options) {
@@ -128,11 +128,28 @@ await page.evaluateOnNewDocument(() => {
   };
   requestAnimationFrame(frame);
   addEventListener("DOMContentLoaded", () => {
+    let curtainNode = null;
+    let curtainObserver = null;
     const scan = () => {
       const stage = document.querySelector("[data-shop-stage]")?.getAttribute("data-shop-stage");
       if (stage && qa.stages.at(-1)?.stage !== stage) qa.stages.push({ stage, at: performance.now() });
       const heroStage = document.querySelector("[data-hero-scene-ready]")?.getAttribute("data-hero-scene-ready");
       if (heroStage && qa.heroStages.at(-1)?.stage !== heroStage) qa.heroStages.push({ stage: heroStage, at: performance.now() });
+      const film = document.querySelector("[data-film-canvas]");
+      if (film && film !== curtainNode) {
+        curtainObserver?.disconnect();
+        curtainNode = film;
+        const recordCurtain = () => {
+          // GSAP writes autoAlpha inline. Reading that state avoids forcing a
+          // layout/style flush in the performance probe on every fade frame.
+          const hidden = film.style.visibility === "hidden" && Number(film.style.opacity) === 0;
+          if (qa.curtainStages.at(-1)?.hidden !== hidden)
+            qa.curtainStages.push({ hidden, at: performance.now(), scrollY });
+        };
+        recordCurtain();
+        curtainObserver = new MutationObserver(recordCurtain);
+        curtainObserver.observe(film, { attributes: true, attributeFilter: ["style"] });
+      }
     };
     scan();
     new MutationObserver(scan).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-shop-stage", "data-hero-scene-ready"] });
@@ -266,6 +283,17 @@ try {
     return !!window.__shop?.scene && world && Number.parseFloat(getComputedStyle(world).opacity) > 0.98;
   }, { timeout: 20_000 });
   result.worldVisibleAt = await page.evaluate(() => performance.now());
+  if (process.env.QA_EXPECT_CURTAIN_MOUNT === "1") {
+    const gates = await page.evaluate(() => ({ hero: window.__garageQA.heroStages, curtain: window.__garageQA.curtainStages, intersections: window.__garageQA.runwayIntersections }));
+    const hero = gates.hero.find(entry => entry.stage === "true");
+    const near = gates.intersections.find(entry => entry.isIntersecting && Number.parseFloat(entry.rootMargin) >= entry.innerHeight * 6);
+    const hidden = gates.curtain.find(entry => entry.hidden);
+    const rendererAt = Number(result.consoleLog.find(log => /renderer created/.test(log.text))?.text.match(/@(\d+)/)?.[1]);
+    assert.ok(hero && near && hidden && Number.isFinite(rendererAt), "Record actual hero/proximity/curtain/renderer boundaries");
+    const eligibleAt = Math.max(hero.at, near.at, hidden.at);
+    result.curtainMountGate = { heroAt: hero.at, nearAt: near.at, hiddenAt: hidden.at, rendererAt, delayMs: rendererAt - eligibleAt };
+    assert.ok(rendererAt - eligibleAt < 500, `A fully hidden hero must release fixed Canvas sizing without waiting for scroll-stop (${Math.round(rendererAt - eligibleAt)} ms delay)`);
+  }
   if (process.env.QA_EXPECT_EARLY_MOUNT === "1") {
     const gate = await page.evaluate(() => ({ hero: window.__garageQA.heroStages, intersections: window.__garageQA.runwayIntersections }));
     const hero = gate.hero.find(entry => entry.stage === "true");
