@@ -1,4 +1,39 @@
-# Gallery first-use light ownership — candidate qualification
+# Gallery first-use light ownership — verified release f33a4109
+
+## Publication checkpoint
+
+Release **f33a4109f9ed40f4a730339010d3a6b1** is published at
+https://2240speedshop.com/. Application source
+**836a18309408ceae40671b3d20690a7dc58d70fa** is pushed to both existing
+kr8tiv-io/2240-speedshop and kr8tiv-ai/2240-speedshop source branches.
+Deployment **0059bf04820ecf7be0af6e65255eb45b347410fd** is pushed to
+kr8tiv-io/2240-daylight-preview main. The first source push failed because the
+global Lefthook bootstrap could not fork a process; there is no project
+Lefthook configuration. A command-scoped hooks override succeeded, with no
+global configuration/hook edits and all independent release tests already run.
+
+The exact queryless live marker preceded the accepted Hostinger cache purge.
+Fresh live checks passed: 69 canonical HTML pages and 45 assets matched the
+prepared bytes, trusted HTTPS, all four HTTP/www/legacy redirects, crawler/AI
+discovery files and the read-only quote endpoint check. No real lead, email or
+call was sent. Report: output/published-release-check.json. Separate CDN
+activation and actual inbox delivery are not established by those checks.
+
+The exact committed archive is output/verified-gallery-f33a4109.zip:
+68,803,153 bytes, 1,289 committed files including the verified hidden marker.
+SHA-256 A1A98D04A294A10A0597C0E4E17DB1FFF8D73DB7D653A7769602F81699F7D156.
+Prior output/verified-lite-cf744f5.zip and every held experiment remain intact.
+No original media, visible effect, camera choreography, DPR or copy changed.
+Final live browser checks passed: the cold phone tour reached all seven bays,
+hashed all 71 garage models and received all three hero resources with no
+errors. Full reveal was 16.731 s, a single live observation rather than an A/B
+gain. All three LIVE Guides/quote/back and desktop/phone KR8TIV/Contact cases
+passed with zero browser errors and no real leads, calls or emails. The actual
+KR8TIV destination opened as requested. The live phone exit-bay image was
+visually inspected. Reports: gallery-owner-live-mobile/results.json in the
+performance directory and output/playwright/gallery-owner-live-actions/results.json.
+All build, qualification, publishing and verification processes are terminal;
+the continuous optimization goal remains active.
 
 ## Review correction after cc85 qualification
 
@@ -14,8 +49,8 @@ liveness assertion was updated from its old `index === 0` location to require
 exactly one courtesy before ownership; its full behavioral suite passes too.
 Independent re-review found no remaining critical or important code findings.
 
-The replacement export is **f33a4109f9ed40f4a730339010d3a6b1**, prepared and
-unpublished. Build, TypeScript, scoped lint, static SEO and original-media checks
+The replacement export is **f33a4109f9ed40f4a730339010d3a6b1**. Build,
+TypeScript, scoped lint, static SEO and original-media checks
 pass. Its exact shader diagnostic measured 0.2 ms lookup versus 476.3 ms, with
 readiness completed before use. It uses new gallery-owner-reviewed-*
 reports and fresh unchanged qualification gates; cc85 results below remain
@@ -47,8 +82,10 @@ response hashes, three hero arrivals and independent original-media byte
 fidelity pass. Fourteen original curtain/fade cases and all three focused
 quote/footer cases pass with zero browser errors or real submissions. Driver
 14669 completed exit0. These include Guides → quote form → Back and desktop/
-phone KR8TIV plus Contact links after the fully loaded garage. Publication
-and fresh live-domain verification remain pending.
+phone KR8TIV plus Contact links after the fully loaded garage. A separate
+missing-Network-Information-API phone run retained two actual transfers and
+passed all seven bays and exact garage resources without errors. Its single
+16.226 s reveal is compatibility evidence, not an A/B or physical Safari claim.
 
 ## Earlier checkpoints
 
@@ -186,6 +223,18 @@ output/gallery-program-initial-verification.json. Initial controlled timing uses
 gallery-owner-{desktop,4g}-{old-1,new-1,new-2,old-2} and
 output/gallery-owner-comparison.json. Historical cc85 reports use gallery-owner-final-*
 and output/gallery-owner-final-comparison.json; f33 reports use gallery-owner-reviewed-*
-and output/gallery-owner-reviewed-comparison.json. No publication or universal speed claim
-has been made. SeaOcean score, rankings, field CWV, physical Apple validation,
+and output/gallery-owner-reviewed-comparison.json. Publication is recorded above;
+no universal speed claim is made. SeaOcean score, rankings, field CWV, physical Apple validation,
 CDN activation, search ownership and actual inbox delivery remain unverified.
+
+## Next bounded investigation, not yet changed
+
+The reviewed desktop diagnostic has smaller remaining synchronous first-use
+queries: garage context2 programs76/79 cost 92.8/71 ms without readiness
+polling, and hero context1 programs include 163.4/135.6 ms lookups. Identify the
+actual owning passes and capture a fresh phone startup GL/CPU trace before
+changing them. These are diagnostic-only costs, not controlled total-load
+benchmarks. Do not remove any pass or simplify any shader. Also preserve the
+adverse layout-shift rows for a later source-attributed measurement; the current
+accumulator is not a field/session-window CLS score. Do not repeat held early
+Canvas, generic photo-prefetch or global four-slot experiments unchanged.
