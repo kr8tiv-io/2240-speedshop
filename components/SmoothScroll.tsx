@@ -141,14 +141,17 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         capture: true,
       });
 
-      /* ONE LOOP. Lenis advances the scroll, then — in the same callback, in
-         a guaranteed order — the station reveals resolve against the position
-         it just wrote. They used to run in a rAF of their own, which lands
-         either side of Lenis's depending on registration order: the panels
-         were reading last frame's scroll roughly half the time, which is
-         precisely the kind of one-frame disagreement that reads as stepping.
-         (The canvas keeps its own loop — three's renderer must own that — but
-         it reads the same damped rail from the same source of truth.) */
+      /* ONE LOOP / ONE DRIVER ON iOS. Lenis advances the scroll, then — in
+         the same callback, in a guaranteed order — the station reveals resolve
+         against the position it just wrote. They used to run in a rAF of their
+         own, which lands either side of Lenis's depending on registration
+         order: the panels were reading last frame's scroll roughly half the
+         time, which is precisely the kind of one-frame disagreement that reads
+         as stepping. There is no GSAP in this tree; do not add a second ticker
+         (gsap.ticker, another rAF) alongside this loop. autoRaf stays false so
+         Lenis never self-drives. (The canvas keeps its own loop — three's
+         renderer must own that — but it reads the same damped rail from the
+         same source of truth.) */
       release = driveReveals();
       const loop = (time: number) => {
         lenis?.raf(time);

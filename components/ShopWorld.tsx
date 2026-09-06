@@ -1742,7 +1742,7 @@ function ShopEnvironment({ tier }: { tier: WorldTier }) {
 
 /* ── Camera rig ─────────────────────────────────────────────────────────── */
 
-function CameraRig() {
+function CameraRig({ tier = "full" }: { tier?: WorldTier }) {
   const target = useRef(0);
   const eased = useRef(0);
   const previous = useRef(0);
@@ -1750,6 +1750,9 @@ function CameraRig() {
   const heroTarget = useRef(1);
   const heroValue = useRef(1);
   const heroWritten = useRef(-1);
+  // Soft path: coarse pointer or iOS — endpoint shake comes from chrome
+  // resize + breath/parallax/dutch fighting the damp at progress 0/1.
+  const soft = useRef(false);
   // The photograph holds until the opening bays have actually arrived. Over a
   // slow connection the canvas is up SECONDS before the trucks are — dissolving
   // the plate on mount showed phone readers an empty grey room. Transient
@@ -1771,7 +1774,19 @@ function CameraRig() {
   const lens = useRef(1);
 
   useEffect(() => {
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const ios =
+      /iP(hone|ad|od)/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    soft.current = coarse || ios;
+
     let span = 1;
+    let layoutW = window.innerWidth;
+    let contentH = document.documentElement.scrollHeight;
+    // After the first settled measure on soft devices, ignore height-only
+    // viewport flips (iOS Safari chrome show/hide). Those used to remeasure
+    // span → jump target at the document ends → camera shake.
+    let spanLocked = false;
 
     const read = () => {
       // NOT bare `window.scrollY`. On iOS Safari an overflow-clipped <body>
@@ -1790,30 +1805,57 @@ function CameraRig() {
       heroTarget.current = 0;
     };
 
-    const measure = () => {
-      span = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+    const measure = (force = false) => {
+      const w = window.innerWidth;
+      const content = document.documentElement.scrollHeight;
+      const widthChanged = Math.abs(w - layoutW) > 2;
+      const contentChanged = Math.abs(content - contentH) > 8;
+
+      // Soft + locked: only accept real layout/content changes, never chrome.
+      if (soft.current && spanLocked && !force && !widthChanged && !contentChanged) {
+        read();
+        return;
+      }
+
+      layoutW = w;
+      contentH = content;
+      span = Math.max(content - window.innerHeight, 1);
       read();
     };
 
-    measure();
+    const onResize = () => measure(false);
+
+    measure(true);
+    // One settle pass after late layout (images, fonts), then lock on soft so
+    // visualViewport chrome cannot thrash the rail.
+    const settle = window.setTimeout(() => {
+      measure(true);
+      if (soft.current) spanLocked = true;
+    }, 480);
+
     // Capture phase on document: catches the scroll event whichever element
     // turns out to be the real scroller (window, root, or body).
     document.addEventListener("scroll", read, { passive: true, capture: true });
-    window.addEventListener("resize", measure);
-    window.visualViewport?.addEventListener("resize", measure);
-    const observer = new ResizeObserver(measure);
+    window.addEventListener("resize", onResize);
+    // Deliberately NOT listening to visualViewport.resize — that event is the
+    // iOS chrome show/hide vector. window.resize + content ResizeObserver cover
+    // real layout; chrome-only height flips are ignored once span is locked.
+    const observer = new ResizeObserver(onResize);
     observer.observe(document.documentElement);
 
     return () => {
+      window.clearTimeout(settle);
       document.removeEventListener("scroll", read, { capture: true });
-      window.removeEventListener("resize", measure);
-      window.visualViewport?.removeEventListener("resize", measure);
+      window.removeEventListener("resize", onResize);
       observer.disconnect();
       document.documentElement.style.removeProperty("--hero-reveal");
     };
   }, []);
 
   useEffect(() => {
+    // Touch / coarse: pointer parallax reads as wobble at the ends of the
+    // walk. Desktop fine pointers keep the drift.
+    if (window.matchMedia("(pointer: coarse)").matches) return;
     const move = (event: PointerEvent) => {
       pointer.current.set(
         (event.clientX / Math.max(window.innerWidth, 1)) * 2 - 1,
@@ -1845,10 +1887,17 @@ function CameraRig() {
       previous.current = target.current;
     }
 
-    // λ = 1.35. The camera behaves like it weighs 400 lb: flick the wheel and
-    // it still arrives as a dolly move, never a jump cut.
+    // λ = 1.35 on desktop cinema. On soft (iOS / coarse), heavier near the
+    // document ends so progress 0/1 cannot oscillate against chrome noise.
     previous.current = eased.current;
-    eased.current = THREE.MathUtils.damp(eased.current, target.current, 1.35, step);
+    let lambda = 1.35;
+    if (soft.current) {
+      const edge = Math.min(target.current, 1 - target.current);
+      // 1 at the tip, 0 once we are ~8% into the walk (mid-shop stays lively).
+      const tip = 1 - THREE.MathUtils.smoothstep(0, 0.08, edge);
+      lambda = 1.55 + tip * 1.7;
+    }
+    eased.current = THREE.MathUtils.damp(eased.current, target.current, lambda, step);
 
     // THE FILM: orbit-and-reveal. pathAt sweeps the arc around the current
     // subject (or the glide between subjects), hands back eye + look, and
@@ -1862,23 +1911,30 @@ function CameraRig() {
     rail.look.copy(focus);
 
     // Idle breath — the shop stays alive when the reader stops scrolling.
+    // Soft devices: kill it. At the ends it reads as camera shake; mid-walk
+    // the phone GPU has better uses.
     const speed = Math.abs(eased.current - previous.current) / step;
     // Published for the quality controller — one write, no allocation.
     MOTION.speed = speed;
     // And for the streaming queue, which holds its work while the film moves.
     noteMotion(speed > 0.0015);
-    const idle = THREE.MathUtils.clamp(1 - speed * 14, 0, 1);
+    const idle = soft.current
+      ? 0
+      : THREE.MathUtils.clamp(1 - speed * 14, 0, 1);
     eye.y += Math.sin(elapsed * 0.37) * 0.07 * idle;
     eye.x += Math.cos(elapsed * 0.23) * 0.09 * idle;
 
     // Mouse parallax, heavily damped so it drifts rather than tracks.
-    const drift = parallax.current;
-    drift.x = THREE.MathUtils.damp(drift.x, pointer.current.x, 1.8, step);
-    drift.y = THREE.MathUtils.damp(drift.y, pointer.current.y, 1.8, step);
-    eye.x += drift.x * 0.3;
-    eye.y -= drift.y * 0.18;
-    focus.x += drift.x * 0.14;
-    focus.y -= drift.y * 0.08;
+    // Soft / coarse never arms the pointer listener; keep the math gated too.
+    if (!soft.current) {
+      const drift = parallax.current;
+      drift.x = THREE.MathUtils.damp(drift.x, pointer.current.x, 1.8, step);
+      drift.y = THREE.MathUtils.damp(drift.y, pointer.current.y, 1.8, step);
+      eye.x += drift.x * 0.3;
+      eye.y -= drift.y * 0.18;
+      focus.x += drift.x * 0.14;
+      focus.y -= drift.y * 0.08;
+    }
 
     // Cold Start: the camera settles forward as the breakers come in.
     eye.z += (1 - introAt(elapsed)) * 1.1;
@@ -1902,19 +1958,26 @@ function CameraRig() {
     // DUTCH ROLL — a degree and a half of lean, proportional to how hard the
     // reader is scrolling and heavily damped, so fast travel banks the frame
     // like a car taking a corner and every hold settles back to level.
+    // Soft: settle to level and stay there — bank + tip damp fight at ends.
     const signedSpeed = (eased.current - previous.current) / step;
-    roll.current = THREE.MathUtils.damp(
-      roll.current,
-      THREE.MathUtils.clamp(-signedSpeed * 1.9, -0.026, 0.026),
-      3,
-      step,
-    );
+    if (soft.current) {
+      roll.current = THREE.MathUtils.damp(roll.current, 0, 5, step);
+    } else {
+      roll.current = THREE.MathUtils.damp(
+        roll.current,
+        THREE.MathUtils.clamp(-signedSpeed * 1.9, -0.026, 0.026),
+        3,
+        step,
+      );
+    }
     state.camera.rotateZ(roll.current);
 
     // LENS STRESS — chromatic fringing opens with scroll speed and closes on
     // the hold. Damped separately from the roll so the two settle at
     // different rates, the way real glass and a real tripod would.
-    const stress = THREE.MathUtils.clamp(Math.abs(signedSpeed) * 6, 0, 4);
+    const stress = soft.current
+      ? 0
+      : THREE.MathUtils.clamp(Math.abs(signedSpeed) * 6, 0, 4);
     lens.current = THREE.MathUtils.damp(lens.current, 1 + stress, 4, step);
     // Insurance on top of the step floor: a non-finite value here paints
     // every pixel of the composer NaN-black, so it must never persist.
@@ -1932,10 +1995,13 @@ function CameraRig() {
 
     // Hand the hero still its opacity. Untouched if this rig never mounts, so
     // reduced-motion and no-WebGL machines keep the photograph at 1.
+    // Lite (phones): slower dissolve so LCP plate holds until the live shop
+    // has actually painted a locked frame — still-first, not dissolve-into-shake.
+    const heroLambda = tier === "lite" ? 3.1 : 6;
     heroValue.current = THREE.MathUtils.damp(
       heroValue.current,
       loaded.current ? heroTarget.current : 1,
-      6,
+      heroLambda,
       step,
     );
     const rounded = Math.round(heroValue.current * 200) / 200;
@@ -2150,7 +2216,7 @@ function SceneContents({
       <color attach="background" args={[BAY_BLACK]} />
       <fog attach="fog" args={[FOG_GREY, 22, 94]} />
 
-      <CameraRig />
+      <CameraRig tier={tier} />
       <PortraitLens />
       <ShopEnvironment tier={tier} />
       <Ambience />
