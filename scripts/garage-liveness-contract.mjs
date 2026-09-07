@@ -875,6 +875,16 @@ contract(
     /lockRunwayViewport\(\)/.test(shopWorld),
   "shop canvas ignores scroll remesure, sizes with svh/lvh on Canvas, and freezes runway span after settle",
 );
+const liteComposer = shopWorld.slice(
+  shopWorld.indexOf("{lite ? ("),
+  shopWorld.indexOf(") : (", shopWorld.indexOf("{lite ? (")),
+);
+contract(
+  liteComposer.includes("<Bloom") &&
+    liteComposer.includes("<Vignette") &&
+    !liteComposer.includes("<Noise"),
+  "lite garage composer must not run a live Noise pass — that is the phone vibration",
+);
 contract(
   /<ShopWorld[\s\S]{0,220}revealed=\{worldReady\}/.test(walkthrough) &&
     /active=\{active && worldReady && uiOverlay === null\}/.test(walkthrough) &&

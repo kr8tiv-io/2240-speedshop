@@ -91,12 +91,27 @@ body {
    Native viewport units still update for rotation and genuine window resizing.
    Copy keeps its separate small-viewport safe area above. */
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  html, body {
+    overscroll-behavior: none;
+  }
   [data-film-canvas],
   [data-shop-ready],
   [data-gl-images] {
     bottom: auto;
     height: 100vh;
     height: 100lvh;
+    /* Own compositor layer so iOS 26's fixed-layer drift cannot fight the
+       document scroll thread (WebKit 301172). */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+  [data-film-canvas] canvas,
+  [data-shop-ready] canvas,
+  [data-gl-images] canvas {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
   }
 }
 
@@ -134,12 +149,13 @@ body {
   100% { transform: translate(0, 0); }
 }
 
-/* The 4-step grain translation travels ~18px on a 390px phone. That reads
-   as the whole screen shaking, not as film grain. Keep the texture; freeze
-   the shift. Reduced-motion already pauses this; phones get the same hold. */
+/* Phones: hide the overlay entirely. mix-blend overlay on a 124% fixed
+   layer over a 60fps WebGL canvas re-composites every frame on iOS Safari,
+   which reads as the whole screen vibrating even when the texture is still.
+   Desktop keeps the animated grain. */
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
   .grain {
-    animation: none;
+    display: none;
   }
 }
 

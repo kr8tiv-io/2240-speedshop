@@ -20,7 +20,7 @@ assert.match(
 );
 
 const stableHeroViewport = css.match(
-  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{\s*\[data-film-canvas\],\s*\[data-shop-ready\],\s*\[data-gl-images\]\s*\{([^}]+)\}/,
+  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{[\s\S]*?\[data-film-canvas\],\s*\[data-shop-ready\],\s*\[data-gl-images\]\s*\{([^}]+)\}/,
 )?.[1] ?? "";
 assert.match(
   stableHeroViewport,
@@ -39,8 +39,13 @@ assert.doesNotMatch(
 );
 assert.match(
   css,
-  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{[\s\S]*?\.grain\s*\{\s*animation:\s*none;/,
-  "Phone grain must stay a still texture; the 4-step translation reads as whole-screen shake.",
+  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{[\s\S]*?\.grain\s*\{\s*display:\s*none;/,
+  "Phone grain must be removed; mix-blend overlay over live WebGL reads as whole-screen vibration on iOS Safari.",
+);
+assert.match(
+  css,
+  /overscroll-behavior:\s*none/,
+  "Phone overscroll rubber-band must not shake fixed WebGL layers.",
 );
 
 const phonePlate = css.match(/@media \(max-width: 639px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";

@@ -33,5 +33,10 @@ assert.match(
   /import\("lenis"\)/,
   "Lenis must load after first paint rather than in the opening graph.",
 );
+assert.match(
+  sources.find(([file]) => file === "components/SmoothScroll.tsx")[1],
+  /touch\.matches/,
+  "Lenis must not start on phone/coarse pointers — native iOS scroll plus a JS ticker is the Safari jitter recipe.",
+);
 
 console.log("deferred motion contract: PASS");

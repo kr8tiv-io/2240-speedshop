@@ -93,17 +93,24 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       window.__lenisVelocity = 0;
     };
 
-    if (!query.matches) start();
+    const touch = window.matchMedia("(max-width: 767px), (pointer: coarse)");
+    /* iOS Safari scrolls on a compositor thread. Lenis + GSAP ticker on top
+       of native touch is the GSAP/Lenis jitter recipe (syncTouch is already
+       false, so this was interpolating nothing and still fighting the clock).
+       Native scroll + ScrollTrigger's own listener is the stable path. */
+    if (!query.matches && !touch.matches) start();
 
     const onPreferenceChange = () => {
-      if (query.matches) stop();
+      if (query.matches || touch.matches) stop();
       else start();
     };
 
     const removePreferenceListener = addMediaQueryChangeListener(query, onPreferenceChange);
+    const removeTouchListener = addMediaQueryChangeListener(touch, onPreferenceChange);
     const removeOverlayListener = subscribeUIOverlay(syncOverlay);
     return () => {
       removePreferenceListener();
+      removeTouchListener();
       removeOverlayListener();
       stop();
     };

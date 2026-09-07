@@ -2460,10 +2460,9 @@ function SceneContents({
             luminanceSmoothing={0.11}
             radius={0.7}
           />
-          {/* Film grain is the one desktop nicety a phone can afford — a
-              single extra texture fetch in the pass that already runs. It
-              also dithers the gradients a low-DPR canvas bands on. */}
-          <Noise premultiply opacity={0.5} />
+          {/* No Noise on lite: 50% premultiplied grain on a 60fps phone
+              composer is the garage vibrating. Dither banding is cheaper
+              than iOS Safari compositing a live noise pass. */}
           <Vignette offset={0.42} darkness={0.38} />
         </EffectComposer>
       ) : (
