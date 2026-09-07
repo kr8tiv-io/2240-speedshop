@@ -7,12 +7,12 @@ import { JsonLd, breadcrumbSchema, faqSchema } from "@/lib/schema";
 
 export const metadata: Metadata = withPageMetadata("/edmonton", {
   title: "Classic Car Restoration Edmonton",
-  description: "Classic car restoration in Edmonton at 2240 Speed Shop, 2009 91 Ave NW on the Sherwood Park line. Drive times for Sherwood Park, St. Albert, Leduc and Nisku.",
+  description: "Classic car restoration in Edmonton at 2240 Speed Shop, 2009 91 Ave NW on the Sherwood Park line. Drive times for Sherwood Park, Fort Saskatchewan, St. Albert, Leduc and Nisku.",
   alternates: { canonical: "/edmonton" },
   openGraph: {
     type: "website",
     title: "Classic Car Restoration Edmonton",
-    description: "Classic car restoration in Edmonton at 2240 Speed Shop, 2009 91 Ave NW on the Sherwood Park line. Drive times for Sherwood Park, St. Albert, Leduc and Nisku.",
+    description: "Classic car restoration in Edmonton at 2240 Speed Shop, 2009 91 Ave NW on the Sherwood Park line. Drive times for Sherwood Park, Fort Saskatchewan, St. Albert, Leduc and Nisku.",
   },
 });
 
@@ -43,6 +43,7 @@ const driveTable: DriveRow[] = [
     area: "Fort Saskatchewan",
     route: "Highway 21 south, then west into the city",
     drive: "About 30 min",
+    href: "/edmonton/fort-saskatchewan",
   },
   {
     area: "St. Albert",
@@ -277,8 +278,8 @@ export default function EdmontonHubPage() {
           ))}
         </ul>
         <p className="mt-6 text-sm leading-relaxed text-steel">
-          Coming from Fort Saskatchewan or a county road we have not named? Highway 21 and the
-          Henday both end up at the same bay door. Call the shop and describe the project.
+          Coming from a county road we have not named? Highway 21 and the Henday both end up at the
+          same bay door. Call the shop and describe the project.
         </p>
       </section>
 

@@ -14,10 +14,11 @@ import { InstagramGrid } from "@/components/InstagramGrid";
 import { builds } from "@/lib/builds";
 import { areas, services, site } from "@/lib/site";
 import { socialImage } from "@/lib/metadata";
+import { breadcrumbSchema, faqSchema, JsonLd } from "@/lib/schema";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Speed Shop Edmonton | Classic Builds and Restomods",
+    absolute: "2240 Speed Shop | Classic Restoration & Restomods, Edmonton",
   },
   description:
     "2240 Speed Shop is Terry Harmider's Edmonton shop on the Sherwood Park line. Restorations, restomods, LS swaps, body and paint for Alberta classics and trucks.",
@@ -27,14 +28,14 @@ export const metadata: Metadata = {
     locale: "en_CA",
     url: "/",
     siteName: site.name,
-    title: "Speed Shop Edmonton | Classic Builds and Restomods",
+    title: "2240 Speed Shop | Classic Restoration & Restomods, Edmonton",
     description:
       "2240 Speed Shop is Terry Harmider's Edmonton shop on the Sherwood Park line. Restorations, restomods, LS swaps, body and paint for Alberta classics and trucks.",
     images: [socialImage],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Speed Shop Edmonton | Classic Builds and Restomods",
+    title: "2240 Speed Shop | Classic Restoration & Restomods, Edmonton",
     description:
       "2240 Speed Shop is Terry Harmider's Edmonton shop on the Sherwood Park line. Restorations, restomods, LS swaps, body and paint for Alberta classics and trucks.",
     images: [socialImage],
@@ -64,9 +65,30 @@ const quotes = [
  * chapters → then the page continues as normal DOM sections. Every word on
  * this page ships in the server-rendered HTML.
  */
+const homeFaq = [
+  {
+    q: "What is 2240 Speed Shop?",
+    a: `2240 Speed Shop is ${site.owner}'s customs-and-classics shop at ${site.street}, ${site.city} — right on the Sherwood Park boundary. Full restorations, hot rods and restomods, LS and diesel conversions, body, paint, and classic interiors. Owner-operated, Monday to Friday, 9:00 to 17:00.`,
+  },
+  {
+    q: "Where is 2240 Speed Shop?",
+    a: `${site.street}, ${site.city}, ${site.region} ${site.postalCode}, Canada. On the Sherwood Park line in east Edmonton. Call ${site.phoneDisplay}.`,
+  },
+  {
+    q: "How do I get a quote?",
+    a: "Send photos and what the vehicle is through the quote form. Terry reads every request himself and comes back within two business days with scope, sequence, and a number band. No discovery fee. No sales handoff.",
+  },
+  {
+    q: "Which areas does the shop serve?",
+    a: `${site.areas.join(", ")}, and greater Alberta.`,
+  },
+];
+
 export default function HomePage() {
   return (
     <div>
+      <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }])} />
+      <JsonLd data={faqSchema(homeFaq)} />
       {/* Scroll choreography outside the film: tone handoffs + services fx. */}
       <HomeFx />
 
@@ -98,8 +120,9 @@ export default function HomePage() {
             2240 Speed Shop is {site.owner}&rsquo;s customs-and-classics shop at {site.street},{" "}
             {site.city} &mdash; right on the Sherwood Park boundary. Full restorations, hot rods and
             restomods, LS and diesel conversions, body, paint, and classic interiors. Serving
-            Edmonton, Sherwood Park, St. Albert, Leduc, and Spruce Grove. Owner-operated, Monday to
-            Friday, nine to five.
+            {site.areas.join(", ")}. Owner-operated, Monday to Friday, nine to five. Terry reads
+            every quote request himself — first number in two business days, no discovery fee, no
+            sales handoff.
           </p>
 
           {/* the gauge cluster */}

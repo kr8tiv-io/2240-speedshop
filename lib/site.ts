@@ -116,6 +116,7 @@ export const areas = [
   { slug: "st-albert", name: "St. Albert", note: "Rock'n August country. Straight up the Henday, about 30 minutes." },
   { slug: "leduc-nisku", name: "Leduc & Nisku", note: "Passenger classics and customs — not just heavy truck work." },
   { slug: "spruce-grove", name: "Spruce Grove", note: "West-end builds welcome; we will talk you through the haul." },
+  { slug: "fort-saskatchewan", name: "Fort Saskatchewan", note: "Highway 21 south, then west — about thirty minutes to the bay door." },
 ] as const;
 
 export type Service = (typeof services)[number];

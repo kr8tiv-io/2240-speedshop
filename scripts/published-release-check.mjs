@@ -53,7 +53,7 @@ try {
     const schema = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(match => JSON.parse(match[1]));
     report.pages.push({ route, status: 200, bytes: bytes.length, schemaBlocks: schema.length, sha256: hash(bytes) });
   });
-  await parallel([...new Set([...release.criticalAssets, "robots.txt", "sitemap.xml", "llms.txt", "f.rss", "f.atom", "f.json", "social/2240-speed-shop-edmonton-cinematic-v1.png", "quote/index.txt"])], file => checkFile(file, report.assets));
+  await parallel([...new Set([...release.criticalAssets, "robots.txt", "sitemap.xml", "llms.txt", "llms-full.txt", "f.rss", "f.atom", "f.json", "social/2240-speed-shop-edmonton-cinematic-v1.png", "quote/index.txt"])], file => checkFile(file, report.assets));
   for (const url of ["http://2240speedshop.com/", "http://www.2240speedshop.com/", "https://www.2240speedshop.com/", "https://2240speedshop.com/f/cutting-edge-automotive-solutions/"]) {
     let destination = url;
     const hops = [];

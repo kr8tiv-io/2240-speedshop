@@ -22,6 +22,7 @@
     "test:mobile-menu": "node scripts/mobile-menu-contract.mjs",
     "test:hero-runtime": "node scripts/hero-runtime-contract.mjs",
     "test:home-copy": "node scripts/home-copy-contract.mjs",
+    "test:area-pages": "node scripts/area-pages-contract.mjs",
     "test:grain-budget": "node scripts/grain-budget.mjs",
     "test:hero-model-version": "node scripts/hero-model-version-contract.mjs",
     "test:route-veil": "node scripts/route-veil-contract.mjs",

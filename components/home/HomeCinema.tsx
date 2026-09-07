@@ -780,14 +780,14 @@ function ChapterZeroCopy({ kinetic = false }: { kinetic?: boolean; ready?: boole
         >
           {"Customs "}
           <em className="accent-serif">and</em>
-          {"\nclassics."}
+          {" \nclassics."}
         </p>
         <h1
           data-kinetic-h1={kinetic ? "" : undefined}
           data-accent-word="and"
           className="whitespace-pre-line font-display text-[clamp(2.45rem,12.5vw,12rem)] uppercase leading-[0.84] tracking-[0.005em] text-bone"
         >
-          {"Customs and\nclassics."}
+          {"Customs and \nclassics."}
         </h1>
       </div>
       <div
