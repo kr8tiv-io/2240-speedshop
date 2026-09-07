@@ -94,17 +94,27 @@ body {
   html, body {
     overscroll-behavior: none;
   }
+  /* iOS 26: a position:fixed WebGL layer and a position:sticky copy sit on
+     two compositor threads and drift (WebKit 301172). Sticky + negative
+     margin keeps the canvas in the document scroll, covering the parent
+     without adding a viewport of flow, so it moves with the copy. */
   [data-film-canvas],
   [data-shop-ready],
   [data-gl-images] {
+    position: sticky;
+    top: 0;
     bottom: auto;
     height: 100vh;
     height: 100lvh;
-    /* Own compositor layer so iOS 26's fixed-layer drift cannot fight the
-       document scroll thread (WebKit 301172). */
+    margin-bottom: -100vh;
+    margin-bottom: -100lvh;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     transform: translateZ(0);
+  }
+  [data-film-stage] {
+    height: 100vh;
+    height: 100lvh;
   }
   [data-film-canvas] canvas,
   [data-shop-ready] canvas,

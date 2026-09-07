@@ -442,7 +442,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
       {/* REEL ONE — Acts I and II. 850vh: the title card, two cars, and two
           written interludes need real scroll of their own. */}
       <div data-film data-film-runway data-runway-a className="relative z-[1] h-[850vh]">
-        <div className="sticky top-0 h-[100svh] overflow-hidden">
+        <div data-film-stage className="sticky top-0 h-[100svh] overflow-hidden">
 
           {/* corner instrumentation + act HUD. Below 380px the coordinates
               and the readout cannot share a line without colliding — and the
@@ -593,7 +593,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
 
       {/* REEL TWO — the finale. */}
       <div data-film-runway data-runway-c className="relative z-[1] h-[420vh]">
-        <div className="sticky top-0 h-[100svh] overflow-hidden">
+        <div data-film-stage className="sticky top-0 h-[100svh] overflow-hidden">
           {/* finale HUD — the reel picks the count back up after the walk */}
           <div className="pointer-events-none absolute inset-x-0 top-[72px] flex justify-end px-5 sm:px-8">
             <div className="text-right">

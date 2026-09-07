@@ -54,15 +54,19 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
           gsapRuntime = gsapModule.gsap;
           scrollTriggerRuntime = triggerModule.ScrollTrigger;
           gsapRuntime.registerPlugin(scrollTriggerRuntime);
+          const touch = window.matchMedia("(max-width: 767px), (pointer: coarse)");
           lenis = new Lenis({
-            duration: 1.1,
+            duration: touch.matches ? 0.8 : 1.1,
             easing: (t: number) => 1 - Math.pow(1 - t, 3),
             orientation: "vertical",
             gestureOrientation: "vertical",
             smoothWheel: true,
-            syncTouch: false,
+            /* drei #1890: Safari WebGL jitter is native-scroll vs rAF desync.
+               syncTouch: true puts touch on the JS thread so the canvas and
+               the copy share one clock. syncTouch: false was the vibration. */
+            syncTouch: touch.matches,
             wheelMultiplier: 0.9,
-            touchMultiplier: 1.5,
+            touchMultiplier: touch.matches ? 1 : 1.5,
             anchors: true,
             autoRaf: false,
           });
@@ -93,24 +97,17 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       window.__lenisVelocity = 0;
     };
 
-    const touch = window.matchMedia("(max-width: 767px), (pointer: coarse)");
-    /* iOS Safari scrolls on a compositor thread. Lenis + GSAP ticker on top
-       of native touch is the GSAP/Lenis jitter recipe (syncTouch is already
-       false, so this was interpolating nothing and still fighting the clock).
-       Native scroll + ScrollTrigger's own listener is the stable path. */
-    if (!query.matches && !touch.matches) start();
+    if (!query.matches) start();
 
     const onPreferenceChange = () => {
-      if (query.matches || touch.matches) stop();
+      if (query.matches) stop();
       else start();
     };
 
     const removePreferenceListener = addMediaQueryChangeListener(query, onPreferenceChange);
-    const removeTouchListener = addMediaQueryChangeListener(touch, onPreferenceChange);
     const removeOverlayListener = subscribeUIOverlay(syncOverlay);
     return () => {
       removePreferenceListener();
-      removeTouchListener();
       removeOverlayListener();
       stop();
     };

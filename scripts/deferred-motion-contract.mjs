@@ -35,8 +35,8 @@ assert.match(
 );
 assert.match(
   sources.find(([file]) => file === "components/SmoothScroll.tsx")[1],
-  /touch\.matches/,
-  "Lenis must not start on phone/coarse pointers — native iOS scroll plus a JS ticker is the Safari jitter recipe.",
+  /syncTouch:\s*touch\.matches/,
+  "Phone Lenis must use syncTouch so Safari WebGL and the document share one scroll clock (drei #1890).",
 );
 
 console.log("deferred motion contract: PASS");

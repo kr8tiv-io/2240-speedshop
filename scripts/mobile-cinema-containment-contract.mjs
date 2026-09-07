@@ -32,6 +32,16 @@ assert.match(
   /bottom:\s*auto\s*;/,
   "The stable hero height must replace the dynamic bottom inset, retaining full-bleed coverage when browser controls collapse.",
 );
+assert.match(
+  stableHeroViewport,
+  /position:\s*sticky/,
+  "Phone WebGL hosts must be sticky-in-flow, not a separate fixed compositor layer.",
+);
+assert.match(
+  stableHeroViewport,
+  /margin-bottom:\s*-100vh\s*;\s*margin-bottom:\s*-100lvh/,
+  "Sticky canvas must pull following content up so it does not add a blank viewport of flow.",
+);
 assert.doesNotMatch(
   stableHeroViewport,
   /(?:height|block-size):\s*(?:100[sd]vh|\d+px)/,
