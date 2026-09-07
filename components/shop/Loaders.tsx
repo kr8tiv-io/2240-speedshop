@@ -765,21 +765,20 @@ function openGate(next: number) {
   for (const listener of streamListeners) listener();
 }
 
-/* The photographic doorway is good enough to be a real loading surface, so
-   the world no longer has to gamble that a later bay can outrun the camera.
-   Every station earns the dissolve. Models still mount through the serialized
-   gate chain — no request stampede — but the renderer remains parked until the
-   whole walk is populated and first-used. A reader who arrives impossibly
-   fast sees a finished photograph; everybody else gets a zero-pop-in tour. */
+/* The photographic doorway is a safety layer for the OPENING bay only.
+   Later stations still compile in order and the camera will not enter a cold
+   bay, but holding the veil until all seven stops are first-used made the
+   shop look late while the rest of the page was already there. Same models,
+   same shaders, same first-use proof — the door just rolls up when the room
+   you can actually see is real. */
 const WARM_KEYS = [
   "shell",
   ...Array.from({ length: STATION_COUNT }, (_, i) => String(i)),
   "5-gallery",
 ];
-/* Keep the elegant photograph until the route the visitor can immediately
-   scroll is complete. The camera frontier remains as a safety invariant, but
-   an ordinary entry never sees it pause on a cold downstream bay. */
-const REVEAL_WARM_KEYS = [...WARM_KEYS];
+/* Building + station zero. Downstream bays keep streaming; the rail clamps
+   to highestContiguousWarmStation so a fast walk never lands in empty space. */
+const REVEAL_WARM_KEYS = ["shell", "0"];
 const PENDING = new Set<string>(WARM_KEYS);
 const REVEAL_PENDING = new Set<string>(REVEAL_WARM_KEYS);
 const WARMED = new Set<string>();
@@ -929,11 +928,10 @@ function reportWarm(key: string) {
  * 15-second timer. The timer started when this chunk was imported, not when
  * the renderer mounted; on a slower GPU it could therefore lift the doorway
  * photograph while the shell was still compiling and every bay was hidden.
- * The photograph now waits for the complete building and a verified
- * full-composer frame. Every bay still compiles and first-uses every object
- * before handing that object to the camera, but those paced GPU bindings no
- * longer hold an already-finished moving garage hostage. There is still no
- * time-based path to `ready`.
+ * The photograph now waits for the shell, station zero, and a verified
+ * full-composer frame. Later bays still compile and first-use every object
+ * before the camera may enter them. There is still no time-based path to
+ * `ready`.
  */
 /* ── Load, grade, measure ───────────────────────────────────────────────── */
 
@@ -2074,20 +2072,21 @@ async function untilIdle(patience = 900, protectVisiblePage = false) {
 }
 
 /**
- * NOTHING IS PROTECTED BEFORE THE DOOR OPENS.
+ * NOTHING IS PROTECTED WHILE NOBODY IS LOOKING AT THE SHOP.
  *
  * Every pacing mechanism in this file exists to protect a reader who is looking
- * at the shop. Until the opening bays are up, they are looking at a photograph
- * — the hero still, with the whole site beneath it — and there is nothing to
- * protect. Pacing that window does not buy smoothness; it just makes the shop
- * late, which is the actual complaint. A phone measured the opening bay
- * finishing at fifteen seconds, most of it spent waiting politely for a reader
- * who could not yet see anything.
+ * at the garage. While the canvas is parked in the film — even after the
+ * opening bay is ready enough to roll the door — they are looking at Acts I–II
+ * and there is nothing in the shop to protect. Pacing that window does not buy
+ * smoothness; it just makes the later bays late. A phone measured the opening
+ * bay finishing at fifteen seconds, most of it spent waiting politely for a
+ * reader who could not yet see anything.
  *
- * So the gates stand open until the world reports ready, and close behind it.
+ * So the gates stand open while the world is parked, and close once the shop
+ * canvas is actually drawing.
  */
 function racing() {
-  return !getBoot().ready;
+  return worldParked;
 }
 
 /* PARKED SHORTENS THE COURTESIES. On the original page every pacing courtesy

@@ -432,8 +432,9 @@ export function WalkthroughWorld() {
           unconditionally, so the station copy always sits in a lit room. */}
       <div className="wt-world-veil absolute inset-0" />
       {/* A fast scroller can reach the doorway before a slow mobile GPU has
-          finished linking the shop. Hold a real tungsten/cool room there,
-          then dissolve it away once the full world is ready. */}
+          finished linking the opening bay. Hold a real tungsten/cool room
+          there, then dissolve it once that first room is ready. Later bays
+          still stream; the rail will not walk into an empty one. */}
       <div
         className={`wt-world-boot-light absolute inset-0 transition-opacity duration-1000 ${
           worldReady ? "opacity-0" : "opacity-100"

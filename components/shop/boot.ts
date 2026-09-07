@@ -10,14 +10,14 @@
 
      progress   0 → 1 across the opening download (the shell's textures and the
                 first two bays), reported by the loading manager.
-     warm       every compiled batch — the shell and all seven stations. Shader
-                linking is the single most expensive thing that happens on this
-                page, and it happens BEHIND the plate on purpose.
-     ready      every one of the above is done: the door can roll up.
+     warm       the shell's programs are linked. Shader linking is the single
+                most expensive thing that happens on this page, and the first
+                batch of it happens BEHIND the plate on purpose.
+     ready      the opening bay is downloaded, compiled and first-used: the
+                door can roll up. Later stations keep streaming.
 
-   The bays still stream one at a time behind the photographic doorway; this
-   channel simply refuses to dissolve that photograph until the entire tour is
-   populated and first-used.
+   The bays still stream one at a time. The photograph dissolves once the
+   room you can see is real; the camera will not enter a cold bay.
    ────────────────────────────────────────────────────────────────────────── */
 
 export type BootState = {

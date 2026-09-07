@@ -817,8 +817,8 @@ contract(
   "parse courtesy is scoped once per route bay rather than once per model or Canvas",
 );
 contract(
-  /const REVEAL_WARM_KEYS = (?:\[\.\.\.WARM_KEYS\]|WARM_KEYS)/.test(loaders),
-  "garage reveal waits for the complete warm route",
+  /const REVEAL_WARM_KEYS = \["shell", "0"\]/.test(loaders),
+  "garage reveal waits for the opening bay, not the complete warm route",
 );
 const libraryKeys = modelLibraryKeys();
 const openingKeys = keysBetween(loaders, "const OPENING_MODELS", "const OPENING_PRELOAD_COUNT");
@@ -890,11 +890,11 @@ contract(
     /active=\{active && worldReady && uiOverlay === null\}/.test(walkthrough) &&
     /worldReady \? "opacity-0" : "opacity-100"/.test(walkthrough) &&
     /lit && warm && revealed \? "opacity-100" : "opacity-0"/.test(shopWorld),
-  "partial shell/stations stay fully veiled until complete-route readiness",
+  "later stations stay camera-clamped; the doorway lifts at opening-bay readiness",
 );
 contract(
   /REVEAL_PENDING\.size === 0[\s\S]{0,500}await finalizer\(\)[\s\S]{0,500}markWorldReady\(\)/.test(loaders),
-  "complete route readiness submits a final full-composer frame before reveal",
+  "opening-bay readiness submits a final full-composer frame before reveal",
 );
 const parkedOvenStart = loaders.indexOf("if (parkedNow() && root && composerTarget)");
 const parkedOvenFirstWas = loaders.indexOf("const was = drawables.map", parkedOvenStart);

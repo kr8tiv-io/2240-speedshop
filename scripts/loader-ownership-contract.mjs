@@ -105,14 +105,14 @@ assert.ok(
   "The shop may not start on a fixed clock while the opening film is still compiling.",
 );
 assert.ok(
-  /const REVEAL_WARM_KEYS = \[\.\.\.WARM_KEYS\]/.test(loaders) &&
+  /const REVEAL_WARM_KEYS = \["shell", "0"\]/.test(loaders) &&
     /const REVEAL_PENDING = new Set<string>\(REVEAL_WARM_KEYS\)/.test(loaders),
-  "The final photographic dissolve must wait for the verified complete garage route.",
+  "The photographic dissolve waits for the verified shell and opening bay, not the whole tour.",
 );
 assert.ok(
   /REVEAL_PENDING\.delete\(key\)/.test(loaders) &&
     /finalizedWorld === worldFinalizer[\s\S]*REVEAL_PENDING\.size === 0[\s\S]*markWorldReady\(\)/.test(loaders),
-  "The doorway may dissolve only after the shell proof and all seven station first-uses exist.",
+  "The doorway may dissolve only after the shell proof and station-zero first-use exist.",
 );
 assert.ok(
   /if \(PENDING\.size === 0\) restoreComposerOvens\(\)/.test(loaders),
