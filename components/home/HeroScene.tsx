@@ -13,7 +13,11 @@ import {
 } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { STABLE_CANVAS_RESIZE } from "@/lib/stable-canvas";
+import {
+  aspectIgnoringChrome,
+  STABLE_CANVAS_FRAME_STYLE,
+  STABLE_CANVAS_RESIZE,
+} from "@/lib/stable-canvas";
 import {
   useGLTF,
   Environment,
@@ -1879,6 +1883,7 @@ function Rig({ mobile }: { mobile: boolean }) {
     edge: 0,
     three: { scene, camera, gl },
   });
+  const chromeAspect = useRef({ width: 0, aspect: 0 });
 
   useFrame((_, delta) => {
     const keys = ACTS[stage.act].keys;
@@ -1927,12 +1932,15 @@ function Rig({ mobile }: { mobile: boolean }) {
       );
       fitHalf = spinHalf;
     }
+    const fitAspect = mobile
+      ? aspectIgnoringChrome(camera, gl.domElement.clientWidth, chromeAspect.current)
+      : camera.aspect;
     const need = fitDistance(
       fitHalf,
       fitPoint,
       camera.position,
       camera.fov,
-      camera.aspect,
+      fitAspect,
       mobile ? 1.03 : 1.05,
     );
     fitOffset.copy(desired).sub(fitPoint);
@@ -2080,6 +2088,7 @@ export function HeroScene({
   return (
     <Canvas
       resize={STABLE_CANVAS_RESIZE}
+      style={STABLE_CANVAS_FRAME_STYLE}
       /* FIXED dpr, chosen once. It used to come from the quality tier, and a
          dpr change reallocates the drawing buffer: the canvas is destroyed at
          one resolution and rebuilt at another, which the eye reads as a flash
@@ -2104,7 +2113,7 @@ export function HeroScene({
         renderer.current = gl;
         startEnvironmentWarmup(gl, mobile ? 128 : 256);
       }}
-      className="!absolute !inset-0"
+      className="!absolute !inset-x-0 !top-0"
       aria-hidden="true"
     >
       <WebGLContextGuard />

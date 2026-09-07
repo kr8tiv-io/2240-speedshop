@@ -91,7 +91,9 @@ body {
    Native viewport units still update for rotation and genuine window resizing.
    Copy keeps its separate small-viewport safe area above. */
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
-  [data-film-canvas] {
+  [data-film-canvas],
+  [data-shop-ready],
+  [data-gl-images] {
     bottom: auto;
     height: 100vh;
     height: 100lvh;
@@ -130,6 +132,15 @@ body {
   50% { transform: translate(1.45%, -1.77%); }
   75% { transform: translate(-0.97%, -0.81%); }
   100% { transform: translate(0, 0); }
+}
+
+/* The 4-step grain translation travels ~18px on a 390px phone. That reads
+   as the whole screen shaking, not as film grain. Keep the texture; freeze
+   the shift. Reduced-motion already pauses this; phones get the same hold. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .grain {
+    animation: none;
+  }
 }
 
 html[data-ui-overlay="menu"] .grain {

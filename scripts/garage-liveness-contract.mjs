@@ -871,8 +871,9 @@ contract(
 );
 contract(
   /resize=\{STABLE_CANVAS_RESIZE\}/.test(shopWorld) &&
+    /STABLE_CANVAS_FRAME_STYLE/.test(shopWorld) &&
     /lockRunwayViewport\(\)/.test(shopWorld),
-  "shop canvas ignores scroll remesure and freezes runway span after settle",
+  "shop canvas ignores scroll remesure, sizes with svh/lvh on Canvas, and freezes runway span after settle",
 );
 contract(
   /<ShopWorld[\s\S]{0,220}revealed=\{worldReady\}/.test(walkthrough) &&

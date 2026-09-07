@@ -20,7 +20,7 @@ assert.match(
 );
 
 const stableHeroViewport = css.match(
-  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{\s*\[data-film-canvas\]\s*\{([^}]+)\}/,
+  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{\s*\[data-film-canvas\],\s*\[data-shop-ready\],\s*\[data-gl-images\]\s*\{([^}]+)\}/,
 )?.[1] ?? "";
 assert.match(
   stableHeroViewport,
@@ -36,6 +36,11 @@ assert.doesNotMatch(
   stableHeroViewport,
   /(?:height|block-size):\s*(?:100[sd]vh|\d+px)/,
   "Do not trade toolbar stability for a small-viewport gap, dynamic resizing, or a fixed pixel height that breaks rotation.",
+);
+assert.match(
+  css,
+  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{[\s\S]*?\.grain\s*\{\s*animation:\s*none;/,
+  "Phone grain must stay a still texture; the 4-step translation reads as whole-screen shake.",
 );
 
 const phonePlate = css.match(/@media \(max-width: 639px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";

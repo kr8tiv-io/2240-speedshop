@@ -97,7 +97,7 @@ import {
   type InstanceSpec,
 } from "./world";
 import { RUNWAY_ID, lockRunwayViewport, measureRunway, runwayMetrics, runwayProgress } from "./runway";
-import { STABLE_CANVAS_RESIZE } from "@/lib/stable-canvas";
+import { STABLE_CANVAS_FRAME_STYLE, STABLE_CANVAS_RESIZE } from "@/lib/stable-canvas";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    THE SHOP — one continuous building, fixed behind the whole document.
@@ -2660,7 +2660,7 @@ export function ShopWorld({
       }`}
     >
       <Canvas
-        style={{ pointerEvents: "none" }}
+        style={{ pointerEvents: "none", ...STABLE_CANVAS_FRAME_STYLE }}
         resize={STABLE_CANVAS_RESIZE}
         /* FIXED RESOLUTION FOR THE LIFE OF THE CONTEXT.
            Changing DPR rebuilds the composer's render targets and can force
