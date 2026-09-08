@@ -2458,6 +2458,11 @@ async function warmComposerPrograms(
   if (composerTarget) COMPOSER_TARGETS.set(gl, composerTarget);
 
   const geometry = new THREE.PlaneGeometry(2, 2);
+  // The shipped fullscreen triangle has position/uv only. Three r185 keys
+  // HAS_NORMAL into its program cache, so a normal-bearing temporary plane
+  // compiles different variants and makes the real post passes link again.
+  // Only this disposable compile helper changes; all visible geometry stays.
+  geometry.deleteAttribute("normal");
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   for (const material of materials) scene.add(new THREE.Mesh(geometry, material));
