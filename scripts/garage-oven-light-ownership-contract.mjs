@@ -67,7 +67,7 @@ async function queuedOwnership() {
   } finally { f.cleanup(); }
 }
 
-async function pacedOwnership({ throwDraw = false, cancel = false, cancelOwner = false, cancelCourtesy = false, frameCourtesy = false } = {}) {
+async function pacedOwnership({ throwDraw = false, cancel = false, cancelOwner = false, cancelCourtesy = false, frameCourtesy = false, phone = false } = {}) {
   const f = fixture();
   let target = { name: "visible target" }, draws = 0, yields = 0, cancelledTouches = 0;
   const courtesies = [];
@@ -86,7 +86,7 @@ async function pacedOwnership({ throwDraw = false, cancel = false, cancelOwner =
   const ovens = new Map();
   let ownerCancelled = false;
   const lightOwner = { key: "4", count: 1, isStale: () => ownerCancelled };
-  const context = vm.createContext({ module: { exports: {} }, THREE, DEBUG: false, phoneTier: false,
+  const context = vm.createContext({ module: { exports: {} }, THREE, DEBUG: false, phoneTier: phone,
     loaderGeneration: 1, performance, COMPOSER_TARGETS: new WeakMap([[gl, hdr]]), COMPOSER_OVENS: ovens,
     WARM_STATION_LIGHTS: new WeakMap([[f.node, lightOwner]]),
     setStationLights: (key, count) => { if (context.loaderGeneration !== 1 || ownerCancelled) cancelledTouches++; setStationLights(key, count); },
@@ -127,7 +127,7 @@ async function pacedOwnership({ throwDraw = false, cancel = false, cancelOwner =
     else await context.module.exports(f.node, "station 4", root, 1);
     if (cancelCourtesy) { assert.equal(draws, 0); assert.equal(ovens.size, 0); }
     else { assert.ok(draws > 0); if (!throwDraw) assert.ok(yields > 0); }
-    assert.deepEqual(courtesies, [150], "Parked sliced preparation must not add a 900 ms scroll-stop delay before each subtree");
+    assert.deepEqual(courtesies, [phone ? 150 : 900], "Only the phone tier shortens the parked courtesy; full desktop keeps its original budget");
     assert.equal(f.count(), 25);
     assert.equal(target, readerTarget);
     assert.equal(cancelledTouches, 0, "A disposed renderer cannot change its successor's light pad");
@@ -161,6 +161,12 @@ for (const [name, check] of [["queued ownership", queuedOwnership], ["paced rele
   ["superseded bay in same renderer", () => pacedOwnership({ cancelOwner: true })],
   ["cancellation during initial courtesy", () => pacedOwnership({ cancelCourtesy: true })],
   ["actual station frame during initial courtesy", () => pacedOwnership({ frameCourtesy: true })],
+  ["phone paced release", () => pacedOwnership({ phone: true })],
+  ["phone draw failure restoration", () => pacedOwnership({ phone: true, throwDraw: true })],
+  ["phone cancelled renderer", () => pacedOwnership({ phone: true, cancel: true })],
+  ["phone superseded bay", () => pacedOwnership({ phone: true, cancelOwner: true })],
+  ["phone cancellation during courtesy", () => pacedOwnership({ phone: true, cancelCourtesy: true })],
+  ["phone station frame during courtesy", () => pacedOwnership({ phone: true, frameCourtesy: true })],
   ["live frame ownership", frameOwnership]]) {
   try { await check(); console.log(`PASS ${name}`); }
   catch (error) { failures.push({ name, message: error.message }); console.log(`FAIL ${name}: ${error.message}`); }

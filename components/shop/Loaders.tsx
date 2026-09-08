@@ -2726,10 +2726,11 @@ async function pacedWarm(
   if (parkedNow() && root && composerTarget) {
     // Pay the film one bounded courtesy before borrowing any scene visibility
     // or light-pad slots. A live frame or effect cleanup may run while waiting.
-    // These tiny, already-compiled draws yield after every slice. A full 900 ms
-    // scroll-stop wait per subtree delayed the doorway while doing no GPU work;
-    // the indivisible full-size finalizer retains that longer courtesy.
-    await waitForReaderQuiet(150);
+    // The phone tier's tiny, already-compiled draws yield after every slice.
+    // A shorter preflight reduced its doorway wait; full desktop's richer
+    // first-use path still needs the original courtesy to protect film frames.
+    // The indivisible full-size finalizer also retains its longer courtesy.
+    await waitForReaderQuiet(phoneTier ? 150 : 900);
     if (stale()) return;
     const was = drawables.map((object) => object.visible);
     const wasCulled = drawables.map((object) => object.frustumCulled);

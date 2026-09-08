@@ -8,6 +8,18 @@
 
 **Tech Stack:** Next 16 static export, React 19, Three r185, existing Node/Puppeteer hardware-GPU QA.
 
+**Revision after Candidate1 qualification:** the all-tier150ms variant is HOLD.
+See docs/releases/2026-09-08-parked-courtesy-qualification.md. Candidate2 uses
+`phoneTier ? 150 : 900` instead: preserve full desktop scheduling while testing
+the measured mobile gain again. Extend both-tier ownership tests (14cases),
+retain the original finalizer assertion, and repeat the complete ABBA comparison.
+
+**Final qualification update:** Candidate2 also failed the unchanged performance
+gate in driver73734. Both variants are HOLD and must not be integrated or
+deployed. See the complete adverse results in the qualification report. Task3
+is blocked by evidence, not approved merely because functional tours passed.
+Next inspect original baseline GL startup without altering production behavior.
+
 ---
 
 ## Evidence and isolation

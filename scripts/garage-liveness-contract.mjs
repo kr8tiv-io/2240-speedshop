@@ -904,8 +904,8 @@ const parkedOvenSource = loaders.slice(
 );
 contract(
   (parkedOvenSource.match(/waitForReaderQuiet\([^)]*\)/g) ?? []).length === 1 &&
-    /await waitForReaderQuiet\(150\);\s*if \(stale\(\)\) return;\s*const was = drawables\.map/.test(parkedOvenSource),
-  "parked oven pays one 150 ms courtesy before scene ownership, never per slice",
+    /await waitForReaderQuiet\(phoneTier \? 150 : 900\);\s*if \(stale\(\)\) return;\s*const was = drawables\.map/.test(parkedOvenSource),
+  "parked oven pays one tier-specific courtesy before scene ownership, never per slice",
 );
 contract(
   /async function waitForReaderQuiet\(patience = 900\)/.test(loaders) &&

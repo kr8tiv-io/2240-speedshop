@@ -46,3 +46,40 @@ Test150ms only for phoneTier; retain900ms for full desktop. Extend actual paced
 ownership tests to both tiers and verify RED before changing production. Build
 and qualify again before any source integration/deployment. The mobile result
 above is not permission to skip a current-build desktop or lifecycle check.
+
+## Candidate2: HOLD, never deploy
+
+The tier-specific variant `phoneTier ? 150 : 900` built as private release
+8cdb67ebf7f048ecbe93eb68ad23e5db. The full tier retained the original900ms;
+the final full-size proof retained900ms on both tiers. Six expected RED
+assertions preceded14 GREEN ownership cases. Liveness, progressive-reveal,
+scoped test lint, TypeScript and the complete build passed. Independent review
+found no other runtime change and approved controlled qualification only.
+Fidelity again passed449 original media files and all73 pages' visible copy.
+
+Driver73734 completed all8 sequential full tours, ABBA per profile, with the
+same7bays/71exact garage resources/3hero arrivals/7office photos and no page
+errors. It terminated with HOLD at the unchanged3% performance gate.
+
+| Metric (mean of2 runs) | Desktop baseline → candidate | Phone baseline → candidate |
+| --- | --- | --- |
+| Opening reveal | 11408.9 →12388.4ms (+8.59%) | 19323.1 →25935.8ms (+34.22%) |
+| Hero ready | 4382.1 →4668.85ms (+6.54%) | 12064.65 →4836.4ms (−59.91%) |
+| Entry-frame p95 | 31.3 →38.65ms (+23.48%) | 13.9 →17.4ms (+25.18%) |
+| Entry-frame p99 | 69.5 →90.35ms (+30.00%) | 31.75 →38.25ms (+20.47%) |
+| Entry worst frame | 432.2 →271.45ms (−37.19%) | 59.1 →118.3ms (+100.17%) |
+
+The run set varies substantially, including hero startup before this change
+can execute and the unchanged full-tier path. That does not establish a cause
+or license discarding adverse runs. Neither a repeatable improvement nor
+smoothness non-regression was demonstrated. Candidate2 stays isolated; no
+lifecycle followups, source integration or deployment were authorized by this
+result. Both candidates are held, not improvements delivered to production.
+
+Evidence: output/courtesy-phoneonly-20260908-qualification.json,
+output/courtesy-phoneonly-20260908-export-fidelity.json,
+output/phoneonly-courtesy-red.log and the eight
+output/playwright/garage-performance-2026-09-06/courtesy-phoneonly-20260908-*
+directories. The next bounded task is diagnostic attribution of the original
+baseline's full-composer startup cost. Instrumented profiles are not A/B speed
+measurements, and the original live/source release remains protected.
