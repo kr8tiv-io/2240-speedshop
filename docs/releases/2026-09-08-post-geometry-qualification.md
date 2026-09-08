@@ -107,3 +107,22 @@ hero work and streaming/parse scheduling, independently of the now-attributed
 post-shader duplicate. Current long-task entries expose timing/phase but not
 CPU stacks. Attribute those tasks before another runtime change. Do not relax
 the gate, combine the held courtesy changes, or report this as deployed.
+
+## Baseline CPU follow-up
+
+Driver29139 is TERMINAL PASS for the unchanged baseline's complete7/71/3/7 tour.
+Raw startup.cpuprofile and results.json are in output/playwright/
+garage-performance-2026-09-06/reconciled-baseline-27036633-entry-cpu-20260908/.
+This profile spans startup, not yet precisely isolated entry-only samples.
+It includes profiler/test overhead and cannot be treated as A/B timing.
+
+Mapped sampled stacks identify original synchronous shader submission
+(Three createShader/shaderSource/compileShader) beneath hero compileAsync,
+and uniform discovery under the garage full-composer frame. Additional leads
+are the temporary WebGL2 capability-probe creation/disposal (~315.7ms sampled)
+and GLTF embedded-image Blob construction (~221.7ms sampled). These are
+attribution leads, not wall-clock savings promised by removing features.
+The observer's own WaitTask (~256.9ms sampled) and GC are also present; do not
+misclassify test overhead as application work. Preserve capability fallback,
+every exact embedded texture, shader correctness and renderer ownership.
+Next compare phase-aligned stacks and validate a concrete cause before editing.
