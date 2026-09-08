@@ -44,3 +44,9 @@ Diagnostic instrumentation adds overhead and is not an A/B speed result.
    public marker/assets validation. Otherwise checkpoint HOLD, never deploy.
 
 No SeaOcean score, rankings, field CWV or physical Apple claim is implied.
+
+Final update: driver10680 completed all8 full tours but failed desktop entryp99
+and phone entryp95. Candidate17e7082a is HOLD despite the exact-shader diagnostic
+passing and lower full-composer proof cost. No integration/deployment or
+post-gate lifecycle followups. Preserve the evidence and inspect entry CPU
+stacks next; see docs/releases/2026-09-08-post-geometry-qualification.md.

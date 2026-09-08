@@ -1,6 +1,6 @@
 # Post-processing geometry qualification — 2026-09-08
 
-## Status: diagnostic PASS; full qualification pending; unpublished
+## Status: HOLD after full qualification; unpublished
 
 Protected live2703663354e549a59ad93ebf72bd2fdf/application98b788c/evidenceaad4d98.
 Private candidate17e7082a7aa64ee3bfbb49d802498d7c is isolated on
@@ -62,3 +62,48 @@ compare total opening times as a qualification result. The fresh uninstrumented
 ABBA, lifecycle, interactions and release checks in the plan remain mandatory.
 
 No deployment, SeaOcean95+, field-CWV, rankings or physical Apple claim.
+
+## Export SEO continuity
+
+The private read-only comparison passed all73 exported HTML pages (including
+system pages),406parseable JSON-LD blocks, and exact metadata/canonical/language/
+H1/link-destination equivalence against the protected deployment. robots.txt,
+sitemap.xml and llms.txt are byte-identical. llms-full.txt has70 CRLF line endings
+from the Windows checkout instead of LF; its complete text and line structure
+match after normalizing only CRLF. The initial raw-byte assertion failed for
+that difference and is recorded, not misrepresented as exact byte fidelity.
+No export content was modified during qualification. These are continuity
+checks, not rich-result eligibility, ranking or an external SeaOcean score.
+Evidence: output/postgeometry-seo-continuity.json and its private checker.
+Additional external reference follow-up is recorded separately; remaining
+anti-bot/refused destinations are still explicitly unresolved.
+
+## Complete controlled comparison: HOLD
+
+Driver10680 is TERMINAL HOLD. Eight sequential uninstrumented hardware-GPU
+fresh-browser tours completed in ABBA order per desktop/phone profile. Every
+tour passed7bays/71exact garage resources/3hero arrivals/7office textures with
+zero page errors. The unchanged3% non-regression gate failed two measures.
+
+| Metric (mean of2) | Desktop baseline → candidate | Phone baseline → candidate |
+| --- | --- | --- |
+| Opening reveal | 14418 →14371.2ms (−0.32%) | 12579.3 →12167.8ms (−3.27%) |
+| Hero ready | 6563.5 →5860.55ms | 5707.7 →5142.45ms |
+| Entry p95 | 55.65 →55.8ms (+0.27%) | 28.1 →35ms (+24.56%, FAIL) |
+| Entry p99 | 121.6 →170.35ms (+40.09%, FAIL) | 69.55 →69.6ms (+0.07%) |
+| Entry worst | 410.55 →410.45ms | 198.4 →139.15ms |
+
+The specific compiler correction remains supported: uninstrumented desktop
+first full-composer proof was1059/965ms on baseline and599/552ms on candidate.
+But its overall smoothness gate did not pass. Faster shader preparation and
+411.5ms earlier mean phone opening do not establish a safe release. Preserve
+all runs, keep the candidate isolated, and do not integrate or deploy it.
+No post-gate lifecycle followups ran. Evidence: output/postgeometry-qualification.json
+and all output/playwright/garage-performance-2026-09-06/postgeometry-20260908-*
+reports; the GL-labelled directory is separate diagnostic evidence.
+
+Next diagnostic target: entry-scroll stalls on the protected baseline, including
+hero work and streaming/parse scheduling, independently of the now-attributed
+post-shader duplicate. Current long-task entries expose timing/phase but not
+CPU stacks. Attribute those tasks before another runtime change. Do not relax
+the gate, combine the held courtesy changes, or report this as deployed.
