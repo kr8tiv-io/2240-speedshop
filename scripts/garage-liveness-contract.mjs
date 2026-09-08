@@ -903,9 +903,14 @@ const parkedOvenSource = loaders.slice(
   loaders.indexOf("const was = drawables.map", parkedOvenFirstWas + 1),
 );
 contract(
-  (parkedOvenSource.match(/waitForReaderQuiet\(\)/g) ?? []).length === 1 &&
-    /await waitForReaderQuiet\(\);\s*if \(stale\(\)\) return;\s*const was = drawables\.map/.test(parkedOvenSource),
-  "parked oven pays one bounded courtesy before scene ownership, never per slice",
+  (parkedOvenSource.match(/waitForReaderQuiet\([^)]*\)/g) ?? []).length === 1 &&
+    /await waitForReaderQuiet\(150\);\s*if \(stale\(\)\) return;\s*const was = drawables\.map/.test(parkedOvenSource),
+  "parked oven pays one 150 ms courtesy before scene ownership, never per slice",
+);
+contract(
+  /async function waitForReaderQuiet\(patience = 900\)/.test(loaders) &&
+    /const finalizer = async \(\) => \{[\s\S]*?await waitForReaderQuiet\(\);/.test(loaders),
+  "indivisible full-size composer proof retains the 900 ms courtesy",
 );
 const warmStationSource = loaders.slice(
   loaders.indexOf("function WarmStation"),

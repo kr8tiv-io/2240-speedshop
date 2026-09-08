@@ -70,6 +70,7 @@ async function queuedOwnership() {
 async function pacedOwnership({ throwDraw = false, cancel = false, cancelOwner = false, cancelCourtesy = false, frameCourtesy = false } = {}) {
   const f = fixture();
   let target = { name: "visible target" }, draws = 0, yields = 0, cancelledTouches = 0;
+  const courtesies = [];
   const readerTarget = target;
   const gl = { getRenderTarget: () => target, setRenderTarget(next) { target = next; },
     render(scene, camera) {
@@ -89,7 +90,8 @@ async function pacedOwnership({ throwDraw = false, cancel = false, cancelOwner =
     loaderGeneration: 1, performance, COMPOSER_TARGETS: new WeakMap([[gl, hdr]]), COMPOSER_OVENS: ovens,
     WARM_STATION_LIGHTS: new WeakMap([[f.node, lightOwner]]),
     setStationLights: (key, count) => { if (context.loaderGeneration !== 1 || ownerCancelled) cancelledTouches++; setStationLights(key, count); },
-    waitForReaderQuiet: async () => {
+    waitForReaderQuiet: async patience => {
+      courtesies.push(patience);
       if (cancelCourtesy) {
         ownerCancelled = true;
         setStationLights("4", 0);
@@ -125,6 +127,7 @@ async function pacedOwnership({ throwDraw = false, cancel = false, cancelOwner =
     else await context.module.exports(f.node, "station 4", root, 1);
     if (cancelCourtesy) { assert.equal(draws, 0); assert.equal(ovens.size, 0); }
     else { assert.ok(draws > 0); if (!throwDraw) assert.ok(yields > 0); }
+    assert.deepEqual(courtesies, [150], "Parked sliced preparation must not add a 900 ms scroll-stop delay before each subtree");
     assert.equal(f.count(), 25);
     assert.equal(target, readerTarget);
     assert.equal(cancelledTouches, 0, "A disposed renderer cannot change its successor's light pad");

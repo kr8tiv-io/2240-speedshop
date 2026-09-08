@@ -2726,7 +2726,10 @@ async function pacedWarm(
   if (parkedNow() && root && composerTarget) {
     // Pay the film one bounded courtesy before borrowing any scene visibility
     // or light-pad slots. A live frame or effect cleanup may run while waiting.
-    await waitForReaderQuiet();
+    // These tiny, already-compiled draws yield after every slice. A full 900 ms
+    // scroll-stop wait per subtree delayed the doorway while doing no GPU work;
+    // the indivisible full-size finalizer retains that longer courtesy.
+    await waitForReaderQuiet(150);
     if (stale()) return;
     const was = drawables.map((object) => object.visible);
     const wasCulled = drawables.map((object) => object.frustumCulled);
