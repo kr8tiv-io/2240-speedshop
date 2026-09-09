@@ -20,7 +20,7 @@ assert.match(
 );
 
 const stableHeroViewport = css.match(
-  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{\s*\[data-film-canvas\]\s*\{([^}]+)\}/,
+  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{[\s\S]*?\[data-film-canvas\],\s*\[data-shop-ready\],\s*\[data-gl-images\]\s*\{([^}]+)\}/,
 )?.[1] ?? "";
 assert.match(
   stableHeroViewport,
@@ -32,10 +32,30 @@ assert.match(
   /bottom:\s*auto\s*;/,
   "The stable hero height must replace the dynamic bottom inset, retaining full-bleed coverage when browser controls collapse.",
 );
+assert.match(
+  stableHeroViewport,
+  /position:\s*sticky/,
+  "Phone WebGL hosts must be sticky-in-flow, not a separate fixed compositor layer.",
+);
+assert.match(
+  stableHeroViewport,
+  /margin-bottom:\s*-100vh\s*;\s*margin-bottom:\s*-100lvh/,
+  "Sticky canvas must pull following content up so it does not add a blank viewport of flow.",
+);
 assert.doesNotMatch(
   stableHeroViewport,
   /(?:height|block-size):\s*(?:100[sd]vh|\d+px)/,
   "Do not trade toolbar stability for a small-viewport gap, dynamic resizing, or a fixed pixel height that breaks rotation.",
+);
+assert.match(
+  css,
+  /@media\s*\(max-width:\s*767px\),\s*\(hover:\s*none\)\s+and\s+\(pointer:\s*coarse\)\s*\{[\s\S]*?\.grain\s*\{\s*display:\s*none;/,
+  "Phone grain must be removed; mix-blend overlay over live WebGL reads as whole-screen vibration on iOS Safari.",
+);
+assert.match(
+  css,
+  /overscroll-behavior:\s*none/,
+  "Phone overscroll rubber-band must not shake fixed WebGL layers.",
 );
 
 const phonePlate = css.match(/@media \(max-width: 639px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";

@@ -83,6 +83,15 @@ export function Footer() {
               <a className="transition-colors hover:text-ember" href={`mailto:${site.email}`}>
                 {site.email}
               </a>
+              <br />
+              <a
+                className="transition-colors hover:text-ember"
+                href={site.mapsUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Google Maps
+              </a>
             </address>
             <p className="mt-4 font-mono text-[11px] text-steel/60">
               MON–FRI 09:00–17:00 · WEEKENDS CLOSED

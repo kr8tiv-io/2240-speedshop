@@ -16,9 +16,10 @@ export const site = {
   region: "AB",
   postalCode: "T6P 1L1",
   country: "CA",
-  // Existing contact-map fallback only; excluded from structured data until
-  // the exact map pin is verified against the shop address.
-  geo: { lat: 53.4818, lng: -113.3773 },
+  // Same coords used for local entity GeoCoordinates / hasMap (Proof-verified GBP place).
+  geo: { lat: 53.5249595, lng: -113.374974 },
+  // Proof/Scratchy-verified Google Maps place URL for schema hasMap + AutoRepair sameAs.
+  mapsUrl: "https://www.google.com/maps/place/2240+Speedshop/@53.5249595,-113.374974,17z/data=!3m1!4b1!4m6!3m5!1s0x53a019d224d411e5:0xbd0f3ae17862f5dc!8m2!3d53.5249595!4d-113.374974!16s%2Fg%2F11y2qbm9fq",
   hours: [
     { days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "09:00", closes: "17:00" },
   ],
@@ -115,6 +116,7 @@ export const areas = [
   { slug: "st-albert", name: "St. Albert", note: "Rock'n August country. Straight up the Henday, about 30 minutes." },
   { slug: "leduc-nisku", name: "Leduc & Nisku", note: "Passenger classics and customs — not just heavy truck work." },
   { slug: "spruce-grove", name: "Spruce Grove", note: "West-end builds welcome; we will talk you through the haul." },
+  { slug: "fort-saskatchewan", name: "Fort Saskatchewan", note: "Highway 21 south, then west — about thirty minutes to the bay door." },
 ] as const;
 
 export type Service = (typeof services)[number];

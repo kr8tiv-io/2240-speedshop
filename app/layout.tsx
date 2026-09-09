@@ -9,7 +9,7 @@ import { Footer } from "@/components/Footer";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { Cursor } from "@/components/fx/Cursor";
 import { GLImagesLayer } from "@/components/gl/GLImagesLayer";
-import { businessSchema, websiteSchema } from "@/lib/schema";
+import { businessSchema, personSchema, websiteSchema } from "@/lib/schema";
 
 const gaId = process.env.NEXT_PUBLIC_GA_ID;
 
@@ -98,6 +98,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
         />
         <a
           href="#main"

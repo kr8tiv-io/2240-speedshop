@@ -33,5 +33,10 @@ assert.match(
   /import\("lenis"\)/,
   "Lenis must load after first paint rather than in the opening graph.",
 );
+assert.match(
+  sources.find(([file]) => file === "components/SmoothScroll.tsx")[1],
+  /syncTouch:\s*touch\.matches/,
+  "Phone Lenis must use syncTouch so Safari WebGL and the document share one scroll clock (drei #1890).",
+);
 
 console.log("deferred motion contract: PASS");

@@ -32,6 +32,26 @@ const contracts = [
     "the full composer stays parked behind the preloader until priming commits",
     /frameloop=\{active && primed \? "always" : "never"\}/,
   ],
+  [
+    "hero canvas ignores scroll remesure so iOS chrome cannot resize the buffer",
+    /resize=\{STABLE_CANVAS_RESIZE\}/,
+  ],
+  [
+    "hero canvas sizes itself with svh/lvh instead of stretching to a jumping parent",
+    /style=\{STABLE_CANVAS_FRAME_STYLE\}/,
+  ],
+  [
+    "hero canvas is top-locked, not inset-0, so bottom:0 cannot re-derive height",
+    /className="!absolute !inset-x-0 !top-0"/,
+  ],
+  [
+    "hero rig does not apply pointer parallax on phones",
+    /if \(!mobile\) \{\s*desired\.x \+= pointer\.x \* 0\.18;/,
+  ],
+  [
+    "hero fit uses a chrome-locked aspect on phones",
+    /aspectIgnoringChrome\(camera, gl\.domElement\.clientWidth, chromeAspect\.current\)/,
+  ],
 ];
 
 for (const [label, pattern] of contracts) {

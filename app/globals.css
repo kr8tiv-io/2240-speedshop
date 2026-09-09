@@ -91,10 +91,37 @@ body {
    Native viewport units still update for rotation and genuine window resizing.
    Copy keeps its separate small-viewport safe area above. */
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
-  [data-film-canvas] {
+  html, body {
+    overscroll-behavior: none;
+  }
+  /* iOS 26: a position:fixed WebGL layer and a position:sticky copy sit on
+     two compositor threads and drift (WebKit 301172). Sticky + negative
+     margin keeps the canvas in the document scroll, covering the parent
+     without adding a viewport of flow, so it moves with the copy. */
+  [data-film-canvas],
+  [data-shop-ready],
+  [data-gl-images] {
+    position: sticky;
+    top: 0;
     bottom: auto;
     height: 100vh;
     height: 100lvh;
+    margin-bottom: -100vh;
+    margin-bottom: -100lvh;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+  [data-film-stage] {
+    height: 100vh;
+    height: 100lvh;
+  }
+  [data-film-canvas] canvas,
+  [data-shop-ready] canvas,
+  [data-gl-images] canvas {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
   }
 }
 
@@ -130,6 +157,16 @@ body {
   50% { transform: translate(1.45%, -1.77%); }
   75% { transform: translate(-0.97%, -0.81%); }
   100% { transform: translate(0, 0); }
+}
+
+/* Phones: hide the overlay entirely. mix-blend overlay on a 124% fixed
+   layer over a 60fps WebGL canvas re-composites every frame on iOS Safari,
+   which reads as the whole screen vibrating even when the texture is still.
+   Desktop keeps the animated grain. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .grain {
+    display: none;
+  }
 }
 
 html[data-ui-overlay="menu"] .grain {

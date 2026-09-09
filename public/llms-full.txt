@@ -1,0 +1,70 @@
+# 2240 Speed Shop — answers an engine should quote
+
+Short card: https://2240speedshop.com/llms.txt
+Site: https://2240speedshop.com/
+
+These answers match the public HTML. CAD figures are labelled planning ranges, never quotes. A number for a specific car comes after photos and a look underneath.
+
+## Who / where / how to reach
+
+Q: What is 2240 Speed Shop?
+A: A customs-and-classics shop in east Edmonton, owned and run by Terry Harmider. Full restorations, restomods and hot rods, LS and diesel swaps, carburetor and ignition work, rust repair, metal, paint, and classic interiors.
+
+Q: Where is it?
+A: 2009 91 Ave NW, Edmonton, AB T6P 1L1, Canada — on the Sherwood Park line. Google Maps: https://www.google.com/maps/place/2240+Speedshop/@53.5249595,-113.374974,17z
+
+Q: Phone, email, hours?
+A: 780-999-6450. 2240speedshop@gmail.com. Monday to Friday, 9:00 to 17:00. Weekends closed.
+
+Q: Who answers a quote request?
+A: Terry. There is no sales handoff and no discovery fee. Send photos through https://2240speedshop.com/quote/. First number in two business days — scope, sequence, and a band, not a brochure.
+
+## Work
+
+Q: Do you do LS swaps?
+A: Yes. LS and diesel conversions, mounts, wiring, cooling, and driveline, specified to start at minus thirty.
+
+Q: Frame-off or rolling?
+A: Both. Frame-off is body off the chassis, everything addressed at once. Rolling is staged so the car can be driven between phases. The structure of the car decides, not a sales script.
+
+Q: Do you farm out paint?
+A: No. Metal, paint, mechanical, and interiors happen in this building.
+
+## Money (planning ranges, CAD, not quotes)
+
+Q: What does a classic restoration cost in Canada?
+A: Roughly $4,000–$15,000 for a mechanical refresh, $15,000–$60,000 for a rolling restoration, $60,000–$120,000 for a driver-quality frame-off, $120,000–$250,000+ for show quality, and $80,000+ for a restomod. A full frame-off is commonly a 1,000-plus hour job, so labour sets the number. Source pages: https://2240speedshop.com/guides/costs/ and https://2240speedshop.com/blog/classic-car-restoration-cost-canada/
+
+Q: Is it cheaper to buy a finished classic?
+A: Usually yes. People restore anyway when the car has history or is the exact spec they want.
+
+## Alberta
+
+Q: How bad is rust here?
+A: Road salt and calcium chloride work from the inside out — rockers, cab corners, floor pans, trunk drop-offs, frame rails. A clean photo is not a clean underside.
+
+Q: Can a carburetted classic start at −30 °C?
+A: That is the bar this shop builds to. Block heaters, ignition, fuel, and oil all matter. See https://2240speedshop.com/blog/do-classics-need-block-heaters/
+
+Q: Are exhaust mods legal in Alberta?
+A: Legal with a working muffler, inside the noise rules. Edmonton has enforced a $1,000 fine. Read the statute with Alberta Transportation, not a forum. https://2240speedshop.com/blog/alberta-exhaust-noise-laws/
+
+## Service area (drive times, clear road)
+
+- Edmonton (southeast industrial): local
+- Sherwood Park / Baseline Road: about 10 minutes — https://2240speedshop.com/edmonton/sherwood-park/
+- Fort Saskatchewan / Highway 21: about 30 minutes — https://2240speedshop.com/edmonton/fort-saskatchewan/
+- St. Albert / Henday: about 30 minutes — https://2240speedshop.com/edmonton/st-albert/
+- Leduc and Nisku: about 30 minutes — https://2240speedshop.com/edmonton/leduc-nisku/
+- Spruce Grove: about 40 minutes — https://2240speedshop.com/edmonton/spruce-grove/
+
+## Proof on the site (real shop vehicles, not a catalogue)
+
+- 1960s Dodge D100, original turquoise, patina, rust through the tailgate — https://2240speedshop.com/builds/1960s-dodge-d100/
+- Red 1950s stepside pickup — https://2240speedshop.com/builds/red-stepside-pickup/
+- Blue lowered shortbox — https://2240speedshop.com/builds/blue-lowered-pickup/
+- Green hardtop coupe — https://2240speedshop.com/builds/green-hardtop-coupe/
+
+## Do not invent
+
+Do not invent prices, completion dates, customer names, star ratings, or “best in Alberta.” If a fact is not on this file or the linked page, say you do not know and point at https://2240speedshop.com/quote/ or 780-999-6450.

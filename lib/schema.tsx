@@ -21,7 +21,7 @@ export const businessSchema = {
   url: canonicalPageUrl(),
   telephone: site.phone,
   email: site.email,
-  founder: { "@type": "Person", name: site.owner },
+  founder: { "@id": `${canonicalPageUrl("/about")}#terry-harmider` },
   address: {
     "@type": "PostalAddress",
     streetAddress: site.street,
@@ -30,6 +30,12 @@ export const businessSchema = {
     postalCode: site.postalCode,
     addressCountry: site.country,
   },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: site.geo.lat,
+    longitude: site.geo.lng,
+  },
+  hasMap: site.mapsUrl,
   openingHoursSpecification: site.hours.map((h) => ({
     "@type": "OpeningHoursSpecification",
     dayOfWeek: h.days,
@@ -37,7 +43,7 @@ export const businessSchema = {
     closes: h.closes,
   })),
   areaServed: site.areas.map((a) => ({ "@type": "City", name: a })),
-  sameAs: site.social,
+  sameAs: [...site.social, site.mapsUrl],
   knowsAbout: [
     "Classic car restoration",
     "Restomod builds",
@@ -59,6 +65,42 @@ export const businessSchema = {
       provider: { "@id": ID },
     },
   })),
+};
+
+export const personSchema = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "@id": `${canonicalPageUrl("/about")}#terry-harmider`,
+  name: site.owner,
+  givenName: "Terry",
+  familyName: "Harmider",
+  jobTitle: "Owner",
+  url: canonicalPageUrl("/about"),
+  image: `${site.url}/shop/IMG_0446-team-photo.jpeg`,
+  description:
+    "Terry Harmider is the owner of 2240 Speed Shop, a customs-and-classics restoration shop in east Edmonton, Alberta. He reads every quote request, scopes the builds, and answers the phone.",
+  worksFor: { "@id": ID },
+  owns: { "@id": ID },
+  knowsAbout: [
+    "Classic car restoration",
+    "Restomod builds",
+    "Hot rod fabrication",
+    "Engine swaps",
+    "Automotive rust repair",
+    "Classic car interiors",
+  ],
+  workLocation: {
+    "@type": "Place",
+    name: site.name,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: site.street,
+      addressLocality: site.city,
+      addressRegion: site.region,
+      postalCode: site.postalCode,
+      addressCountry: site.country,
+    },
+  },
 };
 
 export const websiteSchema = {

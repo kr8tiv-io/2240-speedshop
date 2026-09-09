@@ -817,8 +817,8 @@ contract(
   "parse courtesy is scoped once per route bay rather than once per model or Canvas",
 );
 contract(
-  /const REVEAL_WARM_KEYS = (?:\[\.\.\.WARM_KEYS\]|WARM_KEYS)/.test(loaders),
-  "garage reveal waits for the complete warm route",
+  /const REVEAL_WARM_KEYS = \["shell", "0"\]/.test(loaders),
+  "garage reveal waits for the opening bay, not the complete warm route",
 );
 const libraryKeys = modelLibraryKeys();
 const openingKeys = keysBetween(loaders, "const OPENING_MODELS", "const OPENING_PRELOAD_COUNT");
@@ -853,8 +853,9 @@ contract(
   /const warmLeadPx = Math\.ceil\(Math\.max\(window\.innerHeight, 1\) \* 7\)/.test(walkthrough) &&
     /rootMargin: `\$\{warmLeadPx\}px 0px \$\{warmLeadPx\}px 0px`/.test(walkthrough) &&
     /window\.addEventListener\("resize", refreshViewportLeads\)/.test(walkthrough) &&
-    /visualViewport\?\.addEventListener\("resize", refreshViewportLeads\)/.test(walkthrough),
-  "garage mount lead stays seven viewport heights through iPhone orientation changes",
+    !/visualViewport\?\.addEventListener\("resize", refreshViewportLeads\)/.test(walkthrough) &&
+    /lockRunwayViewport\(\)/.test(walkthrough),
+  "garage mount lead stays seven viewport heights through orientation, without iOS chrome remesure",
 );
 contract(
   /const drawLeadPx = Math\.ceil\(Math\.max\(window\.innerHeight, 1\) \* 1\.7\)/.test(walkthrough) &&
@@ -869,15 +870,31 @@ contract(
   "garage performance tier is latched once so orientation cannot invalidate a live Canvas",
 );
 contract(
+  /resize=\{STABLE_CANVAS_RESIZE\}/.test(shopWorld) &&
+    /STABLE_CANVAS_FRAME_STYLE/.test(shopWorld) &&
+    /lockRunwayViewport\(\)/.test(shopWorld),
+  "shop canvas ignores scroll remesure, sizes with svh/lvh on Canvas, and freezes runway span after settle",
+);
+const liteComposer = shopWorld.slice(
+  shopWorld.indexOf("{lite ? ("),
+  shopWorld.indexOf(") : (", shopWorld.indexOf("{lite ? (")),
+);
+contract(
+  liteComposer.includes("<Bloom") &&
+    liteComposer.includes("<Vignette") &&
+    !liteComposer.includes("<Noise"),
+  "lite garage composer must not run a live Noise pass — that is the phone vibration",
+);
+contract(
   /<ShopWorld[\s\S]{0,220}revealed=\{worldReady\}/.test(walkthrough) &&
     /active=\{active && worldReady && uiOverlay === null\}/.test(walkthrough) &&
     /worldReady \? "opacity-0" : "opacity-100"/.test(walkthrough) &&
     /lit && warm && revealed \? "opacity-100" : "opacity-0"/.test(shopWorld),
-  "partial shell/stations stay fully veiled until complete-route readiness",
+  "later stations stay camera-clamped; the doorway lifts at opening-bay readiness",
 );
 contract(
   /REVEAL_PENDING\.size === 0[\s\S]{0,500}await finalizer\(\)[\s\S]{0,500}markWorldReady\(\)/.test(loaders),
-  "complete route readiness submits a final full-composer frame before reveal",
+  "opening-bay readiness submits a final full-composer frame before reveal",
 );
 const parkedOvenStart = loaders.indexOf("if (parkedNow() && root && composerTarget)");
 const parkedOvenFirstWas = loaders.indexOf("const was = drawables.map", parkedOvenStart);

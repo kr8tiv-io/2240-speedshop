@@ -12,9 +12,11 @@ import { useUIOverlay } from "@/components/ui-overlay";
 import { beginWorldBoot, markWorldSkipped, noteMotion, subscribeBoot } from "./boot";
 import {
   RUNWAY_ID,
+  lockRunwayViewport,
   measureRunway,
   runwayMetrics,
   runwayScrollY,
+  runwayViewHeight,
 } from "./runway";
 
 /**
@@ -118,8 +120,25 @@ export function WalkthroughWorld() {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const wide = window.matchMedia("(min-width: 1024px)");
 
+    let deferId = 0;
+    let deferKind: "idle" | "raf" | null = null;
+    const cancelDefer = () => {
+      if (!deferId) return;
+      if (deferKind === "idle") {
+        const cic = (
+          window as Window & { cancelIdleCallback?: (id: number) => void }
+        ).cancelIdleCallback;
+        if (typeof cic === "function") cic(deferId);
+      } else if (deferKind === "raf") {
+        window.cancelAnimationFrame(deferId);
+      }
+      deferId = 0;
+      deferKind = null;
+    };
+
     const decide = () => {
       if (verdictRef.current !== "idle") return;
+      cancelDefer();
       const nav = navigator as CapableNavigator;
       const cores = nav.hardwareConcurrency ?? 4;
       // `deviceMemory` is Chromium-only; absence is not evidence of a weak
@@ -141,11 +160,41 @@ export function WalkthroughWorld() {
         console.log(`[shop] verdict ${next} @${Math.round(performance.now())} ms`);
       }
       verdictRef.current = next;
-      if (next === "skip") markWorldSkipped();
+      // Tell the plate at the door there is nothing coming, so it lifts at once
+      // rather than sitting through its grace timer on a machine that opted out.
+      if (next === "skip") {
+        markWorldSkipped();
+        setVerdict(next);
+        return;
+      }
+      // Still-first defer on lite (phones): let the hero LCP plate paint one
+      // idle/frame before we pull three.js. Full desktop stays immediate.
+      if (next === "run-lite") {
+        const go = () => setVerdict(next);
+        const ric = (
+          window as Window & {
+            requestIdleCallback?: (
+              cb: () => void,
+              opts?: { timeout: number },
+            ) => number;
+          }
+        ).requestIdleCallback;
+        if (typeof ric === "function") {
+          deferId = ric(go, { timeout: 140 });
+          deferKind = "idle";
+        } else {
+          deferId = window.requestAnimationFrame(go);
+          deferKind = "raf";
+        }
+        return;
+      }
       setVerdict(next);
     };
 
     decide();
+    return () => {
+      cancelDefer();
+    };
   }, []);
 
   const run = verdict === "run-full" || verdict === "run-lite";
@@ -303,7 +352,7 @@ export function WalkthroughWorld() {
       const m = runwayMetrics();
       if (!m.measured) return;
       const y = runwayScrollY();
-      const vh = Math.max(window.innerHeight, 1);
+      const vh = runwayViewHeight();
       const edge = vh * 1.5;
       const fadeIn = clamp01((y - (m.top - edge)) / edge);
       const fadeOut = clamp01((m.top + m.height - vh + edge - y) / edge);
@@ -331,21 +380,28 @@ export function WalkthroughWorld() {
     fade();
     document.addEventListener("scroll", fade, { passive: true, capture: true });
     window.addEventListener("resize", refreshViewportLeads);
-    window.visualViewport?.addEventListener("resize", refreshViewportLeads);
+    // Deliberately NOT listening to visualViewport.resize — that is the iOS
+    // chrome show/hide vector. measureRunway already freezes view height on
+    // coarse/iOS after lockRunwayViewport; chrome-only height flips must not
+    // rebuild IntersectionObservers either.
     const observer = new ResizeObserver(measure);
     observer.observe(document.documentElement);
     observer.observe(runway);
+    const settle = window.setTimeout(() => {
+      measure();
+      lockRunwayViewport();
+    }, 480);
 
     return () => {
       cancelled = true;
       unsubscribeHero();
       warm?.disconnect();
       window.clearTimeout(warmTimer);
+      window.clearTimeout(settle);
       draw?.disconnect();
       window.cancelAnimationFrame(viewportResizeFrame);
       document.removeEventListener("scroll", fade, { capture: true });
       window.removeEventListener("resize", refreshViewportLeads);
-      window.visualViewport?.removeEventListener("resize", refreshViewportLeads);
       observer.disconnect();
     };
   }, [run, verdict]);
@@ -357,7 +413,7 @@ export function WalkthroughWorld() {
       data-shop-stage={worldReady ? "world" : worldWarm ? "shell" : "poster"}
       aria-hidden="true"
       role="presentation"
-      className="pointer-events-none fixed inset-0 z-[5]"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[5] h-[100svh] w-full"
       style={{ opacity: 0 }}
     >
       {/* The building. Mounted early (warm gate), drawn late (draw gate). */}
@@ -376,8 +432,9 @@ export function WalkthroughWorld() {
           unconditionally, so the station copy always sits in a lit room. */}
       <div className="wt-world-veil absolute inset-0" />
       {/* A fast scroller can reach the doorway before a slow mobile GPU has
-          finished linking the shop. Hold a real tungsten/cool room there,
-          then dissolve it away once the full world is ready. */}
+          finished linking the opening bay. Hold a real tungsten/cool room
+          there, then dissolve it once that first room is ready. Later bays
+          still stream; the rail will not walk into an empty one. */}
       <div
         className={`wt-world-boot-light absolute inset-0 transition-opacity duration-1000 ${
           worldReady ? "opacity-0" : "opacity-100"

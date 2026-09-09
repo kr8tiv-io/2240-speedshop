@@ -426,7 +426,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
       {/* THE STAGE — one fixed canvas behind both film runways. It starts
           visible under runway A; the timelines drop the curtain for the
           walk-through and raise it again for the finale. */}
-      <div data-film-canvas className="fixed inset-0 z-0">
+      <div data-film-canvas className="fixed inset-x-0 top-0 z-0 h-[100svh] w-full">
         <div data-hero-still className="absolute inset-0">
           <StaticBackdrop />
         </div>
@@ -442,7 +442,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
       {/* REEL ONE — Acts I and II. 850vh: the title card, two cars, and two
           written interludes need real scroll of their own. */}
       <div data-film data-film-runway data-runway-a className="relative z-[1] h-[850vh]">
-        <div className="sticky top-0 h-[100svh] overflow-hidden">
+        <div data-film-stage className="sticky top-0 h-[100svh] overflow-hidden">
 
           {/* corner instrumentation + act HUD. Below 380px the coordinates
               and the readout cannot share a line without colliding — and the
@@ -593,7 +593,7 @@ export function HomeCinema({ walkthrough }: { walkthrough?: React.ReactNode }) {
 
       {/* REEL TWO — the finale. */}
       <div data-film-runway data-runway-c className="relative z-[1] h-[420vh]">
-        <div className="sticky top-0 h-[100svh] overflow-hidden">
+        <div data-film-stage className="sticky top-0 h-[100svh] overflow-hidden">
           {/* finale HUD — the reel picks the count back up after the walk */}
           <div className="pointer-events-none absolute inset-x-0 top-[72px] flex justify-end px-5 sm:px-8">
             <div className="text-right">
@@ -780,14 +780,14 @@ function ChapterZeroCopy({ kinetic = false }: { kinetic?: boolean; ready?: boole
         >
           {"Customs "}
           <em className="accent-serif">and</em>
-          {"\nclassics."}
+          {" \nclassics."}
         </p>
         <h1
           data-kinetic-h1={kinetic ? "" : undefined}
           data-accent-word="and"
           className="whitespace-pre-line font-display text-[clamp(2.45rem,12.5vw,12rem)] uppercase leading-[0.84] tracking-[0.005em] text-bone"
         >
-          {"Customs and\nclassics."}
+          {"Customs and \nclassics."}
         </h1>
       </div>
       <div

@@ -300,6 +300,72 @@ const content: Record<string, AreaContent> = {
       "restomods-custom-builds",
     ],
   },
+
+  "fort-saskatchewan": {
+    keyword: "classic car restoration Fort Saskatchewan",
+    h1: "Classic car restoration in Fort Saskatchewan",
+    metaTitle: "Classic Restoration, Fort Saskatchewan",
+    metaDescription:
+      "Classic car restoration for Fort Saskatchewan. 2240 Speed Shop is about thirty minutes down Highway 21, then west to 2009 91 Ave NW on the Sherwood Park line.",
+    lede:
+      "Fort Saskatchewan to 2240 Speed Shop is Highway 21 south, then west into southeast Edmonton — about thirty minutes on a clear road. The shop sits on the Sherwood Park line at 2009 91 Ave NW. Restoration, rust repair, and engine swaps get booked once and worked for weeks, so you make the drive twice, not weekly.",
+    drive: "Highway 21 south, then west — about 30 minutes",
+    image: {
+      src: "/shop/IMG_0401-stripped-blue-frame.jpeg",
+      alt: "Stripped blue project shell on the shop floor at 2240 Speed Shop in Edmonton, the kind of long-stored Fort Saskatchewan project that arrives on a deck",
+      caption: "Plenty of Fort Saskatchewan projects arrive on a deck. There is room out front to unload.",
+      aspect: "aspect-[3/4]",
+    },
+    sections: [
+      {
+        h2: "How far is the shop from Fort Saskatchewan?",
+        body: [
+          "Highway 21 south, then west to 2009 91 Ave NW. About thirty minutes without a backup on the industrial stretch. That is a restoration drive, not a weekly-service drive.",
+          "If the car runs and stops, drive it. Thirty minutes of highway tells us idle, pull, and brakes in a way a trailer never will. If it has been sitting, put it on a deck — there is room out front to unload.",
+        ],
+      },
+      {
+        h2: "What do Fort Saskatchewan owners usually bring in?",
+        body: [
+          "County shops and heated garages collect the same two piles: a summer driver that got parked over one problem, and a project that has been under a cover since the year the parts were ordered.",
+          "Both are normal here. Brakes, rust in the rockers, a carb that will not stay tuned, an LS sitting on a pallet. Neither one gets a lecture.",
+        ],
+      },
+      {
+        h2: "Is it worth the drive for paint and metal?",
+        body: [
+          "For a long job, yes. Bodywork, rust repair, and paint are booked once and take weeks. You visit when you want to see it, not every Friday.",
+          "For an oil change, use somebody closer. This shop is restorations, restomods, swaps, and the metal underneath — not a lube bay.",
+        ],
+      },
+    ],
+    notesTitle: "The Fort Saskatchewan run",
+    notes: [
+      "Highway 21 south, then west: about thirty minutes.",
+      "Room out front to unload a deck or a trailer.",
+      "Monday to Friday, 9:00 to 17:00.",
+      "Terry reads the quote himself — two business days for a number band.",
+    ],
+    faq: [
+      {
+        q: "How far is 2240 Speed Shop from Fort Saskatchewan?",
+        a: "About thirty minutes down Highway 21 south, then west to 2009 91 Ave NW in southeast Edmonton, on the Sherwood Park line.",
+      },
+      {
+        q: "Do I need to trailer the car from Fort Saskatchewan?",
+        a: "Only if it is not road-ready. If it runs, stops, and is insured, drive it — the highway tells us things a static inspection cannot. If it has sat for years, put it on a deck.",
+      },
+      {
+        q: "Do you take trucks and farm-parked projects?",
+        a: "Yes. Square-bodies, C10s, and cars that have been under a tarp in a shop are a regular diet here. The first conversation is what the floors and frame actually say.",
+      },
+    ],
+    serviceSlugs: [
+      "classic-car-restoration",
+      "body-paint-metalwork",
+      "engine-swaps-builds",
+    ],
+  },
 };
 
 export function generateStaticParams() {

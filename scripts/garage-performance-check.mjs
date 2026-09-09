@@ -34,6 +34,9 @@ const networkNames = { "fast-4g": "Fast 4G", "slow-4g": "Slow 4G", "slow-3g": "S
 assert.ok(!process.env.QA_NETWORK || networkNames[process.env.QA_NETWORK], "Use a known network profile");
 const network = process.env.QA_NETWORK ? PredefinedNetworkConditions[networkNames[process.env.QA_NETWORK]] : null;
 const longStartup = process.env.QA_LONG_STARTUP === "1";
+const progressiveReveal = process.env.QA_PROGRESSIVE_REVEAL === "1";
+assert.ok(!progressiveReveal || process.env.QA_STARTUP_ONLY !== "1", "Progressive audit requires the complete seven-bay tour");
+result.progressiveRevealAudit = progressiveReveal;
 result.networkConditions = network;
 result.longStartupDiagnostic = longStartup;
 const browser = await puppeteer.launch({
@@ -468,6 +471,9 @@ try {
     result.mountGate = { heroAt: hero.at, nearAt: near.at, eligibleAt, rendererAt, delayMs: rendererAt - eligibleAt };
     assert.ok(rendererAt - eligibleAt < 1000, `The fixed garage canvas must initialize during continuous scrolling, not wait for scroll-stop (${Math.round(rendererAt - eligibleAt)} ms after its gates)`);
   }
+  // Opening-bay releases can reveal before the later office is mounted.
+  // Preserve every original photo/resource check at its actual tour phase.
+  const verifyOfficePhotos = async () => {
   result.officeTextures = await page.evaluate(files => {
     const textures = new Map();
     window.__shop.scene.traverse(object => {
@@ -501,6 +507,8 @@ try {
     assert.ok(result.officeResources.every(r => r.startTime >= heroAt - 25), "Office preloading must not compete with the unready hero");
     assert.ok(result.officeResources.every(r => r.startTime < rendererAt - 1000), "Office downloads must overlap the approach before the garage GPU context, not wait for scroll-stop");
   }
+  };
+  if (!progressiveReveal) await verifyOfficePhotos();
   if (process.env.QA_GL_PROFILE === "1") {
     const programs = await page.evaluate(() => window.__attributeStartupPrograms());
     await fs.writeFile(path.join(out, "startup-programs.json"), JSON.stringify(programs, null, 2));
@@ -586,6 +594,7 @@ try {
     }
     await page.screenshot({ path: path.join(out, "desktop-rail-last-station.png"), captureBeyondViewport: false });
   }
+  if (progressiveReveal) await verifyOfficePhotos();
   assert.deepEqual(result.errors, []);
   // Verify bytes after the timing window so Node-side response inspection
   // cannot improve or slow the measured startup. Packet count never stands

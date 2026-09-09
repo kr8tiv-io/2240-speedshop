@@ -572,7 +572,8 @@ export function QuoteForm({ initialService }: { initialService?: string }) {
         <p className="mt-4 max-w-2xl font-body text-[15px] leading-relaxed text-steel">
           Your sheet is filed under <span className="font-mono text-tungsten">{sent}</span>. Terry
           reads every one himself. Two business days for an answer with scope, sequence, and a
-          number band — not a brochure.
+          number band — not a brochure. If you left an email, the written answer comes back there.
+          If you only left a phone, he calls.
         </p>
 
         <div className="weld my-7" />

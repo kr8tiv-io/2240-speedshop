@@ -21,7 +21,7 @@ assert.doesNotMatch(
 );
 assert.match(
   loaders,
-  /export function beginLoaderStream\(\)[\s\S]{0,700}unlocked = OPENING[\s\S]{0,700}PENDING\.clear\(\)[\s\S]{0,700}WARMED\.clear\(\)/,
+  /export function beginLoaderStream\(\)[\s\S]{0,1200}unlocked = OPENING[\s\S]{0,700}PENDING\.clear\(\)[\s\S]{0,700}WARMED\.clear\(\)/,
   "Every WebGL context needs fresh stream and GPU-readiness state.",
 );
 assert.match(
@@ -37,8 +37,13 @@ assert.match(
 
 assert.match(
   loaders,
-  /const REVEAL_WARM_KEYS = \[\.\.\.WARM_KEYS\]/,
-  "The doorway must hold its elegant veil until the complete seven-stop route is warm.",
+  /const REVEAL_WARM_KEYS = \["shell", "0"\]/,
+  "The doorway may lift once the building and first bay are first-used; later stations keep streaming.",
+);
+assert.match(
+  loaders,
+  /function racing\(\) \{\s*return worldParked;/,
+  "Later bays must still compile at full tilt while the shop canvas is parked in the film.",
 );
 
 const warmScene = loaders.slice(loaders.indexOf("export function WarmScene"));
@@ -50,7 +55,7 @@ assert.match(
 assert.match(
   loaders,
   /finalizedWorld === worldFinalizer[\s\S]{0,180}REVEAL_PENDING\.size === 0[\s\S]{0,500}await finalizer\(\)[\s\S]{0,500}markWorldReady\(\)/,
-  "The doorway dissolve must submit the complete route through the proved composer.",
+  "The doorway dissolve must submit the opening bay through the proved composer.",
 );
 assert.match(
   loaders,
@@ -136,12 +141,12 @@ assert.match(
 assert.match(
   walkthrough,
   /<ShopWorld[\s\S]{0,220}revealed=\{worldReady\}/,
-  "The 3D canvas must remain hidden until complete-route readiness.",
+  "The 3D canvas must remain hidden until the opening bay is ready.",
 );
 assert.match(
   walkthrough,
   /active=\{active && worldReady && uiOverlay === null\}/,
-  "The hidden Canvas must stay parked in its cheap oven until the route is ready.",
+  "The hidden Canvas must stay parked in its cheap oven until the opening bay is ready.",
 );
 assert.match(
   walkthrough,

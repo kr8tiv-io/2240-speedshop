@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { withPageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import Image from "next/image";
-import { canonicalPageUrl, site, services } from "@/lib/site";
-import { breadcrumbSchema, JsonLd } from "@/lib/schema";
+import { site, services } from "@/lib/site";
+import { breadcrumbSchema, JsonLd, personSchema } from "@/lib/schema";
 
 export const metadata: Metadata = withPageMetadata("/about", {
   title: "Terry Harmider, Edmonton Shop Owner",
@@ -15,44 +15,6 @@ export const metadata: Metadata = withPageMetadata("/about", {
     url: "/about",
   },
 });
-
-// Same @id the AutoRepair node uses in lib/schema.tsx — one entity, many nodes.
-const BUSINESS_ID = `${site.url}/#shop`;
-
-const personSchema = {
-  "@context": "https://schema.org",
-  "@type": "Person",
-  "@id": `${canonicalPageUrl("/about")}#terry-harmider`,
-  name: site.owner,
-  givenName: "Terry",
-  familyName: "Harmider",
-  jobTitle: "Owner",
-  url: canonicalPageUrl("/about"),
-  image: `${site.url}/shop/IMG_0446-team-photo.jpeg`,
-  description: "Terry Harmider is the owner of 2240 Speed Shop, a customs-and-classics restoration shop in east Edmonton, Alberta.",
-  worksFor: { "@id": BUSINESS_ID },
-  owns: { "@id": BUSINESS_ID },
-  knowsAbout: [
-    "Classic car restoration",
-    "Restomod builds",
-    "Hot rod fabrication",
-    "Engine swaps",
-    "Automotive rust repair",
-    "Classic car interiors",
-  ],
-  workLocation: {
-    "@type": "Place",
-    name: site.name,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: site.street,
-      addressLocality: site.city,
-      addressRegion: site.region,
-      postalCode: site.postalCode,
-      addressCountry: site.country,
-    },
-  },
-};
 
 export default function AboutPage() {
   return (

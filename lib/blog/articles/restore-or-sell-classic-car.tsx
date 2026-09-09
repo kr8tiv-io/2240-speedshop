@@ -13,7 +13,7 @@ export const meta: ArticleMeta = {
   title: "Restore, Restomod, or Sell? Decide Before Rust Eats the Equity",
   accent: "Sell",
   metaTitle: "Restore or Sell Your Classic Car?",
-  description: "An honest fork for a rusting classic: when restoration math works, when a restomod is the driveable path, and when selling now protects the equity.",
+  description: "An honest fork for a rusting classic: when restoration math works, when a restomod is the driveable path, and when selling now protects the equity in Alberta.",
   datePublished: "2026-08-30",
   dateModified: "2026-08-30",
   author: "2240 Speed Shop",
